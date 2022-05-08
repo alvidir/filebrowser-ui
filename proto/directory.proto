@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package = "github.com/alvidir/filebrowser/proto";
+
+package proto;
+
+message Empty {}
+
+message DirectoryDescriptor {
+    string id = 1;
+    map<string, string> files = 2;
+}
+
+service Directory {
+    rpc Create(Empty) returns (DirectoryDescriptor);
+    rpc Describe(Empty) returns (DirectoryDescriptor);
+}
