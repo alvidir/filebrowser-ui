@@ -1,47 +1,49 @@
 <template>
-  <h1>Hello world</h1>
+  <router-nav absolute-path="/hello/world" />
+  <router-view />
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
-
-const THEME_LIGHT = "theme-light";
-const THEME_DARK = "theme-dark";
+import RouterNav from "@/components/RouteNav.vue";
+import {
+  THEME_LIGHT,
+  THEME_DARK,
+  GetDefaultTheme,
+  SwitchTheme,
+} from "fibonacci-styles/util";
 
 export default defineComponent({
   name: "App",
-  components: {},
+  components: {
+    RouterNav,
+  },
+
+  setup() {
+    return {
+      THEME_LIGHT,
+      THEME_DARK,
+    };
+  },
 
   data() {
     return {
       theme: THEME_LIGHT,
-    }
+    };
+  },
+
+  methods: {
+    onSwitchTheme() {
+      this.theme = SwitchTheme(
+        this.theme,
+        process.env.VUE_APP_THEME_STORAGE_KEY
+      );
+    },
   },
 
   mounted() {
-    const setLightTheme = () => {
-      document.getElementsByTagName('body')[0].classList.add('theme-light')
-      localStorage.setItem(process.env.VUE_APP_THEME_STORAGE_KEY, THEME_LIGHT)
-      this.theme = THEME_LIGHT
-    }
-
-    const setDarkTheme = () => {
-      document.getElementsByTagName('body')[0].classList.add('theme-dark')
-      localStorage.setItem(process.env.VUE_APP_THEME_STORAGE_KEY, THEME_DARK)
-      this.theme = THEME_DARK
-    }
-
-    var localTheme = localStorage.getItem(process.env.VUE_APP_THEME_STORAGE_KEY)
-    if (localTheme === THEME_LIGHT) {
-      setLightTheme()
-    } else if (localTheme === THEME_DARK) {
-      setDarkTheme()
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setDarkTheme()
-    } else {
-      setLightTheme()
-    }
-  }
+    this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+  },
 });
 </script>
 
@@ -67,6 +69,7 @@ body {
 }
 
 #app {
+  @extend .centered-column;
   height: 100vh;
 }
 </style>
