@@ -6,12 +6,16 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import RouterNav from "@/components/RouteNav.vue";
+import Filebrowser from "@/filebrowser.service";
+import { Error, Directory } from "@/model";
 import {
   THEME_LIGHT,
   THEME_DARK,
   GetDefaultTheme,
   SwitchTheme,
 } from "fibonacci-styles/util";
+
+const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
 
 export default defineComponent({
   name: "App",
@@ -29,6 +33,7 @@ export default defineComponent({
   data() {
     return {
       theme: THEME_LIGHT,
+      directory: undefined,
     };
   },
 
@@ -43,6 +48,12 @@ export default defineComponent({
 
   mounted() {
     this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    FilebrowserService.getDirectory(
+      { "X-Auth": "123" },
+      (err: Error | null, response: Directory | null): void => {
+        console.log("done");
+      }
+    );
   },
 });
 </script>

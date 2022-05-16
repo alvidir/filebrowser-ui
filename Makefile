@@ -14,3 +14,5 @@ proto:
 	protoc -I=. proto/*.proto \
 		--js_out=import_style=commonjs,binary:./src \
 		--grpc-web_out=import_style=typescript,mode=grpcwebtext:./src
+
+	sed -i '1s/^/\/* eslint-disable *\/\n/' ./src/proto/*.ts
