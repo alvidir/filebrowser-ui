@@ -1,11 +1,9 @@
 <template>
-  <router-nav absolute-path="/hello/world" />
-  <router-view />
+  <h1>hello world</h1>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import RouterNav from "@/components/RouteNav.vue";
 import Filebrowser from "@/filebrowser.service";
 import { Error, Directory } from "@/model";
 import {
@@ -19,9 +17,7 @@ const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
 
 export default defineComponent({
   name: "App",
-  components: {
-    RouterNav,
-  },
+  components: {},
 
   setup() {
     return {
@@ -48,12 +44,10 @@ export default defineComponent({
 
   mounted() {
     this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
-    FilebrowserService.getDirectory(
-      { "X-Auth": "123" },
-      (err: Error | null, response: Directory | null): void => {
-        console.log("done");
-      }
-    );
+    FilebrowserService.getDirectory()
+      .then((dir: Directory) => console.log("got directory: ", dir))
+      .catch((err: Error) => console.log("got error: ", err))
+      .finally(() => console.log("done."));
   },
 });
 </script>

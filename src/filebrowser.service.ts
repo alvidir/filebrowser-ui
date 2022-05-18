@@ -13,29 +13,30 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  getDirectory(
-    headers: any = {},
-    callback: (err: Error | null, response: Directory | null) => void
-  ): void {
-    const handler = (
-      err: grpcWeb.RpcError,
-      response: DirectoryDescriptor
-    ): void => {
-      console.log(err);
-      console.log(response);
+  getDirectory(headers: any = {}): Promise<Directory> {
+    const promise: Promise<Directory> = new Promise((resolve, reject) => {
+      const handler = (
+        err: grpcWeb.RpcError,
+        response: DirectoryDescriptor
+      ): void => {
+        if (err.code !== grpcWeb.StatusCode.OK) {
+          reject(err.message as Error);
+          return;
+        }
 
-      if (err.code !== grpcWeb.StatusCode.OK) {
-        callback(Error.ERR_UNKNOWN, null);
-        return;
-      }
+        const directory = new Directory(
+          response.getId(),
+          response.getFilesMap()
+        );
 
-      const directory = new Directory(response.getId(), response.getFilesMap());
-      callback(null, directory);
-      return;
-    };
+        resolve(directory);
+      };
 
-    const request = new DirectoryLocator();
-    this.directoryClient.describe(request, headers, handler);
+      const request = new DirectoryLocator();
+      this.directoryClient.describe(request, headers, handler);
+    });
+
+    return promise;
   }
 }
 
