@@ -1,11 +1,14 @@
 <template>
-  <h1>hello world</h1>
+  <div class="topbar">
+    <path-nav absolute-path="/hello/world"></path-nav>
+  </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 import Filebrowser from "@/filebrowser.service";
 import { Error, Directory } from "@/model";
+import PathNav from "@/components/PathNav.vue";
 import {
   THEME_LIGHT,
   THEME_DARK,
@@ -17,7 +20,9 @@ const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
 
 export default defineComponent({
   name: "App",
-  components: {},
+  components: {
+    PathNav,
+  },
 
   setup() {
     return {
@@ -76,5 +81,8 @@ body {
 #app {
   @extend .centered-column;
   height: 100vh;
+}
+
+.top-bar {
 }
 </style>

@@ -13,7 +13,7 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  getDirectory(headers: any = {}): Promise<Directory> {
+  async getDirectory(headers: any = {}): Promise<Directory> {
     const promise: Promise<Directory> = new Promise((resolve, reject) => {
       const handler = (
         err: grpcWeb.RpcError,

@@ -1,26 +1,25 @@
 <template>
-  <nav>
-    <span v-for="(node, index) in nodes" :key="getLink(node)">
-      <label>&nbsp;{{ PATH_SEPARATOR }}&nbsp;</label>
-      <router-link :to="getLink(index)" @click="onPathChange(index)">
+  <span class="path-nav">
+    <span v-for="(node, index) in nodes" :key="getAbsolutePath(node)">
+      <label class="path-separator">&nbsp;{{ PATH_SEPARATOR }}&nbsp;</label>
+      <button @click="onPathClick(index)">
         {{ node }}
-      </router-link>
+      </button>
     </span>
-  </nav>
+  </span>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 
-export const PATH_CHANGE_EVENT_NAME = "path-change";
+export const CLICK_EVENT_NAME = "click";
 const PATH_SEPARATOR = "/";
 
 export default defineComponent({
-  name: "RouteNav",
-  events: [PATH_CHANGE_EVENT_NAME],
+  name: "PathNav",
+  events: [CLICK_EVENT_NAME],
   props: {
     absolutePath: String,
-    pathLinks: Object,
     pathSeparator: {
       type: String,
       default: PATH_SEPARATOR,
@@ -48,13 +47,8 @@ export default defineComponent({
       );
     },
 
-    getLink(index: number): string {
-      const absolutePath = this.getAbsolutePath(index);
-      return this.pathLinks ? this.pathLinks[absolutePath] : absolutePath;
-    },
-
-    onPathChange(index: number) {
-      this.$emit(PATH_CHANGE_EVENT_NAME, this.getAbsolutePath(index));
+    onPathClick(index: number) {
+      this.$emit(CLICK_EVENT_NAME, this.getAbsolutePath(index));
     },
   },
 });
@@ -63,4 +57,25 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
+
+.path-nav {
+  $font-size: $fib-7 * 1px;
+
+  button {
+    cursor: pointer;
+    font-size: $font-size;
+    background: transparent;
+    outline: none;
+    border: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .path-separator {
+    font-size: $font-size;
+    opacity: 70%;
+  }
+}
 </style>
