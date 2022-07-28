@@ -1,0 +1,7 @@
+node_modules
+package-lock.json
+/dist
+
+/src/proto/*.ts
+*_pb.js
+*_pb.ts
