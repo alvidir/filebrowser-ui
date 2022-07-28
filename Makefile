@@ -16,3 +16,6 @@ proto:
 		--grpc-web_out=import_style=typescript,mode=grpcwebtext:./src
 
 	sed -i '1s/^/\/* eslint-disable *\/\n/' ./src/proto/*.ts
+
+build:
+	podman build --no-cache --security-opt label=disable -t alvidir/filebrowser-ui:latest -f ./container/filebrowser-ui/containerfile .
