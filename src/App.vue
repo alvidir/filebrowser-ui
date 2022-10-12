@@ -1,54 +1,54 @@
 <template>
-  <div class="topbar">
-    <path-nav absolute-path="/hello/world"></path-nav>
-  </div>
+  <dir-list :files="files" path="path/to/directory"></dir-list>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 import Filebrowser from "@/filebrowser.service";
 import { Error, Directory } from "@/model";
-import PathNav from "@/components/PathNav.vue";
-import {
-  THEME_LIGHT,
-  THEME_DARK,
-  GetDefaultTheme,
-  SwitchTheme,
-} from "fibonacci-styles/util";
+import DirList from "@/components/DirList.vue";
+import { GetDefaultTheme } from "fibonacci-styles/util";
 
 const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
 
 export default defineComponent({
   name: "App",
   components: {
-    PathNav,
-  },
-
-  setup() {
-    return {
-      THEME_LIGHT,
-      THEME_DARK,
-    };
+    DirList,
   },
 
   data() {
     return {
-      theme: THEME_LIGHT,
-      directory: undefined,
+      files: [
+        { name: "second file", isDir: false, updatedAt: Date.now() },
+        { name: "first file", isDir: false, updatedAt: Date.now() },
+        {
+          name: "third file",
+          isDir: false,
+          updatedAt: Date.now(),
+          tags: ["first tag", "second tag"],
+        },
+        {
+          name: "first folder",
+          isDir: true,
+          updatedAt: Date.now(),
+          size: { value: 3, unit: "items" },
+          tags: ["another tag"],
+        },
+        {
+          name: "second folder",
+          isDir: true,
+          updatedAt: Date.now(),
+          size: { value: 10, unit: "items" },
+        },
+      ],
     };
   },
 
-  methods: {
-    onSwitchTheme() {
-      this.theme = SwitchTheme(
-        this.theme,
-        process.env.VUE_APP_THEME_STORAGE_KEY
-      );
-    },
-  },
+  methods: {},
 
   mounted() {
-    this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
     FilebrowserService.getDirectory()
       .then((dir: Directory) => console.log("got directory: ", dir))
       .catch((err: Error) => console.log("got error: ", err))
@@ -80,9 +80,7 @@ body {
 
 #app {
   @extend .centered-column;
+  @extend .theme-dark;
   height: 100vh;
-}
-
-.top-bar {
 }
 </style>

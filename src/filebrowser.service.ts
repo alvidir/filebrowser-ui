@@ -13,6 +13,7 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
+  // eslint-disable-next-line
   async getDirectory(headers: any = {}): Promise<Directory> {
     const promise: Promise<Directory> = new Promise((resolve, reject) => {
       const handler = (
@@ -33,7 +34,7 @@ class FilebrowserService {
       };
 
       const request = new DirectoryLocator();
-      this.directoryClient.describe(request, headers, handler);
+      this.directoryClient.retrieve(request, headers, handler);
     });
 
     return promise;

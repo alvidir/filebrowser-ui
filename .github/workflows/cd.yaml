@@ -1,10 +1,8 @@
-name: Publish images
+name: Continuous delivery
 
 on:
   release:
-    types: [published]
-
-  workflow_dispatch:
+    types: published
 
 env:
   IMAGE_REGISTRY: docker.io
@@ -14,7 +12,7 @@ jobs:
   push_to_registry:
     name: Push image to registry
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
