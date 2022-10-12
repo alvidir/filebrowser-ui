@@ -1,38 +1,40 @@
 <template>
-  <div class="header round-corners top-only">
-    <v-slot>
-      <div class="path-nav">
-        <i class="bx bxs-folder-open"></i>
-        <button v-for="dir in directories" :key="dir">
-          {{ dir }}
-        </button>
-      </div>
-    </v-slot>
-  </div>
-  <div class="table-wrapper round-corners bottom-only">
-    <table>
-      <tr v-for="file in sortedFiles" :key="file.name">
-        <td>
-          <i v-if="file.isDir" class="bx bxs-folder"></i>
-          <i v-else class="bx bx-file-blank"></i>
-          <span>{{ file.name }}</span>
-        </td>
-        <td class="tags-list">
-          <label v-for="tag in file.tags" :key="tag" class="round-corners">
-            {{ tag }}
-          </label>
-        </td>
-        <td>
-          <span v-if="file.size">
-            {{ file.size.value }} {{ file.size.unit }}
-          </span>
-          <span v-else>&nbsp;</span>
-        </td>
-        <td class="elapsed-time">
-          {{ printElapsedTimeSince(file.updatedAt) }}
-        </td>
-      </tr>
-    </table>
+  <div class="dir-list">
+    <div class="header round-corners top-only">
+      <v-slot>
+        <div class="path-nav">
+          <i class="bx bxs-folder-open"></i>
+          <button v-for="dir in directories" :key="dir">
+            {{ dir }}
+          </button>
+        </div>
+      </v-slot>
+    </div>
+    <div class="table-wrapper round-corners bottom-only">
+      <table>
+        <tr v-for="file in sortedFiles" :key="file.name">
+          <td>
+            <i v-if="file.isDir" class="bx bxs-folder"></i>
+            <i v-else class="bx bx-file-blank"></i>
+            <span>{{ file.name }}</span>
+          </td>
+          <td class="tags-list">
+            <label v-for="tag in file.tags" :key="tag" class="round-corners">
+              {{ tag }}
+            </label>
+          </td>
+          <td>
+            <span v-if="file.size">
+              {{ file.size.value }} {{ file.size.unit }}
+            </span>
+            <span v-else>&nbsp;</span>
+          </td>
+          <td class="elapsed-time">
+            {{ printElapsedTimeSince(file.updatedAt) }}
+          </td>
+        </tr>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -112,10 +114,15 @@ export default defineComponent({
 
 $border-color: var(--color-text-disabled);
 
+.dir-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .header {
   width: 100%;
   height: $fib-9 * 1px;
-  background: var(--color-button-hover);
+  background: var(--color-button);
   border: 1px solid;
   border-color: $border-color;
   box-sizing: border-box;
@@ -185,7 +192,7 @@ i {
       height: $fib-8 * 1px;
 
       &:hover {
-        background: var(--color-button-hover);
+        background: var(--color-button);
       }
 
       td {
