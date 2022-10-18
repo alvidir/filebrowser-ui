@@ -1,5 +1,5 @@
 <template>
-  <dock :active="true" :position="'left'">
+  <dock id="sidenav" :active="true" :position="'left'">
     <dock-item id="0" placeholder="first item"><label>Aa</label></dock-item>
     <dock-item id="1" placeholder="second item"><label>Bb</label></dock-item>
     <dock-item id="2" placeholder="third item"><label>Cc</label></dock-item>
@@ -10,25 +10,29 @@
     <dock-item id="6" placeholder="seventh item"><label>Gg</label></dock-item>
   </dock>
   <div id="main-container">
-    <div id="actions-container">
-      <search-field id="search-field" :placeholder="'Search'" :large="false" />
-      <span id="action-buttons">
-        <submit-button>
-          <i class="bx bxs-bulb"></i>
-          New project
-        </submit-button>
-        <regular-button>
-          <i class="bx bxs-file-plus"></i>
-          New file
-        </regular-button>
-        <regular-button>
-          <i class="bx bxs-folder-plus"></i>
-          New folder
-        </regular-button>
-      </span>
-    </div>
+    <div class="narrowed">
+      <div id="actions-container">
+        <search-field id="search-field" :placeholder="'Search'" large />
+        <span id="action-buttons">
+          <submit-button>
+            <i class="bx bxs-bulb"></i>
+            {{ NEW_DIRECTORY }}
+          </submit-button>
+          <regular-button>
+            <i class="bx bxs-file-plus"></i>
+            {{ NEW_FILE }}
+          </regular-button>
+          <regular-button>
+            <i class="bx bxs-folder-plus"></i>
+            {{ NEW_FOLDER }}
+          </regular-button>
+        </span>
+      </div>
 
-    <dir-list :files="files" path="path/to/directory" />
+      <div id="files-view">
+        <dir-list :files="files" path="path/to/directory" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -40,11 +44,22 @@ import DirList from "@/components/DirList.vue";
 import { GetDefaultTheme } from "fibonacci-styles/util";
 
 const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
+const NEW_DIRECTORY = "New directory";
+const NEW_FILE = "New file";
+const NEW_FOLDER = "New folder";
 
 export default defineComponent({
   name: "App",
   components: {
     DirList,
+  },
+
+  setup() {
+    return {
+      NEW_DIRECTORY,
+      NEW_FILE,
+      NEW_FOLDER,
+    };
   },
 
   data() {
@@ -98,22 +113,24 @@ export default defineComponent({
 }
 
 body {
-  min-height: 100vh;
-  width: 100%;
   background: var(--color-background-secondary);
 }
 
-.centered-column {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
+#sidenav {
+  z-index: 2;
 }
 
 #main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: fit-content;
   width: 100%;
-  height: 100%;
-  padding: 0 20%;
-  min-width: 900px;
+
+  .narrowed {
+    width: $fib-13 * 3px;
+    padding: 0 $fib-6 * 1px;
+  }
 }
 
 #actions-container {
@@ -121,19 +138,22 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 50vh;
+  padding: $fib-11 * 1px 0;
+  min-width: fit-content;
 }
 
 #search-field {
-  width: 66%;
+  width: $fib-14 * 1px;
   z-index: 1;
 }
 
 #action-buttons {
   display: flex;
+  justify-content: center;
   margin-top: $fib-8 * 1px;
   white-space: nowrap;
-  width: 50%;
+  width: 40%;
+  min-width: fit-content;
 
   button {
     &:not(:first-child) {
@@ -153,10 +173,14 @@ body {
   }
 }
 
+#files-view {
+  margin: $fib-9 * 1px;
+  margin-top: none;
+}
+
 #app {
-  @extend .centered-column;
-  height: 100vh;
   display: flex;
   flex-direction: row;
+  width: 100%;
 }
 </style>

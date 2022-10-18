@@ -30,7 +30,7 @@
             <span v-else>&nbsp;</span>
           </td>
           <td class="elapsed-time">
-            {{ printElapsedTimeSince(file.updatedAt) }}
+            {{ printElapsedTimeSince /*file.updatedAt*/() }}
           </td>
         </tr>
       </table>
@@ -101,7 +101,7 @@ export default defineComponent({
   },
 
   methods: {
-    printElapsedTimeSince(time: number): string {
+    printElapsedTimeSince(): string {
       return "2 months ago";
     },
   },
@@ -117,6 +117,7 @@ $border-color: var(--color-text-disabled);
 .dir-list {
   display: flex;
   flex-direction: column;
+  //min-width: fit-content;
 }
 
 .header {
@@ -142,10 +143,11 @@ $border-color: var(--color-text-disabled);
       border: none;
 
       &:hover {
-        color: var(--color-text);
+        color: var(--color-accent);
       }
 
       &:last-child {
+        cursor: default;
         color: var(--color-text);
       }
 
@@ -180,6 +182,7 @@ i {
   border: 1px solid;
   border-color: $border-color;
   box-sizing: border-box;
+  overflow: hidden;
 
   table {
     width: 100%;
@@ -191,7 +194,7 @@ i {
     tr {
       height: $fib-8 * 1px;
 
-      &:hover {
+      &:hover td {
         background: var(--color-button);
       }
 
@@ -209,7 +212,7 @@ i {
         }
 
         label {
-          border: 1px solid var(--color-button-hover);
+          border: 1px solid var(--color-text-disabled);
           transition: background $default-duration;
           padding: $fib-3 * 1px $fib-5 * 1px;
 
