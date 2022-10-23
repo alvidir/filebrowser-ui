@@ -11,6 +11,12 @@
   </dock>
   <div id="main-container">
     <div class="narrowed">
+      <notice-card
+        v-if="warning"
+        class="warning-message"
+        v-bind="warning"
+        @close="quitWarning(index)"
+      />
       <div id="actions-container">
         <search-field id="search-field" :placeholder="'Search'" large />
         <span id="action-buttons">
@@ -38,12 +44,16 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import Filebrowser from "@/filebrowser.service";
-import { Error, Directory } from "@/model";
-import DirList from "@/components/DirList.vue";
-import { GetDefaultTheme } from "fibonacci-styles/util";
+import Filebrowser, { Flags } from "@/filebrowser.service";
+import DirList, { File } from "@/components/DirList.vue";
+import { THEME_LIGHT, GetDefaultTheme } from "fibonacci-styles/util";
+import * as constants from "@/constants";
+import * as cookies from "@/cookies.manager";
 
-const FilebrowserService = new Filebrowser(process.env.VUE_APP_FILEBROWSER_URI);
+const filebrowserService = new Filebrowser(
+  process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost/rpc"
+);
+
 const NEW_DIRECTORY = "New directory";
 const NEW_FILE = "New file";
 const NEW_FOLDER = "New folder";
@@ -55,49 +65,59 @@ export default defineComponent({
   },
 
   setup() {
+    const SESSION_TOKEN = cookies.getCookie(
+      process.env.VUE_APP_TOKEN_COOKIE_KEY
+    );
+
     return {
       NEW_DIRECTORY,
       NEW_FILE,
       NEW_FOLDER,
+      SESSION_TOKEN,
     };
   },
 
   data() {
     return {
-      files: [
-        { name: "second file", isDir: false, updatedAt: Date.now() },
-        { name: "first file", isDir: false, updatedAt: Date.now() },
-        {
-          name: "third file",
-          isDir: false,
-          updatedAt: Date.now(),
-          tags: ["first tag", "second tag"],
-        },
-        {
-          name: "first folder",
-          isDir: true,
-          updatedAt: Date.now(),
-          size: { value: 3, unit: "items" },
-          tags: ["another tag"],
-        },
-        {
-          name: "second folder",
-          isDir: true,
-          updatedAt: Date.now(),
-          size: { value: 10, unit: "items" },
-        },
-      ],
+      theme: THEME_LIGHT,
+      fetching: false,
+      warning: undefined as constants.WarningProp | undefined,
+      path: "/",
+      files: [] as File[],
     };
   },
 
-  methods: {},
+  methods: {
+    onResponseError(): void {
+      this.fetching = false;
+    },
+
+    quitWarning() {
+      this.warning = undefined;
+    },
+
+    reloadFiles() {
+      const headers: { [key: string]: string } = {};
+      if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN)
+        headers[process.env.VUE_APP_TOKEN_COOKIE_KEY] = this.SESSION_TOKEN;
+
+      filebrowserService
+        .getDirectory(this.path, headers)
+        .then((dir) => {
+          this.files = Object.values(dir.files).map((file) => {
+            return {
+              name: file.name,
+              isDir: (file.flags | Flags.Directory) != 0,
+              updatedAt: 0,
+            };
+          });
+        })
+        .catch(() => this.onResponseError());
+    },
+  },
 
   mounted() {
-    GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
-    FilebrowserService.getDirectory()
-      .then((dir: Directory) => console.log("got directory: ", dir))
-      .catch((err: Error) => console.log("got error: ", err))
-      .finally(() => console.log("done."));
+    this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
   },
 });
 </script>
