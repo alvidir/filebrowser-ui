@@ -47,4 +47,6 @@ const WARNING_PROPS: { [key: string]: WarningProp } = {
   },
 };
 
-export { WARNING_PROPS, WarningProp };
+const PATH_SEPARATOR = "/";
+
+export { WARNING_PROPS, WarningProp, PATH_SEPARATOR };

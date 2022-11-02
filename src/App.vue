@@ -1,5 +1,5 @@
 <template>
-  <dock id="sidenav" :active="true" :position="'left'">
+  <!-- <dock id="sidenav" :active="true" :position="'left'">
     <dock-item id="0" placeholder="first item"><label>Aa</label></dock-item>
     <dock-item id="1" placeholder="second item"><label>Bb</label></dock-item>
     <dock-item id="2" placeholder="third item"><label>Cc</label></dock-item>
@@ -8,15 +8,10 @@
     <dock-item id="5" placeholder="sixth item"><label>Ff</label></dock-item>
     <dock-separator></dock-separator>
     <dock-item id="6" placeholder="seventh item"><label>Gg</label></dock-item>
-  </dock>
+  </dock> -->
   <div id="main-container">
     <div class="narrowed">
-      <notice-card
-        v-if="warning"
-        class="warning-message"
-        v-bind="warning"
-        @close="quitWarning(index)"
-      />
+      <notice-card v-if="warning" v-bind="warning" @close="quitWarning()" />
       <div id="actions-container">
         <search-field id="search-field" :placeholder="'Search'" large />
         <span id="action-buttons">
@@ -34,29 +29,28 @@
           </regular-button>
         </span>
       </div>
-
-      <div id="files-view">
-        <dir-list :files="files" path="path/to/directory" />
-      </div>
+      <dir-list :files="files" :path="path" @click="onRowClick" />
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import Filebrowser, { Flags } from "@/filebrowser.service";
+import Filebrowser, { Flags, Error } from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
 import { THEME_LIGHT, GetDefaultTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import * as cookies from "@/cookies.manager";
 
 const filebrowserService = new Filebrowser(
-  process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost/rpc"
+  process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost:8080"
 );
 
 const NEW_DIRECTORY = "New directory";
 const NEW_FILE = "New file";
 const NEW_FOLDER = "New folder";
+const ROOT_PATH = constants.PATH_SEPARATOR;
+const PATH_REPLACE = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 
 export default defineComponent({
   name: "App",
@@ -80,39 +74,64 @@ export default defineComponent({
   data() {
     return {
       theme: THEME_LIGHT,
-      fetching: false,
       warning: undefined as constants.WarningProp | undefined,
-      path: "/",
-      files: [] as File[],
+      path: ROOT_PATH,
+      dirs: {} as { [dir: string]: File[] },
     };
   },
 
+  computed: {
+    files(): File[] {
+      const target = this.path;
+      if (!this.dirs[target]) {
+        this.pullDirectoryFiles(target);
+      }
+
+      return this.dirs[target];
+    },
+  },
+
   methods: {
-    onResponseError(): void {
-      this.fetching = false;
+    onRowClick(file: File) {
+      if (file.isDir) {
+        this.path = [this.path, file.name]
+          .join(constants.PATH_SEPARATOR)
+          .replace(PATH_REPLACE, constants.PATH_SEPARATOR);
+      }
+    },
+
+    onResponseError(error: Error): void {
+      this.warning = constants.WARNING_PROPS[error];
+      if (this.warning) return;
+
+      this.warning = constants.WARNING_PROPS[Error.ERR_UNKNOWN];
+      if (this.warning) this.warning.text = error;
     },
 
     quitWarning() {
       this.warning = undefined;
     },
 
-    reloadFiles() {
+    pullDirectoryFiles(target: string) {
       const headers: { [key: string]: string } = {};
-      if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN)
+      if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN) {
         headers[process.env.VUE_APP_TOKEN_COOKIE_KEY] = this.SESSION_TOKEN;
+      }
+
+      headers["x-uid"] = "1";
 
       filebrowserService
-        .getDirectory(this.path, headers)
+        .getDirectory(target, headers)
         .then((dir) => {
-          this.files = Object.values(dir.files).map((file) => {
+          this.dirs[target] = Object.values(dir.files).map((file) => {
             return {
               name: file.name,
-              isDir: (file.flags | Flags.Directory) != 0,
+              isDir: (file.flags & Flags.Directory) != 0,
               updatedAt: 0,
             };
           });
         })
-        .catch(() => this.onResponseError());
+        .catch((error) => this.onResponseError(error));
     },
   },
 
@@ -146,10 +165,14 @@ body {
   align-items: center;
   min-width: fit-content;
   width: 100%;
+  min-width: $fib-11 * $fib-5 * 1px;
 
   .narrowed {
+    box-sizing: border-box;
     width: $fib-13 * 3px;
-    padding: 0 $fib-6 * 1px;
+    padding: 0 $fib-9 * 1px;
+    margin-bottom: $fib-9 * 1px;
+    margin-top: $fib-7 * 1px;
   }
 }
 
@@ -172,7 +195,6 @@ body {
   justify-content: center;
   margin-top: $fib-8 * 1px;
   white-space: nowrap;
-  width: 40%;
   min-width: fit-content;
 
   button {
@@ -191,11 +213,6 @@ body {
       border: none;
     }
   }
-}
-
-#files-view {
-  margin: $fib-9 * 1px;
-  margin-top: none;
 }
 
 #app {

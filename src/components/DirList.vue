@@ -1,18 +1,22 @@
 <template>
   <div class="dir-list">
     <div class="header round-corners top-only">
-      <v-slot>
-        <div class="path-nav">
-          <i class="bx bxs-folder-open"></i>
-          <button v-for="dir in directories" :key="dir">
-            {{ dir }}
-          </button>
-        </div>
-      </v-slot>
+      <div class="path-nav">
+        <i class="bx bxs-folder-open"></i>
+        <button v-for="dir in directories" :key="dir">
+          {{ dir }}
+        </button>
+      </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table>
-        <tr v-for="file in sortedFiles" :key="file.name">
+        <tr v-if="!sortedFiles.length">
+          <td class="empty">
+            <i class="bx bx-search-alt"></i>
+            <strong>{{ NOTHING_TO_DISPLAY }}</strong>
+          </td>
+        </tr>
+        <tr v-for="file in sortedFiles" :key="file.name" @click="onClick(file)">
           <td>
             <i v-if="file.isDir" class="bx bxs-folder"></i>
             <i v-else class="bx bx-file-blank"></i>
@@ -40,6 +44,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
+import * as constants from "@/constants";
 
 export enum DisplayOps {
   LIST = "list",
@@ -57,11 +62,13 @@ export interface File {
   tags?: string[];
 }
 
-const PATH_SEPARATOR = "/";
+const NOTHING_TO_DISPLAY = "Nothing to display";
+
+export const CLICK_EVENT_NAME = "click";
 
 export default defineComponent({
   name: "DirList",
-  events: [],
+  events: [CLICK_EVENT_NAME],
   props: {
     display: {
       type: String as PropType<DisplayOps>,
@@ -80,6 +87,7 @@ export default defineComponent({
   setup() {
     return {
       DisplayOps,
+      NOTHING_TO_DISPLAY,
     };
   },
 
@@ -96,13 +104,19 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return this.path.split(PATH_SEPARATOR);
+      return ["root"].concat(
+        this.path.split(constants.PATH_SEPARATOR).filter((dir) => dir.length)
+      );
     },
   },
 
   methods: {
     printElapsedTimeSince(): string {
       return "2 months ago";
+    },
+
+    onClick(file: File) {
+      this.$emit(CLICK_EVENT_NAME, file);
     },
   },
 });
@@ -134,13 +148,17 @@ $border-color: var(--color-text-disabled);
     padding: 0 $fib-6 * 1px;
     height: 100%;
 
-    button {
+    .directory {
       height: fit-content;
       font-size: $default-fontsize;
       color: var(--color-secondary-text);
       background: transparent;
       font-weight: 900;
       border: none;
+    }
+
+    button {
+      @extend .directory;
 
       &:hover {
         color: var(--color-accent);
@@ -194,7 +212,7 @@ i {
     tr {
       height: $fib-8 * 1px;
 
-      &:hover td {
+      &:hover td:not(.empty) {
         background: var(--color-button);
       }
 
@@ -209,6 +227,18 @@ i {
         &:not(:first-child) {
           color: var(--color-secondary-text);
           padding-right: $fib-6 * 1px;
+        }
+
+        &.empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          height: $fib-12 * 1px;
+          justify-content: center;
+
+          i {
+            font-size: $fib-9 * 1px;
+          }
         }
 
         label {

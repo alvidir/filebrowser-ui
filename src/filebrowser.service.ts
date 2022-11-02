@@ -2,6 +2,7 @@ import * as grpcWeb from "grpc-web";
 import { DirectoryClient } from "./proto/DirectoryServiceClientPb";
 import { DirectoryLocator, DirectoryDescriptor } from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
+import { FileDescriptor } from "./proto/file_pb";
 
 enum Error {
   ERR_UNKNOWN = "E001",
@@ -27,29 +28,32 @@ type Response = {
   error?: Error;
 };
 
-class FileDescriptor {
+class File {
   id: string;
   name: string;
   metadata: { [key: string]: string };
   permissions: { [key: number]: number };
   flags: number;
 
-  constructor(id: string, name: string, metadata = {}) {
-    this.id = id;
-    this.name = name;
-    this.metadata = metadata;
-    this.permissions = {};
-    this.flags = 0;
+  constructor(file: FileDescriptor) {
+    this.id = file.getId();
+    this.name = file.getName();
+    this.metadata = file.getMetadataMap();
+    this.permissions = file.getPermissionsMap();
+    this.flags = file.getFlags();
   }
 }
 
 class Directory {
   id: string;
-  files: { [key: string]: FileDescriptor };
+  files: Array<File>;
 
   constructor(dir: DirectoryDescriptor) {
     this.id = dir.getId();
-    this.files = dir.getFilesMap();
+    this.files = new Array(dir.getFilesList().length);
+    dir.getFilesList().forEach((file) => {
+      this.files.push(new File(file));
+    });
   }
 }
 
@@ -75,7 +79,7 @@ class FilebrowserService {
           request,
           headers,
           (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
-            if (err.code !== grpcWeb.StatusCode.OK) {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(err.message as Error);
               return;
             }
@@ -89,4 +93,4 @@ class FilebrowserService {
 }
 
 export default FilebrowserService;
-export { Error, Directory, FileDescriptor, Response, Metadata, Flags };
+export { Error, Directory, File as FileDescriptor, Response, Metadata, Flags };
