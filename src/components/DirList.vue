@@ -3,7 +3,11 @@
     <div class="header round-corners top-only">
       <div class="path-nav">
         <i class="bx bxs-folder-open"></i>
-        <button v-for="dir in directories" :key="dir">
+        <button
+          v-for="(dir, index) in directories"
+          :key="dir"
+          @click="onChangeDirectory(index)"
+        >
           {{ dir }}
         </button>
       </div>
@@ -65,10 +69,11 @@ export interface File {
 const NOTHING_TO_DISPLAY = "Nothing to display";
 
 export const CLICK_EVENT_NAME = "click";
+export const CD_EVENT_NAME = "cd";
 
 export default defineComponent({
   name: "DirList",
-  events: [CLICK_EVENT_NAME],
+  events: [CLICK_EVENT_NAME, CD_EVENT_NAME],
   props: {
     display: {
       type: String as PropType<DisplayOps>,
@@ -117,6 +122,13 @@ export default defineComponent({
 
     onClick(file: File) {
       this.$emit(CLICK_EVENT_NAME, file);
+    },
+
+    onChangeDirectory(index: number) {
+      this.$emit(
+        CD_EVENT_NAME,
+        this.directories.slice(1, index + 1).join(constants.PATH_SEPARATOR)
+      );
     },
   },
 });

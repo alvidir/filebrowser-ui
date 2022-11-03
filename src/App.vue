@@ -17,7 +17,7 @@
         <span id="action-buttons">
           <submit-button>
             <i class="bx bxs-bulb"></i>
-            {{ NEW_DIRECTORY }}
+            {{ NEW_PROJECT }}
           </submit-button>
           <regular-button>
             <i class="bx bxs-file-plus"></i>
@@ -29,7 +29,12 @@
           </regular-button>
         </span>
       </div>
-      <dir-list :files="files" :path="path" @click="onRowClick" />
+      <dir-list
+        :files="files"
+        :path="path"
+        @click="onRowClick"
+        @cd="onChangeDirectory"
+      />
     </div>
   </div>
 </template>
@@ -46,7 +51,7 @@ const filebrowserService = new Filebrowser(
   process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost:8080"
 );
 
-const NEW_DIRECTORY = "New directory";
+const NEW_PROJECT = "New project";
 const NEW_FILE = "New file";
 const NEW_FOLDER = "New folder";
 const ROOT_PATH = constants.PATH_SEPARATOR;
@@ -64,7 +69,7 @@ export default defineComponent({
     );
 
     return {
-      NEW_DIRECTORY,
+      NEW_PROJECT,
       NEW_FILE,
       NEW_FOLDER,
       SESSION_TOKEN,
@@ -98,6 +103,11 @@ export default defineComponent({
           .join(constants.PATH_SEPARATOR)
           .replace(PATH_REPLACE, constants.PATH_SEPARATOR);
       }
+    },
+
+    onChangeDirectory(path: string) {
+      this.path = path;
+      console.log(this.path);
     },
 
     onResponseError(error: Error): void {
