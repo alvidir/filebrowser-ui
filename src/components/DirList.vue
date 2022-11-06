@@ -244,7 +244,6 @@ $border-color: var(--color-text-disabled);
       }
 
       &:last-child {
-        cursor: default;
         color: var(--color-text);
       }
 

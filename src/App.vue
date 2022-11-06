@@ -1,29 +1,28 @@
 <template>
-  <!-- <dock id="sidenav" :active="true" :position="'left'">
-    <dock-item id="0" placeholder="first item"><label>Aa</label></dock-item>
-    <dock-item id="1" placeholder="second item"><label>Bb</label></dock-item>
-    <dock-item id="2" placeholder="third item"><label>Cc</label></dock-item>
-    <dock-item id="3" placeholder="fourth item"><label>Dd</label></dock-item>
-    <dock-item id="4" placeholder="fifth item"><label>Ee</label></dock-item>
-    <dock-item id="5" placeholder="sixth item"><label>Ff</label></dock-item>
-    <dock-separator></dock-separator>
-    <dock-item id="6" placeholder="seventh item"><label>Gg</label></dock-item>
-  </dock> -->
   <div id="main-container">
     <div class="narrowed">
       <notice-card v-if="warning" v-bind="warning" @close="quitWarning()" />
       <div id="actions-container">
-        <search-field id="search-field" :placeholder="'Search'" large />
+        <search-field
+          id="search-field"
+          :placeholder="'Search'"
+          :items="search"
+          @input="onSearchInput"
+          v-slot="props"
+          large
+        >
+          <label class="search-item">{{ props.item.name }}</label>
+        </search-field>
         <span id="action-buttons">
           <submit-button>
             <i class="bx bxs-bulb"></i>
             {{ NEW_PROJECT }}
           </submit-button>
-          <regular-button>
+          <regular-button disabled>
             <i class="bx bxs-folder-plus"></i>
             {{ NEW_FOLDER }}
           </regular-button>
-          <regular-button>
+          <regular-button disabled>
             <i class="bx bxs-file-plus"></i>
             {{ NEW_FILE }}
           </regular-button>
@@ -83,7 +82,8 @@ export default defineComponent({
       warning: undefined as constants.WarningProp | undefined,
       path: ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
-      fetching: false,
+      search: [] as File[],
+      fetching: 0,
     };
   },
 
@@ -92,7 +92,9 @@ export default defineComponent({
       const target = this.path;
       const normalized = this.normalizePath(target);
       if (!this.dirs[normalized]) {
-        this.pullDirectoryFiles(target);
+        this.pullDirectoryFiles(target, "", (files) => {
+          this.dirs[target] = files;
+        });
       }
 
       return this.dirs[normalized];
@@ -100,16 +102,38 @@ export default defineComponent({
   },
 
   methods: {
+    onSearchInput(filter: string) {
+      if (!filter) {
+        this.search = [];
+        return;
+      }
+
+      this.pullDirectoryFiles("", filter, (files) => {
+        this.search = files;
+      });
+    },
+
     onRowClick(file: File) {
       if (file.isDir) {
-        this.path = [this.path, file.name]
+        const path = [this.path, file.name]
           .join(constants.PATH_SEPARATOR)
           .replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
+
+        this.onChangeDirectory(path);
       }
     },
 
     onChangeDirectory(path: string) {
-      this.path = path;
+      const normalized = this.normalizePath(path);
+      if (normalized in this.dirs) {
+        this.path = path;
+        return;
+      }
+
+      this.pullDirectoryFiles(path, "", (files) => {
+        this.dirs[path] = files;
+        this.path = path;
+      });
     },
 
     onResponseError(error: Error): void {
@@ -136,20 +160,20 @@ export default defineComponent({
       this.warning = undefined;
     },
 
-    pullDirectoryFiles(target: string) {
-      this.fetching = true;
+    pullDirectoryFiles(
+      path: string,
+      filter: string,
+      callback: (files: File[]) => void
+    ) {
+      this.fetching += 1;
 
       const headers: { [key: string]: string } = {};
-      if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN) {
-        headers[process.env.VUE_APP_TOKEN_COOKIE_KEY] = this.SESSION_TOKEN;
-      }
-
       headers["x-uid"] = "1";
 
       filebrowserService
-        .getDirectory(target, headers)
+        .getDirectory(path, filter, headers)
         .then((dir) => {
-          this.dirs[target] = Object.values(dir.files).map((file) => {
+          const files = Object.values(dir.files).map((file) => {
             const f: File = {
               name: file.name,
               isDir: (file.flags & Flags.Directory) != 0,
@@ -166,10 +190,12 @@ export default defineComponent({
 
             return f;
           });
+
+          callback(files);
         })
         .catch((error) => this.onResponseError(error))
         .finally(() => {
-          this.fetching = false;
+          this.fetching -= 1;
         });
     },
   },
@@ -192,6 +218,12 @@ export default defineComponent({
 
 body {
   background: var(--color-background-secondary);
+}
+
+.search-item {
+  font-size: 1rem;
+  margin-left: $fib-5 * 1px;
+  color: var(--color-text);
 }
 
 #sidenav {

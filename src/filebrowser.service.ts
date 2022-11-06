@@ -81,13 +81,18 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  getDirectory(path: string, headers: RpcMetadata): Promise<Directory> {
+  getDirectory(
+    path: string,
+    filter: string,
+    headers: RpcMetadata
+  ): Promise<Directory> {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason?: Error) => void
       ) => {
         const request = new DirectoryLocator();
+        request.setFilter(filter);
         request.setPath(path);
 
         this.directoryClient.retrieve(
