@@ -15,7 +15,8 @@
     "vue-buttons": "github:alvidir/vue-buttons",
     "vue-cards": "github:alvidir/vue-cards",
     "vue-dock": "github:alvidir/vue-dock",
-    "vue-fields": "github:alvidir/vue-fields"
+    "vue-fields": "github:alvidir/vue-fields",
+    "vue-spinner": "^1.0.4"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.4.0",

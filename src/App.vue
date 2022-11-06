@@ -20,12 +20,12 @@
             {{ NEW_PROJECT }}
           </submit-button>
           <regular-button>
-            <i class="bx bxs-file-plus"></i>
-            {{ NEW_FILE }}
-          </regular-button>
-          <regular-button>
             <i class="bx bxs-folder-plus"></i>
             {{ NEW_FOLDER }}
+          </regular-button>
+          <regular-button>
+            <i class="bx bxs-file-plus"></i>
+            {{ NEW_FILE }}
           </regular-button>
         </span>
       </div>
@@ -33,7 +33,7 @@
         :files="files"
         :path="path"
         @click="onRowClick"
-        @cd="onChangeDirectory"
+        @navigate="onChangeDirectory"
       />
     </div>
   </div>
@@ -55,7 +55,8 @@ const NEW_PROJECT = "New project";
 const NEW_FILE = "New file";
 const NEW_FOLDER = "New folder";
 const ROOT_PATH = constants.PATH_SEPARATOR;
-const PATH_REPLACE = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
+const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
+const METADATA_UPDATED_AT_KEY = "updated_at";
 
 export default defineComponent({
   name: "App",
@@ -82,17 +83,19 @@ export default defineComponent({
       warning: undefined as constants.WarningProp | undefined,
       path: ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
+      fetching: false,
     };
   },
 
   computed: {
     files(): File[] {
       const target = this.path;
-      if (!this.dirs[target]) {
+      const normalized = this.normalizePath(target);
+      if (!this.dirs[normalized]) {
         this.pullDirectoryFiles(target);
       }
 
-      return this.dirs[target];
+      return this.dirs[normalized];
     },
   },
 
@@ -101,13 +104,12 @@ export default defineComponent({
       if (file.isDir) {
         this.path = [this.path, file.name]
           .join(constants.PATH_SEPARATOR)
-          .replace(PATH_REPLACE, constants.PATH_SEPARATOR);
+          .replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
       }
     },
 
     onChangeDirectory(path: string) {
       this.path = path;
-      console.log(this.path);
     },
 
     onResponseError(error: Error): void {
@@ -118,11 +120,25 @@ export default defineComponent({
       if (this.warning) this.warning.text = error;
     },
 
+    normalizePath(path: string): string {
+      let normalized = path.replace(
+        PATH_REPLACE_REGEX,
+        constants.PATH_SEPARATOR
+      );
+      if (normalized[0] != constants.PATH_SEPARATOR) {
+        normalized = constants.PATH_SEPARATOR.concat(normalized);
+      }
+
+      return normalized;
+    },
+
     quitWarning() {
       this.warning = undefined;
     },
 
     pullDirectoryFiles(target: string) {
+      this.fetching = true;
+
       const headers: { [key: string]: string } = {};
       if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN) {
         headers[process.env.VUE_APP_TOKEN_COOKIE_KEY] = this.SESSION_TOKEN;
@@ -134,14 +150,27 @@ export default defineComponent({
         .getDirectory(target, headers)
         .then((dir) => {
           this.dirs[target] = Object.values(dir.files).map((file) => {
-            return {
+            const f: File = {
               name: file.name,
               isDir: (file.flags & Flags.Directory) != 0,
-              updatedAt: 0,
+              updatedAt: new Date(),
             };
+
+            const updatedAt = file.metadata.find(
+              (meta) => meta.key == METADATA_UPDATED_AT_KEY
+            )?.value;
+
+            if (updatedAt) {
+              f.updatedAt.setTime(parseInt(updatedAt));
+            }
+
+            return f;
           });
         })
-        .catch((error) => this.onResponseError(error));
+        .catch((error) => this.onResponseError(error))
+        .finally(() => {
+          this.fetching = false;
+        });
     },
   },
 

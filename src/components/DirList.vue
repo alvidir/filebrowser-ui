@@ -14,13 +14,17 @@
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table>
-        <tr v-if="!sortedFiles.length">
+        <tr v-if="!filteredFiles.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
-        <tr v-for="file in sortedFiles" :key="file.name" @click="onClick(file)">
+        <tr
+          v-for="file in filteredFiles"
+          :key="file.name"
+          @click="onClick(file)"
+        >
           <td>
             <i v-if="file.isDir" class="bx bxs-folder"></i>
             <i v-else class="bx bx-file-blank"></i>
@@ -38,7 +42,7 @@
             <span v-else>&nbsp;</span>
           </td>
           <td class="elapsed-time">
-            {{ printElapsedTimeSince /*file.updatedAt*/() }}
+            {{ printElapsedTimeSince(file.updatedAt) }}
           </td>
         </tr>
       </table>
@@ -50,6 +54,12 @@
 import { defineComponent, PropType } from "vue";
 import * as constants from "@/constants";
 
+const SECONDS_PER_MINUTE = 60;
+const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
+const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
+const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
+
 export enum DisplayOps {
   LIST = "list",
   GRID = "grid",
@@ -58,7 +68,7 @@ export enum DisplayOps {
 export interface File {
   name: string;
   isDir: boolean;
-  updatedAt: number;
+  updatedAt: Date;
   size?: {
     value: number;
     unit: string;
@@ -67,13 +77,14 @@ export interface File {
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
+const HIDEN_FILE_REGEX = new RegExp("^\\..*$", "g");
 
 export const CLICK_EVENT_NAME = "click";
-export const CD_EVENT_NAME = "cd";
+export const NAVIGATE_EVENT_NAME = "navigate";
 
 export default defineComponent({
   name: "DirList",
-  events: [CLICK_EVENT_NAME, CD_EVENT_NAME],
+  events: [CLICK_EVENT_NAME, NAVIGATE_EVENT_NAME],
   props: {
     display: {
       type: String as PropType<DisplayOps>,
@@ -87,6 +98,22 @@ export default defineComponent({
       type: String,
       required: true,
     },
+    sort: {
+      type: Function as PropType<(a: File, b: File) => number>,
+      default: (a: File, b: File): number => {
+        const sortIndex = a.name > b.name ? 1 : -1;
+        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
+        return a.isDir ? -1 : 1;
+      },
+    },
+    filter: {
+      type: Function as PropType<(f: File) => boolean>,
+      default: (f: File): boolean => {
+        const paths = f.name.split(constants.PATH_SEPARATOR);
+        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
+        return !match;
+      },
+    },
   },
 
   setup() {
@@ -96,16 +123,24 @@ export default defineComponent({
     };
   },
 
-  computed: {
-    sortedFiles(): File[] {
-      if (!this.files) return [];
+  data() {
+    return {
+      backup: [] as File[],
+    };
+  },
 
-      let files = this.files;
-      return files.sort((a: File, b: File) => {
-        const sortIndex = a.name > b.name ? 1 : -1;
-        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
-        return a.isDir ? -1 : 1;
-      });
+  watch: {
+    files(_: File[], old: File[]) {
+      this.backup = old;
+    },
+  },
+
+  computed: {
+    filteredFiles(): File[] {
+      let files = this.files ?? this.backup;
+      if (!files) return [];
+
+      return files.filter(this.filter).sort(this.sort);
     },
 
     directories(): string[] {
@@ -116,8 +151,40 @@ export default defineComponent({
   },
 
   methods: {
-    printElapsedTimeSince(): string {
-      return "2 months ago";
+    printElapsedTimeSince(from: Date): string {
+      const now = new Date().getTime();
+      const seconds = (now - from.getTime()) / 1000;
+
+      if (seconds < SECONDS_PER_MINUTE) {
+        return "few seconds ago";
+      }
+
+      const scaleTime = (scale: number): number => {
+        return Math.floor(seconds / scale);
+      };
+
+      if (seconds < SECONDS_PER_HOUR) {
+        const total = scaleTime(SECONDS_PER_MINUTE);
+        return `${total} minute${total > 1 ? "s" : ""} ago`;
+      }
+
+      if (seconds < SECONDS_PER_DAY) {
+        const total = scaleTime(SECONDS_PER_HOUR);
+        return `${total} hour${total > 1 ? "s" : ""} ago`;
+      }
+
+      if (seconds < SECONDS_PER_MONTH) {
+        const total = scaleTime(SECONDS_PER_DAY);
+        return `${total} day${total > 1 ? "s" : ""} ago`;
+      }
+
+      if (seconds < SECONDS_PER_YEAR) {
+        const total = scaleTime(SECONDS_PER_MONTH);
+        return `${total} month${total > 1 ? "s" : ""} ago`;
+      }
+
+      const total = scaleTime(SECONDS_PER_YEAR);
+      return `${total} year${total > 1 ? "s" : ""} ago`;
     },
 
     onClick(file: File) {
@@ -126,7 +193,7 @@ export default defineComponent({
 
     onChangeDirectory(index: number) {
       this.$emit(
-        CD_EVENT_NAME,
+        NAVIGATE_EVENT_NAME,
         this.directories.slice(1, index + 1).join(constants.PATH_SEPARATOR)
       );
     },

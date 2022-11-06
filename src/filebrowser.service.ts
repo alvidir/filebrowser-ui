@@ -20,26 +20,41 @@ enum Flags {
   Directory = 0x04,
 }
 
-type Metadata = { [key: string]: string };
+type RpcMetadata = { [key: string]: string };
 
 type Response = {
   data?: object;
-  metadata?: Metadata;
+  metadata?: FileMetadata[];
   error?: Error;
 };
+
+interface FileMetadata {
+  key: string;
+  value: string;
+}
+
+interface Permissions {
+  read: boolean;
+  write: boolean;
+  owner: boolean;
+}
+interface FilePermissions {
+  uid: number;
+  permissions?: Permissions;
+}
 
 class File {
   id: string;
   name: string;
-  metadata: { [key: string]: string };
-  permissions: { [key: number]: number };
+  metadata: FileMetadata[];
+  permissions: FilePermissions[];
   flags: number;
 
   constructor(file: FileDescriptor) {
     this.id = file.getId();
     this.name = file.getName();
-    this.metadata = file.getMetadataMap();
-    this.permissions = file.getPermissionsMap();
+    this.metadata = file.getMetadataList().map((f) => f.toObject());
+    this.permissions = file.getPermissionsList().map((p) => p.toObject());
     this.flags = file.getFlags();
   }
 }
@@ -66,7 +81,7 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  getDirectory(path: string, headers: Metadata): Promise<Directory> {
+  getDirectory(path: string, headers: RpcMetadata): Promise<Directory> {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
@@ -93,4 +108,12 @@ class FilebrowserService {
 }
 
 export default FilebrowserService;
-export { Error, Directory, File as FileDescriptor, Response, Metadata, Flags };
+export {
+  Error,
+  Directory,
+  File,
+  Response,
+  FileMetadata,
+  FilePermissions,
+  Flags,
+};
