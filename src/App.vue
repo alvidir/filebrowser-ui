@@ -7,6 +7,7 @@
           id="search-field"
           :placeholder="'Search'"
           :items="search"
+          :debounce="SEARCH_DEBOUNCE"
           @input="onSearchInput"
           v-slot="props"
           large
@@ -56,6 +57,7 @@ const NEW_FOLDER = "New folder";
 const ROOT_PATH = constants.PATH_SEPARATOR;
 const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 const METADATA_UPDATED_AT_KEY = "updated_at";
+const SEARCH_DEBOUNCE = 300;
 
 export default defineComponent({
   name: "App",
@@ -73,6 +75,7 @@ export default defineComponent({
       NEW_FILE,
       NEW_FOLDER,
       SESSION_TOKEN,
+      SEARCH_DEBOUNCE,
     };
   },
 
@@ -271,12 +274,6 @@ body {
   button {
     &:not(:first-child) {
       margin-left: $fib-5 * 1px;
-
-      i {
-        font-size: $fib-7 * 1px;
-        color: var(--color-secondary-text);
-        padding-right: $fib-6 * 1px;
-      }
     }
 
     &.submit {
