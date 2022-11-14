@@ -12,25 +12,24 @@
           v-slot="props"
           large
         >
-          <label class="search-item">{{ props.item.name }}</label>
+          <div class="search-item">
+            <i class="bx bx-file-blank"></i>
+            <label>{{ props.item.name }}</label>
+          </div>
         </search-field>
         <span id="action-buttons">
           <submit-button>
             <i class="bx bxs-bulb"></i>
             {{ NEW_PROJECT }}
           </submit-button>
-          <regular-button disabled>
+          <regular-button>
             <i class="bx bxs-folder-plus"></i>
             {{ NEW_FOLDER }}
-          </regular-button>
-          <regular-button disabled>
-            <i class="bx bxs-file-plus"></i>
-            {{ NEW_FILE }}
           </regular-button>
         </span>
       </div>
       <dir-list
-        :files="files"
+        :files="filteredFiles"
         :path="path"
         @click="onRowClick"
         @navigate="onChangeDirectory"
@@ -91,7 +90,7 @@ export default defineComponent({
   },
 
   computed: {
-    files(): File[] {
+    dirFiles(): File[] {
       const target = this.path;
       const normalized = this.normalizePath(target);
       if (!this.dirs[normalized]) {
@@ -101,6 +100,23 @@ export default defineComponent({
       }
 
       return this.dirs[normalized];
+    },
+
+    filteredFiles(): File[] {
+      const sortFn = (a: File, b: File): number => {
+        const sortIndex = a.name > b.name ? 1 : -1;
+        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
+        return a.isDir ? -1 : 1;
+      };
+
+      const filterFn = (f: File): boolean => {
+        const HIDEN_FILE_REGEX = new RegExp("^\\..*$", "g");
+        const paths = f.name.split(constants.PATH_SEPARATOR);
+        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
+        return !match;
+      };
+
+      return this.dirFiles.filter(filterFn).sort(sortFn);
     },
   },
 
@@ -178,6 +194,7 @@ export default defineComponent({
         .then((dir) => {
           const files = Object.values(dir.files).map((file) => {
             const f: File = {
+              id: file.id,
               name: file.name,
               isDir: (file.flags & Flags.Directory) != 0,
               updatedAt: new Date(),
@@ -227,6 +244,10 @@ body {
   font-size: 1rem;
   margin-left: $fib-5 * 1px;
   color: var(--color-text);
+
+  i {
+    margin-right: $fib-6 * 1px;
+  }
 }
 
 #sidenav {

@@ -14,17 +14,13 @@
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table>
-        <tr v-if="!filteredFiles.length">
+        <tr v-if="!filesList.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
-        <tr
-          v-for="file in filteredFiles"
-          :key="file.name"
-          @click="onClick(file)"
-        >
+        <tr v-for="file in filesList" :key="file.name" @click="onClick(file)">
           <td>
             <i v-if="file.isDir" class="bx bxs-folder"></i>
             <i v-else class="bx bx-file-blank"></i>
@@ -66,6 +62,7 @@ export enum DisplayOps {
 }
 
 export interface File {
+  id: string;
   name: string;
   isDir: boolean;
   updatedAt: Date;
@@ -77,7 +74,6 @@ export interface File {
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
-const HIDEN_FILE_REGEX = new RegExp("^\\..*$", "g");
 
 export const CLICK_EVENT_NAME = "click";
 export const NAVIGATE_EVENT_NAME = "navigate";
@@ -97,22 +93,6 @@ export default defineComponent({
     path: {
       type: String,
       required: true,
-    },
-    sort: {
-      type: Function as PropType<(a: File, b: File) => number>,
-      default: (a: File, b: File): number => {
-        const sortIndex = a.name > b.name ? 1 : -1;
-        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
-        return a.isDir ? -1 : 1;
-      },
-    },
-    filter: {
-      type: Function as PropType<(f: File) => boolean>,
-      default: (f: File): boolean => {
-        const paths = f.name.split(constants.PATH_SEPARATOR);
-        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
-        return !match;
-      },
     },
   },
 
@@ -136,11 +116,11 @@ export default defineComponent({
   },
 
   computed: {
-    filteredFiles(): File[] {
+    filesList(): File[] {
       let files = this.files ?? this.backup;
       if (!files) return [];
 
-      return files.filter(this.filter).sort(this.sort);
+      return files;
     },
 
     directories(): string[] {
@@ -232,19 +212,21 @@ $border-color: var(--color-text-disabled);
       font-size: $default-fontsize;
       color: var(--color-secondary-text);
       background: transparent;
-      font-weight: 900;
       border: none;
     }
 
     button {
       @extend .directory;
-
-      &:hover {
-        color: var(--color-accent);
-      }
+      color: var(--color-secondary-text);
+      font-weight: 900;
 
       &:last-child {
+        cursor: default;
         color: var(--color-text);
+      }
+
+      &:not(:last-child):hover {
+        color: var(--color-accent);
       }
 
       &:not(:last-child)::after {

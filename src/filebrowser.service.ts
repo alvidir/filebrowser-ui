@@ -20,6 +20,10 @@ enum Flags {
   Directory = 0x04,
 }
 
+enum MetadataKey {
+  MetadataUrlKey = "url",
+}
+
 type RpcMetadata = { [key: string]: string };
 
 type Response = {
@@ -56,6 +60,10 @@ class File {
     this.metadata = file.getMetadataList().map((f) => f.toObject());
     this.permissions = file.getPermissionsList().map((p) => p.toObject());
     this.flags = file.getFlags();
+  }
+
+  getMetadata(key: MetadataKey): string | undefined {
+    return this.metadata.find((meta) => meta.key == key.toString())?.value;
   }
 }
 
@@ -95,10 +103,12 @@ class FilebrowserService {
         request.setFilter(filter);
         request.setPath(path);
 
+        debugger;
         this.directoryClient.retrieve(
           request,
           headers,
           (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
+            debugger;
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(err.message as Error);
               return;
@@ -120,5 +130,6 @@ export {
   Response,
   FileMetadata,
   FilePermissions,
+  MetadataKey,
   Flags,
 };
