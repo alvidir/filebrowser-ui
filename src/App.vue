@@ -241,7 +241,7 @@ body {
 }
 
 .search-item {
-  font-size: 1rem;
+  font-size: medium;
   margin-left: $fib-5 * 1px;
   color: var(--color-text);
 

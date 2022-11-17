@@ -209,7 +209,7 @@ $border-color: var(--color-text-disabled);
 
     .directory {
       height: fit-content;
-      font-size: $default-fontsize;
+      font-size: medium;
       color: var(--color-secondary-text);
       background: transparent;
       border: none;
@@ -247,14 +247,14 @@ $border-color: var(--color-text-disabled);
 }
 
 i {
-  font-size: $fib-7 * 1px;
+  font-size: large;
   color: var(--color-secondary-text);
   padding-right: $fib-6 * 1px;
 }
 
 .table-wrapper {
   color: var(--color-text);
-  font-size: $default-fontsize;
+  font-size: medium;
 
   width: 100%;
   border: 1px solid;
@@ -297,7 +297,8 @@ i {
           justify-content: center;
 
           i {
-            font-size: $fib-9 * 1px;
+            font-size: xx-large;
+            margin-bottom: $fib-5 * 1px;
           }
         }
 
