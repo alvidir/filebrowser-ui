@@ -124,9 +124,7 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return ["root"].concat(
-        this.path.split(constants.PATH_SEPARATOR).filter((dir) => dir.length)
-      );
+      return this.path.split(constants.PATH_SEPARATOR);
     },
   },
 
@@ -185,8 +183,6 @@ export default defineComponent({
 <style scoped lang="scss">
 @import "fibonacci-styles";
 
-$border-color: var(--color-text-disabled);
-
 .dir-list {
   display: flex;
   flex-direction: column;
@@ -196,9 +192,9 @@ $border-color: var(--color-text-disabled);
 .header {
   width: 100%;
   height: $fib-9 * 1px;
-  background: var(--color-button);
+  background: var(--color-bg-primary);
   border: 1px solid;
-  border-color: $border-color;
+  border-color: var(--color-border);
   box-sizing: border-box;
 
   .path-nav {
@@ -210,19 +206,18 @@ $border-color: var(--color-text-disabled);
     .directory {
       height: fit-content;
       font-size: medium;
-      color: var(--color-secondary-text);
+      color: var(--color-text-secondary);
       background: transparent;
       border: none;
     }
 
     button {
       @extend .directory;
-      color: var(--color-secondary-text);
-      font-weight: 900;
+      font-weight: 600;
 
       &:last-child {
         cursor: default;
-        color: var(--color-text);
+        color: var(--color-text-primary);
       }
 
       &:not(:last-child):hover {
@@ -248,17 +243,17 @@ $border-color: var(--color-text-disabled);
 
 i {
   font-size: large;
-  color: var(--color-secondary-text);
+  color: var(--color-text-secondary);
   padding-right: $fib-6 * 1px;
 }
 
 .table-wrapper {
-  color: var(--color-text);
+  color: var(--color-text-primary);
   font-size: medium;
 
   width: 100%;
   border: 1px solid;
-  border-color: $border-color;
+  border-color: var(--color-border);
   box-sizing: border-box;
   overflow: hidden;
 
@@ -278,14 +273,14 @@ i {
 
       td {
         border-top: 1px solid;
-        border-color: $border-color;
+        border-color: var(--color-border);
 
         &:first-child {
           padding-left: $fib-6 * 1px;
         }
 
         &:not(:first-child) {
-          color: var(--color-secondary-text);
+          color: var(--color-text-secondary);
           padding-right: $fib-6 * 1px;
         }
 
@@ -295,6 +290,7 @@ i {
           align-items: center;
           height: $fib-12 * 1px;
           justify-content: center;
+          color: var(--color-text-secondary);
 
           i {
             font-size: xx-large;

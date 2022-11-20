@@ -18,19 +18,16 @@
           </div>
         </search-field>
         <span id="action-buttons">
-          <submit-button>
+          <submit-button color="var(--color-accent)">
             <i class="bx bxs-bulb"></i>
             {{ NEW_PROJECT }}
           </submit-button>
-          <regular-button>
-            <i class="bx bxs-folder-plus"></i>
-            {{ NEW_FOLDER }}
-          </regular-button>
+          <new-folder :path="pathString"></new-folder>
         </span>
       </div>
       <dir-list
         :files="filteredFiles"
-        :path="path"
+        :path="pathString"
         @click="onRowClick"
         @navigate="onChangeDirectory"
       />
@@ -42,7 +39,8 @@
 import { defineComponent } from "vue";
 import Filebrowser, { Flags, Error } from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
-import { THEME_LIGHT, GetDefaultTheme } from "fibonacci-styles/util";
+import NewFolder from "@/components/NewFolder.vue";
+import { GetTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import * as cookies from "@/cookies.manager";
 
@@ -52,7 +50,6 @@ const filebrowserService = new Filebrowser(
 
 const NEW_PROJECT = "New project";
 const NEW_FILE = "New file";
-const NEW_FOLDER = "New folder";
 const ROOT_PATH = constants.PATH_SEPARATOR;
 const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 const METADATA_UPDATED_AT_KEY = "updated_at";
@@ -62,6 +59,7 @@ export default defineComponent({
   name: "App",
   components: {
     DirList,
+    NewFolder,
   },
 
   setup() {
@@ -72,7 +70,6 @@ export default defineComponent({
     return {
       NEW_PROJECT,
       NEW_FILE,
-      NEW_FOLDER,
       SESSION_TOKEN,
       SEARCH_DEBOUNCE,
     };
@@ -80,7 +77,6 @@ export default defineComponent({
 
   data() {
     return {
-      theme: THEME_LIGHT,
       warning: undefined as constants.WarningProp | undefined,
       path: ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
@@ -90,6 +86,14 @@ export default defineComponent({
   },
 
   computed: {
+    pathString(): string {
+      return ["root"]
+        .concat(
+          this.path.split(constants.PATH_SEPARATOR).filter((dir) => dir.length)
+        )
+        .join(constants.PATH_SEPARATOR);
+    },
+
     dirFiles(): File[] {
       const target = this.path;
       const normalized = this.normalizePath(target);
@@ -221,7 +225,7 @@ export default defineComponent({
   },
 
   mounted() {
-    this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    GetTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
   },
 });
 </script>
@@ -230,20 +234,19 @@ export default defineComponent({
 @import "fibonacci-styles";
 
 * {
-  @extend .theme-dark;
   margin: 0;
   padding: 0;
   font-family: "Raleway", Helvetica, Arial, sans-serif;
 }
 
 body {
-  background: var(--color-background-secondary);
+  background: var(--color-bg-secondary);
 }
 
 .search-item {
   font-size: medium;
   margin-left: $fib-5 * 1px;
-  color: var(--color-text);
+  color: var(--color-text-primary);
 
   i {
     margin-right: $fib-6 * 1px;
@@ -292,15 +295,8 @@ body {
   white-space: nowrap;
   min-width: fit-content;
 
-  button {
-    &:not(:first-child) {
-      margin-left: $fib-5 * 1px;
-    }
-
-    &.submit {
-      background: var(--color-accent);
-      border: none;
-    }
+  button.submit {
+    margin-right: $fib-5 * 1px;
   }
 }
 
