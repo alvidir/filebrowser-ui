@@ -1,4 +1,5 @@
-/* NOTE: This is a workaround.
+/*
+NOTE: This is a workaround.
 
 As some native features may be broken on pre-processing, this css file contains all those declaration that must be keept as
 they are.
@@ -11,6 +12,7 @@ Look at the following question from SO to know why @keyframes must to remain her
   from {
     background-color: var(--color-accent);
   }
+
   to {
     background-color: none;
   }

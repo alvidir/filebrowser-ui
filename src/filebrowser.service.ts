@@ -103,12 +103,10 @@ class FilebrowserService {
         request.setFilter(filter);
         request.setPath(path);
 
-        debugger;
         this.directoryClient.retrieve(
           request,
           headers,
           (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
-            debugger;
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(err.message as Error);
               return;

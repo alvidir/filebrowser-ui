@@ -141,7 +141,7 @@ export default defineComponent({
       const seconds = (now - from.getTime()) / 1000;
 
       if (seconds < 20) {
-        return "right now";
+        return "just now";
       }
 
       if (seconds < SECONDS_PER_MINUTE) {
@@ -281,7 +281,8 @@ i {
 
       &.new {
         animation-name: ephemeral-highlight;
-        animation-duration: $fib-2 * 1s;
+        animation-duration: $fib-1 * 1s;
+        animation-timing-function: ease-in;
       }
 
       &:hover td:not(.empty) {

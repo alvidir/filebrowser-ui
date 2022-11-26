@@ -1,5 +1,9 @@
 <template>
-  <div class="new-folder-dialog" v-click-outside="close">
+  <div
+    class="new-folder-dialog"
+    v-click-outside="close"
+    @keydown.enter="submit"
+  >
     <regular-button :active="active" @click="open">
       <i class="bx bxs-folder-plus"></i>
       {{ NEW_FOLDER }}
@@ -14,6 +18,7 @@
       </template>
       <regular-field
         placeholder="folder name"
+        :ref="FIELD_FOLDERNAME"
         :error="error"
         @input="onFolderNameInput"
       ></regular-field>
@@ -29,8 +34,10 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import * as constants from "@/constants";
+import { FieldController } from "vue-fields/src/main";
 
 export const SUBMIT_EVENT_NAME = "submit";
+export const FIELD_FOLDERNAME = "foldername";
 
 const NEW_FOLDER = "New folder";
 type ValidateFn = (name: string) => string;
@@ -46,32 +53,35 @@ export default defineComponent({
   setup() {
     return {
       NEW_FOLDER,
+      FIELD_FOLDERNAME,
     };
   },
 
   data() {
     return {
       active: false,
-      valid: false,
-      folderName: "",
+      field: undefined as FieldController | undefined,
       error: "",
     };
   },
 
   computed: {
     isValid(): boolean {
-      return this.folderName.length > 0 && this.error.length == 0;
+      return (
+        !!this.field && this.field.value().length > 0 && this.error.length == 0
+      );
     },
   },
 
   methods: {
     open() {
       this.active = true;
+      setTimeout(() => this.field?.focus(), 100);
     },
 
-    onFolderNameInput(name: string) {
+    onFolderNameInput(ctrl: FieldController) {
       const separator = constants.PATH_SEPARATOR;
-      this.folderName = name.trim();
+      const name = ctrl.value().trim();
       this.error = "";
 
       if (name.includes(separator)) {
@@ -80,18 +90,25 @@ export default defineComponent({
       }
 
       if (this.validate) {
-        this.error = this.validate(this.folderName);
+        this.error = this.validate(name);
       }
     },
 
     close() {
       this.active = false;
+      this.field?.clear();
     },
 
     submit() {
-      this.$emit(SUBMIT_EVENT_NAME, this.folderName);
+      if (!this.isValid) return;
+
+      this.$emit(SUBMIT_EVENT_NAME, this.field?.value().trim());
       this.close();
     },
+  },
+
+  mounted() {
+    this.field = this.$refs[FIELD_FOLDERNAME] as FieldController;
   },
 });
 </script>
