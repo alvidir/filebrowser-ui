@@ -281,7 +281,7 @@ i {
 
       &.new {
         animation-name: ephemeral-highlight;
-        animation-duration: $fib-1 * 1s;
+        animation-duration: $fib-2 * 1s;
       }
 
       &:hover td:not(.empty) {

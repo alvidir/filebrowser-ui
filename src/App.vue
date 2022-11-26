@@ -184,6 +184,9 @@ export default defineComponent({
     },
 
     onChangeDirectory(path: string) {
+      // avoid highlighting new items each time they are displayed
+      this.dirFiles.forEach((file) => (file.new = false));
+
       const normalized = this.normalizePath(path);
       if (normalized in this.dirs) {
         this.path = path;
