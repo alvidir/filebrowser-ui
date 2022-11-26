@@ -18,11 +18,20 @@
           </div>
         </search-field>
         <span id="action-buttons">
-          <submit-button color="var(--color-accent)">
+          <submit-button
+            class="action"
+            color="var(--color-accent)"
+            @click="onSwtichThemeClick()"
+          >
             <i class="bx bxs-bulb"></i>
             {{ NEW_PROJECT }}
           </submit-button>
-          <new-folder :path="pathString"></new-folder>
+          <new-folder
+            class="action"
+            :path="pathString"
+            :validate="isValidFolderName"
+            @submit="createNewFolder"
+          ></new-folder>
         </span>
       </div>
       <dir-list
@@ -40,7 +49,7 @@ import { defineComponent } from "vue";
 import Filebrowser, { Flags, Error } from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
 import NewFolder from "@/components/NewFolder.vue";
-import { GetTheme } from "fibonacci-styles/util";
+import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import * as cookies from "@/cookies.manager";
 
@@ -72,6 +81,7 @@ export default defineComponent({
       NEW_FILE,
       SESSION_TOKEN,
       SEARCH_DEBOUNCE,
+      SwitchTheme,
     };
   },
 
@@ -97,13 +107,14 @@ export default defineComponent({
     dirFiles(): File[] {
       const target = this.path;
       const normalized = this.normalizePath(target);
+
       if (!this.dirs[normalized]) {
         this.pullDirectoryFiles(target, "", (files) => {
           this.dirs[target] = files;
         });
       }
 
-      return this.dirs[normalized];
+      return this.dirs[normalized] || [];
     },
 
     filteredFiles(): File[] {
@@ -125,6 +136,32 @@ export default defineComponent({
   },
 
   methods: {
+    createNewFolder(name: string) {
+      const normalized = this.normalizePath(this.path);
+      const newFolder: File = {
+        id: "",
+        name: name,
+        isDir: true,
+        updatedAt: new Date(),
+        virtual: true,
+        new: true,
+      };
+
+      this.dirs[normalized] = [newFolder].concat(this.dirFiles);
+    },
+
+    isValidFolderName(name: string): string {
+      if (this.dirFiles.some((file) => file.name == name)) {
+        return "Name already exists";
+      }
+
+      return "";
+    },
+
+    onSwtichThemeClick() {
+      SwitchTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    },
+
     onSearchInput(filter: string) {
       if (!filter) {
         this.search = [];
@@ -295,7 +332,7 @@ body {
   white-space: nowrap;
   min-width: fit-content;
 
-  button.submit {
+  & > :first-child {
     margin-right: $fib-5 * 1px;
   }
 }

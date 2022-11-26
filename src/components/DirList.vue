@@ -20,7 +20,12 @@
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
-        <tr v-for="file in filesList" :key="file.name" @click="onClick(file)">
+        <tr
+          v-for="file in filesList"
+          :key="file.name"
+          :class="{ new: file.new }"
+          @click="onClick(file)"
+        >
           <td>
             <i v-if="file.isDir" class="bx bxs-folder"></i>
             <i v-else class="bx bx-file-blank"></i>
@@ -66,6 +71,8 @@ export interface File {
   name: string;
   isDir: boolean;
   updatedAt: Date;
+  virtual?: boolean;
+  new?: boolean;
   size?: {
     value: number;
     unit: string;
@@ -133,6 +140,10 @@ export default defineComponent({
       const now = new Date().getTime();
       const seconds = (now - from.getTime()) / 1000;
 
+      if (seconds < 20) {
+        return "right now";
+      }
+
       if (seconds < SECONDS_PER_MINUTE) {
         return "few seconds ago";
       }
@@ -182,6 +193,7 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
+@import url(@/styles.css);
 
 .dir-list {
   display: flex;
@@ -266,6 +278,11 @@ i {
 
     tr {
       height: $fib-8 * 1px;
+
+      &.new {
+        animation-name: ephemeral-highlight;
+        animation-duration: $fib-1 * 1s;
+      }
 
       &:hover td:not(.empty) {
         background: var(--color-button);

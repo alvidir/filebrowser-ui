@@ -1,0 +1,17 @@
+/* NOTE: This is a workaround.
+
+As some native features may be broken on pre-processing, this css file contains all those declaration that must be keept as
+they are.
+
+Look at the following question from SO to know why @keyframes must to remain here:
+- https://stackoverflow.com/questions/47283989/why-are-css-keyframe-animations-broken-in-vue-components-with-scoped-styling
+*/
+
+@keyframes ephemeral-highlight {
+  from {
+    background-color: var(--color-accent);
+  }
+  to {
+    background-color: none;
+  }
+}
