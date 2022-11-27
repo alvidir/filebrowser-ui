@@ -1,12 +1,21 @@
 import { Error } from "./filebrowser.service";
 
-interface WarningProp {
+interface WarningProps {
   title: string;
   text: string;
   level?: string;
 }
 
-const WARNING_PROPS: { [key: string]: WarningProp } = {
+interface TagProps {
+  tag: string;
+  title?: string;
+  description?: string;
+  iconClass?: string;
+  color?: string;
+  active?: boolean;
+}
+
+const WARNING_PROPS: { [key: string]: WarningProps } = {
   [Error.ERR_UNKNOWN]: {
     title: "Something bad did happen",
     text: "We could not proceed with your request, please try again.",
@@ -47,6 +56,29 @@ const WARNING_PROPS: { [key: string]: WarningProp } = {
   },
 };
 
+const enum TAGS {
+  VIRTUAL = "virtual",
+}
+
+const TAG_PROPS: { [key: string]: TagProps } = {
+  [TAGS.VIRTUAL]: {
+    tag: TAGS.VIRTUAL,
+    color: "var(--color-yellow)",
+    title: "Is it alive or dead?",
+    description:
+      "A virtual folder only exists in you browser as long as you do not refresh the page. To persist the folder, add a file on it.",
+    iconClass: "bx bxs-cat",
+    active: true,
+  },
+};
+
 const PATH_SEPARATOR = "/";
 
-export { WARNING_PROPS, WarningProp, PATH_SEPARATOR };
+export {
+  WARNING_PROPS,
+  TAGS,
+  TAG_PROPS,
+  WarningProps,
+  TagProps,
+  PATH_SEPARATOR,
+};

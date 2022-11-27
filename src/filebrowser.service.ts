@@ -1,6 +1,10 @@
 import * as grpcWeb from "grpc-web";
 import { DirectoryClient } from "./proto/DirectoryServiceClientPb";
-import { DirectoryLocator, DirectoryDescriptor } from "./proto/directory_pb";
+import {
+  DirectoryLocator,
+  DirectoryDescriptor,
+  Empty,
+} from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
 import { FileDescriptor } from "./proto/file_pb";
 
@@ -113,6 +117,32 @@ class FilebrowserService {
             }
 
             resolve(new Directory(data));
+          }
+        );
+      }
+    );
+  }
+
+  relocate(path: string, filter: string, headers: RpcMetadata): Promise<void> {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new DirectoryLocator();
+        request.setFilter(filter);
+        request.setPath(path);
+
+        this.directoryClient.relocate(
+          request,
+          headers,
+          (err: grpcWeb.RpcError, data: Empty) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
+
+            resolve();
           }
         );
       }

@@ -39,6 +39,7 @@
         :path="pathString"
         @click="onRowClick"
         @navigate="onChangeDirectory"
+        @relocate="relocate"
       />
     </div>
   </div>
@@ -52,6 +53,7 @@ import NewFolder from "@/components/NewFolder.vue";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import * as cookies from "@/cookies.manager";
+import { FieldController } from "vue-fields/src/main";
 
 const filebrowserService = new Filebrowser(
   process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost:8080"
@@ -87,7 +89,7 @@ export default defineComponent({
 
   data() {
     return {
-      warning: undefined as constants.WarningProp | undefined,
+      warning: undefined as constants.WarningProps | undefined,
       path: ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
       search: [] as File[],
@@ -143,8 +145,8 @@ export default defineComponent({
         name: name,
         isDir: true,
         updatedAt: new Date(),
-        virtual: true,
         new: true,
+        tags: [constants.TAGS.VIRTUAL],
       };
 
       this.dirs[normalized] = [newFolder].concat(this.dirFiles);
@@ -162,7 +164,8 @@ export default defineComponent({
       SwitchTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
     },
 
-    onSearchInput(filter: string) {
+    onSearchInput(ctrl: FieldController) {
+      const filter = ctrl.value();
       if (!filter) {
         this.search = [];
         return;
@@ -207,12 +210,15 @@ export default defineComponent({
       if (this.warning) this.warning.text = error;
     },
 
-    normalizePath(path: string): string {
+    normalizePath(path: string, root = true): string {
       let normalized = path.replace(
         PATH_REPLACE_REGEX,
         constants.PATH_SEPARATOR
       );
-      if (normalized[0] != constants.PATH_SEPARATOR) {
+
+      if (!root && normalized[0] == constants.PATH_SEPARATOR) {
+        normalized = normalized.slice(1);
+      } else if (root && normalized[0] != constants.PATH_SEPARATOR) {
         normalized = constants.PATH_SEPARATOR.concat(normalized);
       }
 
@@ -258,6 +264,38 @@ export default defineComponent({
           callback(files);
         })
         .catch((error) => this.onResponseError(error))
+        .finally(() => {
+          this.fetching -= 1;
+        });
+    },
+
+    relocate(target: File, source: File) {
+      this.fetching += 1;
+
+      const normalized = this.normalizePath(this.path);
+      const headers: { [key: string]: string } = {};
+      headers["x-uid"] = "1";
+
+      const path = this.normalizePath(
+        [this.path, target.name].join(constants.PATH_SEPARATOR),
+        false
+      );
+
+      const filter = `^/?${this.normalizePath(
+        [normalized, source.name].join(constants.PATH_SEPARATOR),
+        false
+      )}`;
+
+      filebrowserService
+        .relocate(path, filter, headers)
+        .then(() => {
+          this.pullDirectoryFiles(this.path, "", (files) => {
+            this.dirs[normalized] = files;
+          });
+        })
+        .catch((error) => {
+          this.onResponseError(error);
+        })
         .finally(() => {
           this.fetching -= 1;
         });

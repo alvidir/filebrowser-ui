@@ -76,7 +76,7 @@ export default defineComponent({
   methods: {
     open() {
       this.active = true;
-      setTimeout(() => this.field?.focus(), 100);
+      setTimeout(() => this.field?.focus(), 89); //$fib-10
     },
 
     onFolderNameInput(ctrl: FieldController) {
@@ -95,8 +95,11 @@ export default defineComponent({
     },
 
     close() {
+      if (!this.active) return;
+
       this.active = false;
       this.field?.clear();
+      this.field?.blur();
     },
 
     submit() {
@@ -117,30 +120,34 @@ export default defineComponent({
 <style scoped lang="scss">
 @import "fibonacci-styles";
 
-.regular-card {
-  @extend .shadow-box;
+.new-folder-dialog {
+  position: relative;
 
-  position: absolute;
-  margin-top: $fib-5 * 1px;
-  min-width: $fib-13 * 1px;
-  visibility: hidden;
+  .regular-card {
+    @extend .shadow-box;
 
-  &.active {
-    visibility: visible;
-  }
+    position: absolute;
+    margin-top: $fib-5 * 1px;
+    min-width: $fib-13 * 1px;
+    visibility: hidden;
 
-  a {
-    &:not(:hover) {
+    &.active {
+      visibility: visible;
+    }
+
+    a {
+      &:not(:hover) {
+        color: var(--color-text-secondary);
+      }
+    }
+
+    i {
       color: var(--color-text-secondary);
     }
-  }
 
-  i {
-    color: var(--color-text-secondary);
-  }
-
-  button.submit {
-    width: fit-content;
+    button.submit {
+      width: fit-content;
+    }
   }
 }
 </style>

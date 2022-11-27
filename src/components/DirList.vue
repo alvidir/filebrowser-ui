@@ -23,18 +23,29 @@
         <tr
           v-for="file in filesList"
           :key="file.name"
-          :class="{ new: file.new }"
+          :class="{ new: file.new, 'drag-target': file.dragTarget }"
+          draggable="true"
           @click="onClick(file)"
+          @dragstart="onDragStart(file)"
+          @dragend="onDragEnd()"
+          @dragenter="onDragEnter(file)"
+          @dragexit="onDragExit(file, $event)"
         >
-          <td>
+          <td class="filename">
             <i v-if="file.isDir" class="bx bxs-folder"></i>
             <i v-else class="bx bx-file-blank"></i>
             <span>{{ file.name }}</span>
           </td>
-          <td class="tags-list">
-            <label v-for="tag in file.tags" :key="tag" class="round-corners">
-              {{ tag }}
-            </label>
+          <td>
+            <div class="tags-list">
+              <file-flag
+                v-for="tag in tags(file)"
+                :key="tag"
+                v-bind="getTagProps(tag)"
+              >
+                {{ tag }}
+              </file-flag>
+            </div>
           </td>
           <td>
             <span v-if="file.size">
@@ -53,7 +64,9 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
+import FileFlag from "@/components/FileTag.vue";
 import * as constants from "@/constants";
+import { stringLiteral } from "@babel/types";
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
@@ -71,23 +84,27 @@ export interface File {
   name: string;
   isDir: boolean;
   updatedAt: Date;
-  virtual?: boolean;
   new?: boolean;
   size?: {
     value: number;
     unit: string;
   };
   tags?: string[];
+
+  dragSource?: boolean;
+  dragTarget?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
 
 export const CLICK_EVENT_NAME = "click";
 export const NAVIGATE_EVENT_NAME = "navigate";
+export const RELOCATE_EVENT_NAME = "relocate";
 
 export default defineComponent({
   name: "DirList",
-  events: [CLICK_EVENT_NAME, NAVIGATE_EVENT_NAME],
+  events: [CLICK_EVENT_NAME, NAVIGATE_EVENT_NAME, RELOCATE_EVENT_NAME],
+  components: { FileFlag },
   props: {
     display: {
       type: String as PropType<DisplayOps>,
@@ -100,6 +117,10 @@ export default defineComponent({
     path: {
       type: String,
       required: true,
+    },
+    maxTags: {
+      type: Number,
+      default: 8,
     },
   },
 
@@ -136,6 +157,47 @@ export default defineComponent({
   },
 
   methods: {
+    onDragStart(file: File) {
+      file.dragSource = true;
+    },
+
+    onDragExit(file: File, e: any) {
+      if (e.buttons) file.dragTarget = false;
+    },
+
+    onDragEnter(file: File) {
+      if (file.dragSource || !file.isDir) return;
+      file.dragTarget = true;
+    },
+
+    onDragEnd() {
+      // TODO: all three iterations can be simplified in a single one
+      const source = this.files?.find((file) => file.dragSource);
+      const target = this.files?.find((file) => file.dragTarget);
+
+      this.files?.map((file) => {
+        file.dragSource = false;
+        file.dragTarget = false;
+      });
+
+      if (!source || !target) return;
+      this.$emit(RELOCATE_EVENT_NAME, target, source);
+    },
+
+    tags(file: File): string[] {
+      return file.tags?.slice(0, this.maxTags) ?? [];
+    },
+
+    getTagProps(tag: string): constants.TagProps {
+      if (tag in constants.TAG_PROPS) {
+        return constants.TAG_PROPS[tag];
+      }
+
+      return {
+        tag: tag,
+      };
+    },
+
     printElapsedTimeSince(from: Date): string {
       const now = new Date().getTime();
       const seconds = (now - from.getTime()) / 1000;
@@ -225,11 +287,11 @@ export default defineComponent({
 
     button {
       @extend .directory;
-      font-weight: 600;
 
       &:last-child {
         cursor: default;
         color: var(--color-text-primary);
+        font-weight: 600;
       }
 
       &:not(:last-child):hover {
@@ -244,13 +306,23 @@ export default defineComponent({
   }
 }
 
-.elapsed-time {
-  text-align: right;
+.filename {
+  min-width: 30%;
+  white-space: nowrap;
 }
 
+.elapsed-time {
+  min-width: 25%;
+  text-align: right;
+  white-space: nowrap;
+}
 .tags-list {
-  width: 50%;
-  text-align: center;
+  display: flex;
+  width: 100%;
+
+  :not(:first-child) {
+    padding-left: $fib-4 * 1px;
+  }
 }
 
 i {
@@ -262,8 +334,6 @@ i {
 .table-wrapper {
   color: var(--color-text-primary);
   font-size: medium;
-
-  width: 100%;
   border: 1px solid;
   border-color: var(--color-border);
   box-sizing: border-box;
@@ -274,10 +344,15 @@ i {
     border: none;
     outline: none;
     border-collapse: collapse;
-    white-space: nowrap;
 
     tr {
       height: $fib-8 * 1px;
+
+      &.drag-target {
+        @extend .shadow-box;
+        background: var(--color-button);
+        z-index: 1;
+      }
 
       &.new {
         animation-name: ephemeral-highlight;
@@ -292,9 +367,11 @@ i {
       td {
         border-top: 1px solid;
         border-color: var(--color-border);
+        width: fit-content;
 
         &:first-child {
           padding-left: $fib-6 * 1px;
+          padding-right: $fib-7 * 1px;
         }
 
         &:not(:first-child) {
@@ -309,24 +386,11 @@ i {
           height: $fib-12 * 1px;
           justify-content: center;
           color: var(--color-text-secondary);
+          width: 100%;
 
           i {
             font-size: xx-large;
             margin-bottom: $fib-5 * 1px;
-          }
-        }
-
-        label {
-          border: 1px solid var(--color-text-disabled);
-          transition: background $default-duration;
-          padding: $fib-3 * 1px $fib-5 * 1px;
-
-          &:hover {
-            background: var(--color-button-active);
-          }
-
-          &:not(:first-child) {
-            margin-left: $fib-4 * 1px;
           }
         }
       }
