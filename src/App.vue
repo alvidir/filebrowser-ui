@@ -28,7 +28,7 @@
           </submit-button>
           <new-folder
             class="action"
-            :path="pathString"
+            :path="path"
             :validate="isValidFolderName"
             @submit="createNewFolder"
           ></new-folder>
@@ -36,9 +36,9 @@
       </div>
       <dir-list
         :files="filteredFiles"
-        :path="pathString"
-        @click="onRowClick"
-        @navigate="onChangeDirectory"
+        :path="path"
+        @openfile="onOpenfile"
+        @changedir="onChangeDirectory"
         @relocate="relocate"
       />
     </div>
@@ -98,14 +98,6 @@ export default defineComponent({
   },
 
   computed: {
-    pathString(): string {
-      return ["root"]
-        .concat(
-          this.path.split(constants.PATH_SEPARATOR).filter((dir) => dir.length)
-        )
-        .join(constants.PATH_SEPARATOR);
-    },
-
     dirFiles(): File[] {
       const target = this.path;
       const normalized = this.normalizePath(target);
@@ -176,14 +168,8 @@ export default defineComponent({
       });
     },
 
-    onRowClick(file: File) {
-      if (file.isDir) {
-        const path = [this.path, file.name]
-          .join(constants.PATH_SEPARATOR)
-          .replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
-
-        this.onChangeDirectory(path);
-      }
+    onOpenfile(file: File) {
+      if (file.isDir) return;
     },
 
     onChangeDirectory(path: string) {
@@ -196,9 +182,9 @@ export default defineComponent({
         return;
       }
 
-      this.pullDirectoryFiles(path, "", (files) => {
-        this.dirs[path] = files;
-        this.path = path;
+      this.pullDirectoryFiles(normalized, "", (files) => {
+        this.dirs[normalized] = files;
+        this.path = normalized;
       });
     },
 

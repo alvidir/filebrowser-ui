@@ -17,7 +17,6 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import * as constants from "@/constants";
 
 export default defineComponent({
   name: "FileTag",
@@ -37,9 +36,14 @@ export default defineComponent({
 <style scoped lang="scss">
 @import "fibonacci-styles";
 
+$text-color: v-bind(color);
+
+.theme-light .custom-color label {
+  border: 1px solid $text-color;
+}
+
 .file-tag {
   width: fit-content;
-  $text-color: v-bind(color);
   transition-delay: 10s;
 
   &:hover .regular-card {
@@ -80,7 +84,7 @@ export default defineComponent({
     width: $fib-13 * 1px;
     visibility: hidden;
 
-    &:hover {
+    &:not(:mousedrag):hover {
       visibility: visible;
     }
 
