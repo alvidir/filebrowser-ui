@@ -241,7 +241,7 @@ export default defineComponent({
             )?.value;
 
             if (updatedAt) {
-              f.updatedAt.setTime(parseInt(updatedAt));
+              f.updatedAt?.setTime(parseInt(updatedAt));
             }
 
             return f;
@@ -255,22 +255,15 @@ export default defineComponent({
         });
     },
 
-    relocate(target: File, source: File) {
+    relocate(source: string, target: string) {
       this.fetching += 1;
 
       const normalized = this.normalizePath(this.path);
       const headers: { [key: string]: string } = {};
       headers["x-uid"] = "1";
 
-      const path = this.normalizePath(
-        [this.path, target.name].join(constants.PATH_SEPARATOR),
-        false
-      );
-
-      const filter = `^/?${this.normalizePath(
-        [normalized, source.name].join(constants.PATH_SEPARATOR),
-        false
-      )}`;
+      const path = this.normalizePath(target);
+      const filter = `^/?${this.normalizePath(source, false)}`;
 
       filebrowserService
         .relocate(path, filter, headers)

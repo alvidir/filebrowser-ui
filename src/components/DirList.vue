@@ -45,7 +45,7 @@ export interface File {
   id: string;
   name: string;
   isDir: boolean;
-  updatedAt: Date;
+  updatedAt?: Date;
   new?: boolean;
   size?: {
     value: number;
@@ -109,18 +109,24 @@ export default defineComponent({
         .split(constants.PATH_SEPARATOR)
         .filter((path) => path.length);
 
-      if (paths) {
+      if (paths.length) {
         // then is not the root path
-        files.unshift();
+        files.unshift({
+          id: "",
+          name: constants.PARENT_DIRECTORY,
+          isDir: true,
+        });
       }
 
       return files;
     },
 
+    paths(): string[] {
+      return this.path.split(constants.PATH_SEPARATOR);
+    },
+
     directories(): string[] {
-      return ["root"].concat(
-        this.path.split(constants.PATH_SEPARATOR).filter((path) => path.length)
-      );
+      return ["root"].concat(this.paths.filter((path) => path.length));
     },
 
     absolutePath(): string {
@@ -129,6 +135,10 @@ export default defineComponent({
       }
 
       return this.path;
+    },
+
+    parentDirectory(): string {
+      return this.paths.slice(0, -1).join(constants.PATH_SEPARATOR);
     },
   },
 
@@ -147,18 +157,31 @@ export default defineComponent({
     },
 
     onDragEnd() {
-      console.log("ASDFASDFASDFADSFASDFA");
       // TODO: all three iterations can be simplified in a single one
-      const source = this.files?.find((file) => file.dragSource);
-      const target = this.files?.find((file) => file.dragTarget);
+      const sourceFile = this.files?.find((file) => file.dragSource);
+      const targetFile = this.files?.find((file) => file.dragTarget);
 
       this.files?.map((file) => {
         file.dragSource = false;
         file.dragTarget = false;
       });
 
-      if (!source || !target) return;
-      this.$emit(RELOCATE_EVENT_NAME, target, source);
+      if (!sourceFile || !targetFile) return;
+
+      const source = [this.absolutePath, sourceFile.name].join(
+        constants.PATH_SEPARATOR
+      );
+
+      if (targetFile.name == constants.PARENT_DIRECTORY) {
+        this.$emit(RELOCATE_EVENT_NAME, source, this.parentDirectory);
+        return;
+      }
+
+      const target = [this.absolutePath, targetFile.name].join(
+        constants.PATH_SEPARATOR
+      );
+
+      this.$emit(RELOCATE_EVENT_NAME, source, target);
     },
 
     onOpenClick(file: File) {
@@ -167,9 +190,12 @@ export default defineComponent({
         return;
       }
 
-      const target = [this.absolutePath, file.name].join(
-        constants.PATH_SEPARATOR
-      );
+      let target: string;
+      if (file.name != constants.PARENT_DIRECTORY) {
+        target = [this.absolutePath, file.name].join(constants.PATH_SEPARATOR);
+      } else {
+        target = this.parentDirectory;
+      }
 
       this.$emit(CHANGEDIR_EVENT_NAME, target);
     },

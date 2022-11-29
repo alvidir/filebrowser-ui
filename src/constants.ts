@@ -73,12 +73,14 @@ const TAG_PROPS: { [key: string]: TagProps } = {
 };
 
 const PATH_SEPARATOR = "/";
+const PARENT_DIRECTORY = "..";
 
 export {
-  WARNING_PROPS,
   TAGS,
-  TAG_PROPS,
   WarningProps,
   TagProps,
+  TAG_PROPS,
   PATH_SEPARATOR,
+  PARENT_DIRECTORY,
+  WARNING_PROPS,
 };

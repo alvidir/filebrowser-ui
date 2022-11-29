@@ -1,9 +1,12 @@
 <template>
-  <tr>
+  <tr :class="{ 'parent-dir': isParentDir }" @click="isParentDir && onClick()">
     <td class="filename">
-      <i v-if="isDir" class="bx bxs-folder"></i>
+      <i v-if="isParentDir" class="bx bx-arrow-back"></i>
+      <i v-else-if="isDir" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a href="#" @click="onClick">{{ name }}</a>
+      <a v-if="!isParentDir" href="#" @click="onClick">
+        {{ name }}
+      </a>
     </td>
     <td>
       <div class="tags-list">
@@ -50,6 +53,12 @@ export default defineComponent({
     tags: Object as PropType<Array<string>>,
     size: Object as PropType<Size>,
     updatedAt: Date,
+  },
+
+  computed: {
+    isParentDir(): boolean {
+      return this.name == constants.PARENT_DIRECTORY;
+    },
   },
 
   methods: {
@@ -113,6 +122,17 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
+
+.parent-dir {
+  &:hover {
+    cursor: pointer;
+  }
+
+  i {
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+}
 
 .filename {
   min-width: 30%;
