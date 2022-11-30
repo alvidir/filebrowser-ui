@@ -13,7 +13,7 @@
         <span><i class="bx bxs-folder-plus"></i>&nbsp; Add a new folder</span>
         <small>
           It will be created at
-          <a href="#">{{ path }}</a>
+          <a href="#">{{ directory }}</a>
         </small>
       </template>
       <regular-field
@@ -46,7 +46,7 @@ export default defineComponent({
   name: "NewFolder",
   events: [SUBMIT_EVENT_NAME],
   props: {
-    path: String,
+    path: { type: String, required: true },
     validate: Function as PropType<ValidateFn>,
   },
 
@@ -70,6 +70,11 @@ export default defineComponent({
       return (
         !!this.field && this.field.value().length > 0 && this.error.length == 0
       );
+    },
+
+    directory(): string {
+      const dirs = this.path.split(constants.PATH_SEPARATOR);
+      return `/${dirs[dirs.length - 1]}`;
     },
   },
 

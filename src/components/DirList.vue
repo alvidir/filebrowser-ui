@@ -23,7 +23,7 @@
         <dir-list-row
           v-for="file in filesList"
           :key="file.name"
-          :class="{ new: file.new, 'drag-target': file.dragTarget }"
+          :class="{ new: file.new }"
           :draggable="!isVirtual(file)"
           @open="onOpenClick(file)"
           @dragstart="onDragStart(file)"
@@ -53,8 +53,8 @@ export interface File {
   };
   tags?: string[];
 
-  dragSource?: boolean;
-  dragTarget?: boolean;
+  isDragSource?: boolean;
+  isDragTarget?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
@@ -70,7 +70,7 @@ export default defineComponent({
   props: {
     files: {
       type: Object as PropType<Array<File>>,
-      required: false,
+      required: true,
     },
     path: {
       type: String,
@@ -79,6 +79,10 @@ export default defineComponent({
     maxTags: {
       type: Number,
       default: 8,
+    },
+    maxDirs: {
+      type: Number,
+      default: 5,
     },
   },
 
@@ -89,36 +93,12 @@ export default defineComponent({
   },
 
   data() {
-    return {
-      backup: [] as File[],
-    };
-  },
-
-  watch: {
-    files(_: File[], old: File[]) {
-      this.backup = old;
-    },
+    return {};
   },
 
   computed: {
     filesList(): File[] {
-      let files = this.files ?? this.backup;
-      if (!files) return [];
-
-      const paths = this.absolutePath
-        .split(constants.PATH_SEPARATOR)
-        .filter((path) => path.length);
-
-      if (paths.length) {
-        // then is not the root path
-        files.unshift({
-          id: "",
-          name: constants.PARENT_DIRECTORY,
-          isDir: true,
-        });
-      }
-
-      return files;
+      return this.files ?? [];
     },
 
     paths(): string[] {
@@ -126,7 +106,9 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return ["root"].concat(this.paths.filter((path) => path.length));
+      return ["root"]
+        .concat(this.paths.filter((path) => path.length))
+        .slice(-this.maxDirs);
     },
 
     absolutePath(): string {
@@ -144,26 +126,28 @@ export default defineComponent({
 
   methods: {
     onDragStart(file: File) {
-      file.dragSource = true;
+      file.isDragSource = true;
     },
 
     onDragExit(file: File, e: any) {
-      if (e.buttons) file.dragTarget = false;
+      if (e.buttons && !file.isDragSource) {
+        file.isDragTarget = false;
+      }
     },
 
     onDragEnter(file: File) {
-      if (file.dragSource || !file.isDir) return;
-      file.dragTarget = true;
+      if (file.isDragSource || !file.isDir) return;
+      file.isDragTarget = true;
     },
 
     onDragEnd() {
       // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.dragSource);
-      const targetFile = this.files?.find((file) => file.dragTarget);
+      const sourceFile = this.files?.find((file) => file.isDragSource);
+      const targetFile = this.files?.find((file) => file.isDragTarget);
 
       this.files?.map((file) => {
-        file.dragSource = false;
-        file.dragTarget = false;
+        file.isDragSource = false;
+        file.isDragTarget = false;
       });
 
       if (!sourceFile || !targetFile) return;
@@ -201,9 +185,14 @@ export default defineComponent({
     },
 
     onDirectoryClick(index: number) {
+      let hidden = 0;
+      if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
+        hidden = this.directories.length - this.maxDirs + 1;
+      }
+
       this.$emit(
         CHANGEDIR_EVENT_NAME,
-        this.directories.slice(1, index + 1).join(constants.PATH_SEPARATOR)
+        this.paths.slice(1, index + hidden + 1).join(constants.PATH_SEPARATOR)
       );
     },
 

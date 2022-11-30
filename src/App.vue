@@ -52,7 +52,7 @@ import DirList, { File } from "@/components/DirList.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
-import * as cookies from "@/cookies.manager";
+import * as cookies from "@/cookies";
 import { FieldController } from "vue-fields/src/main";
 
 const filebrowserService = new Filebrowser(
@@ -103,9 +103,7 @@ export default defineComponent({
       const normalized = this.normalizePath(target);
 
       if (!this.dirs[normalized]) {
-        this.pullDirectoryFiles(target, "", (files) => {
-          this.dirs[target] = files;
-        });
+        this.onChangeDirectory(normalized);
       }
 
       return this.dirs[normalized] || [];
@@ -113,13 +111,16 @@ export default defineComponent({
 
     filteredFiles(): File[] {
       const sortFn = (a: File, b: File): number => {
+        if (a.name == constants.PARENT_DIRECTORY) return -1;
+        if (b.name == constants.PARENT_DIRECTORY) return 1;
+
         const sortIndex = a.name > b.name ? 1 : -1;
         if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
         return a.isDir ? -1 : 1;
       };
 
       const filterFn = (f: File): boolean => {
-        const HIDEN_FILE_REGEX = new RegExp("^\\..*$", "g");
+        const HIDEN_FILE_REGEX = new RegExp("^\\.\\w.*$", "g");
         const paths = f.name.split(constants.PATH_SEPARATOR);
         const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
         return !match;
@@ -130,6 +131,17 @@ export default defineComponent({
   },
 
   methods: {
+    insertParentDirectory(path: string, files: File[]) {
+      if (path == constants.PATH_SEPARATOR) return;
+
+      files.unshift({
+        id: "",
+        name: constants.PARENT_DIRECTORY,
+        isDir: true,
+        isDragSource: false,
+      });
+    },
+
     createNewFolder(name: string) {
       const normalized = this.normalizePath(this.path);
       const newFolder: File = {
@@ -174,7 +186,7 @@ export default defineComponent({
 
     onChangeDirectory(path: string) {
       // avoid highlighting new items each time they are displayed
-      this.dirFiles.forEach((file) => (file.new = false));
+      this.dirFiles?.forEach((file) => (file.new = false));
 
       const normalized = this.normalizePath(path);
       if (normalized in this.dirs) {
@@ -183,6 +195,7 @@ export default defineComponent({
       }
 
       this.pullDirectoryFiles(normalized, "", (files) => {
+        this.insertParentDirectory(normalized, files);
         this.dirs[normalized] = files;
         this.path = normalized;
       });
@@ -196,15 +209,13 @@ export default defineComponent({
       if (this.warning) this.warning.text = error;
     },
 
-    normalizePath(path: string, root = true): string {
+    normalizePath(path: string): string {
       let normalized = path.replace(
         PATH_REPLACE_REGEX,
         constants.PATH_SEPARATOR
       );
 
-      if (!root && normalized[0] == constants.PATH_SEPARATOR) {
-        normalized = normalized.slice(1);
-      } else if (root && normalized[0] != constants.PATH_SEPARATOR) {
+      if (normalized[0] != constants.PATH_SEPARATOR) {
         normalized = constants.PATH_SEPARATOR.concat(normalized);
       }
 
@@ -258,18 +269,28 @@ export default defineComponent({
     relocate(source: string, target: string) {
       this.fetching += 1;
 
-      const normalized = this.normalizePath(this.path);
+      const normalized = this.normalizePath(target);
       const headers: { [key: string]: string } = {};
       headers["x-uid"] = "1";
 
-      const path = this.normalizePath(target);
-      const filter = `^/?${this.normalizePath(source, false)}`;
+      target = this.normalizePath(target);
+      const components = this.normalizePath(source).split(
+        constants.PATH_SEPARATOR
+      );
+
+      const filter = `^${components
+        .slice(0, -1)
+        .join(constants.PATH_SEPARATOR)}/(${
+        components[components.length - 1]
+      }.*)$`;
 
       filebrowserService
-        .relocate(path, filter, headers)
+        .relocate(target, filter, headers)
         .then(() => {
+          delete this.dirs[target];
           this.pullDirectoryFiles(this.path, "", (files) => {
-            this.dirs[normalized] = files;
+            this.insertParentDirectory(this.path, files);
+            this.dirs[this.path] = files;
           });
         })
         .catch((error) => {

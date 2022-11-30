@@ -1,5 +1,8 @@
 <template>
-  <tr :class="{ 'parent-dir': isParentDir }" @click="isParentDir && onClick()">
+  <tr
+    :class="{ 'drag-target': isDragTarget, 'parent-dir': isParentDir }"
+    @click="isParentDir && onClick()"
+  >
     <td class="filename">
       <i v-if="isParentDir" class="bx bx-arrow-back"></i>
       <i v-else-if="isDir" class="bx bxs-folder"></i>
@@ -53,6 +56,7 @@ export default defineComponent({
     tags: Object as PropType<Array<string>>,
     size: Object as PropType<Size>,
     updatedAt: Date,
+    isDragTarget: Boolean,
   },
 
   computed: {
@@ -132,6 +136,12 @@ export default defineComponent({
     color: var(--color-accent);
     font-weight: 600;
   }
+}
+
+.drag-target {
+  @extend .shadow-box;
+  background: var(--color-button) !important;
+  z-index: 1 !important;
 }
 
 .filename {
