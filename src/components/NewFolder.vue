@@ -48,6 +48,10 @@ export default defineComponent({
   props: {
     path: { type: String, required: true },
     validate: Function as PropType<ValidateFn>,
+    maxLength: {
+      type: Number,
+      default: 34,
+    },
   },
 
   setup() {
@@ -84,13 +88,22 @@ export default defineComponent({
       setTimeout(() => this.field?.focus(), 89); //$fib-10
     },
 
+    normalizeName(p: string): string {
+      return p.trim().replace(/ /g, "_");
+    },
+
     onFolderNameInput(ctrl: FieldController) {
       const separator = constants.PATH_SEPARATOR;
-      const name = ctrl.value().trim();
+      const name = this.normalizeName(ctrl.value());
       this.error = "";
 
-      if (name.includes(separator)) {
-        this.error = `A folder cannot contains a "${separator}" in its name"`;
+      if (!name.match(/^[a-zA-Z0-9-_]*$/)) {
+        this.error = `A folder cannot contains special characters."`;
+        return;
+      }
+
+      if (name.length > this.maxLength) {
+        this.error = "The name is too long.";
         return;
       }
 
@@ -108,9 +121,9 @@ export default defineComponent({
     },
 
     submit() {
-      if (!this.isValid) return;
+      if (!this.field || !this.isValid) return;
 
-      this.$emit(SUBMIT_EVENT_NAME, this.field?.value().trim());
+      this.$emit(SUBMIT_EVENT_NAME, this.normalizeName(this.field.value()));
       this.close();
     },
   },

@@ -24,7 +24,7 @@
           v-for="file in filesList"
           :key="file.name"
           :class="{ new: file.new }"
-          :draggable="!isVirtual(file)"
+          :draggable="isDraggable(file)"
           @open="onOpenClick(file)"
           @dragstart="onDragStart(file)"
           @dragenter="onDragEnter(file)"
@@ -80,9 +80,9 @@ export default defineComponent({
       type: Number,
       default: 8,
     },
-    maxDirs: {
+    maxDirsLength: {
       type: Number,
-      default: 5,
+      default: 55,
     },
   },
 
@@ -92,10 +92,6 @@ export default defineComponent({
     };
   },
 
-  data() {
-    return {};
-  },
-
   computed: {
     filesList(): File[] {
       return this.files ?? [];
@@ -103,6 +99,23 @@ export default defineComponent({
 
     paths(): string[] {
       return this.path.split(constants.PATH_SEPARATOR);
+    },
+
+    maxDirs(): number {
+      let allDirs = ["root"].concat(this.paths.filter((path) => path.length));
+      let totalLength = 0;
+      let howMany = 1;
+
+      for (let index = allDirs.length; index > 0; index--) {
+        if (totalLength + allDirs[index - 1].length > this.maxDirsLength) {
+          break;
+        }
+
+        totalLength += allDirs[index - 1].length;
+        howMany++;
+      }
+
+      return howMany;
     },
 
     directories(): string[] {
@@ -196,8 +209,8 @@ export default defineComponent({
       );
     },
 
-    isVirtual(file: File): boolean {
-      return !!file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
+    isDraggable(file: File): boolean {
+      return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
     },
   },
 });

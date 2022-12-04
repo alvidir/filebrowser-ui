@@ -90,11 +90,20 @@ export default defineComponent({
   data() {
     return {
       warning: undefined as constants.WarningProps | undefined,
-      path: ROOT_PATH,
+      path: window.location.pathname ?? ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
       search: [] as File[],
       fetching: 0,
     };
+  },
+
+  watch: {
+    path(path: string) {
+      const current = window.location.pathname;
+      if (path != current) {
+        window.history.pushState("", "", path);
+      }
+    },
   },
 
   computed: {
@@ -190,7 +199,7 @@ export default defineComponent({
 
       const normalized = this.normalizePath(path);
       if (normalized in this.dirs) {
-        this.path = path;
+        this.path = normalized;
         return;
       }
 
@@ -269,7 +278,6 @@ export default defineComponent({
     relocate(source: string, target: string) {
       this.fetching += 1;
 
-      const normalized = this.normalizePath(target);
       const headers: { [key: string]: string } = {};
       headers["x-uid"] = "1";
 
@@ -284,13 +292,15 @@ export default defineComponent({
         components[components.length - 1]
       }.*)$`;
 
+      const path = this.normalizePath(this.path);
+
       filebrowserService
         .relocate(target, filter, headers)
         .then(() => {
           delete this.dirs[target];
-          this.pullDirectoryFiles(this.path, "", (files) => {
-            this.insertParentDirectory(this.path, files);
-            this.dirs[this.path] = files;
+          this.pullDirectoryFiles(path, "", (files) => {
+            this.insertParentDirectory(path, files);
+            this.dirs[path] = files;
           });
         })
         .catch((error) => {
@@ -304,6 +314,9 @@ export default defineComponent({
 
   mounted() {
     GetTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    window.onpopstate = () => {
+      this.path = window.location.pathname ?? ROOT_PATH;
+    };
   },
 });
 </script>
