@@ -74,14 +74,9 @@ export default defineComponent({
   },
 
   setup() {
-    const SESSION_TOKEN = cookies.getCookie(
-      process.env.VUE_APP_TOKEN_COOKIE_KEY
-    );
-
     return {
       NEW_PROJECT,
       NEW_FILE,
-      SESSION_TOKEN,
       SEARCH_DEBOUNCE,
       SwitchTheme,
     };
@@ -242,11 +237,8 @@ export default defineComponent({
     ) {
       this.fetching += 1;
 
-      const headers: { [key: string]: string } = {};
-      headers["x-uid"] = "1";
-
       filebrowserService
-        .getDirectory(path, filter, headers)
+        .getDirectory(path, filter, {})
         .then((dir) => {
           const files = Object.values(dir.files).map((file) => {
             const f: File = {
@@ -278,9 +270,6 @@ export default defineComponent({
     relocate(source: string, target: string) {
       this.fetching += 1;
 
-      const headers: { [key: string]: string } = {};
-      headers["x-uid"] = "1";
-
       target = this.normalizePath(target);
       const components = this.normalizePath(source).split(
         constants.PATH_SEPARATOR
@@ -295,7 +284,7 @@ export default defineComponent({
       const path = this.normalizePath(this.path);
 
       filebrowserService
-        .relocate(target, filter, headers)
+        .relocate(target, filter, {})
         .then(() => {
           delete this.dirs[target];
           this.pullDirectoryFiles(path, "", (files) => {
