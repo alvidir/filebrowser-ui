@@ -1,39 +1,45 @@
 <template>
-  <!-- <dock id="sidenav" :active="true" :position="'left'">
-    <dock-item id="0" placeholder="first item"><label>Aa</label></dock-item>
-    <dock-item id="1" placeholder="second item"><label>Bb</label></dock-item>
-    <dock-item id="2" placeholder="third item"><label>Cc</label></dock-item>
-    <dock-item id="3" placeholder="fourth item"><label>Dd</label></dock-item>
-    <dock-item id="4" placeholder="fifth item"><label>Ee</label></dock-item>
-    <dock-item id="5" placeholder="sixth item"><label>Ff</label></dock-item>
-    <dock-separator></dock-separator>
-    <dock-item id="6" placeholder="seventh item"><label>Gg</label></dock-item>
-  </dock> -->
   <div id="main-container">
     <div class="narrowed">
       <notice-card v-if="warning" v-bind="warning" @close="quitWarning()" />
       <div id="actions-container">
-        <search-field id="search-field" :placeholder="'Search'" large />
+        <search-field
+          id="search-field"
+          :placeholder="'Search'"
+          :items="search"
+          :debounce="SEARCH_DEBOUNCE"
+          @input="onSearchInput"
+          v-slot="props"
+          large
+        >
+          <div class="search-item">
+            <i class="bx bx-file-blank"></i>
+            <label>{{ props.item.name }}</label>
+          </div>
+        </search-field>
         <span id="action-buttons">
-          <submit-button>
+          <submit-button
+            class="action"
+            color="var(--color-accent)"
+            @click="onSwtichThemeClick()"
+          >
             <i class="bx bxs-bulb"></i>
             {{ NEW_PROJECT }}
           </submit-button>
-          <regular-button>
-            <i class="bx bxs-folder-plus"></i>
-            {{ NEW_FOLDER }}
-          </regular-button>
-          <regular-button>
-            <i class="bx bxs-file-plus"></i>
-            {{ NEW_FILE }}
-          </regular-button>
+          <new-folder
+            class="action"
+            :path="path"
+            :validate="isValidFolderName"
+            @submit="createNewFolder"
+          ></new-folder>
         </span>
       </div>
       <dir-list
-        :files="files"
+        :files="filteredFiles"
         :path="path"
-        @click="onRowClick"
-        @navigate="onChangeDirectory"
+        @openfile="onOpenfile"
+        @changedir="onChangeDirectory"
+        @relocate="relocate"
       />
     </div>
   </div>
@@ -43,9 +49,11 @@
 import { defineComponent } from "vue";
 import Filebrowser, { Flags, Error } from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
-import { THEME_LIGHT, GetDefaultTheme } from "fibonacci-styles/util";
+import NewFolder from "@/components/NewFolder.vue";
+import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
-import * as cookies from "@/cookies.manager";
+import * as cookies from "@/cookies";
+import { FieldController } from "vue-fields/src/main";
 
 const filebrowserService = new Filebrowser(
   process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost:8080"
@@ -53,15 +61,16 @@ const filebrowserService = new Filebrowser(
 
 const NEW_PROJECT = "New project";
 const NEW_FILE = "New file";
-const NEW_FOLDER = "New folder";
 const ROOT_PATH = constants.PATH_SEPARATOR;
 const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 const METADATA_UPDATED_AT_KEY = "updated_at";
+const SEARCH_DEBOUNCE = 300;
 
 export default defineComponent({
   name: "App",
   components: {
     DirList,
+    NewFolder,
   },
 
   setup() {
@@ -72,44 +81,133 @@ export default defineComponent({
     return {
       NEW_PROJECT,
       NEW_FILE,
-      NEW_FOLDER,
       SESSION_TOKEN,
+      SEARCH_DEBOUNCE,
+      SwitchTheme,
     };
   },
 
   data() {
     return {
-      theme: THEME_LIGHT,
-      warning: undefined as constants.WarningProp | undefined,
-      path: ROOT_PATH,
+      warning: undefined as constants.WarningProps | undefined,
+      path: window.location.pathname ?? ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
-      fetching: false,
+      search: [] as File[],
+      fetching: 0,
     };
   },
 
+  watch: {
+    path(path: string) {
+      const current = window.location.pathname;
+      if (path != current) {
+        window.history.pushState("", "", path);
+      }
+    },
+  },
+
   computed: {
-    files(): File[] {
+    dirFiles(): File[] {
       const target = this.path;
       const normalized = this.normalizePath(target);
+
       if (!this.dirs[normalized]) {
-        this.pullDirectoryFiles(target);
+        this.onChangeDirectory(normalized);
       }
 
-      return this.dirs[normalized];
+      return this.dirs[normalized] || [];
+    },
+
+    filteredFiles(): File[] {
+      const sortFn = (a: File, b: File): number => {
+        if (a.name == constants.PARENT_DIRECTORY) return -1;
+        if (b.name == constants.PARENT_DIRECTORY) return 1;
+
+        const sortIndex = a.name > b.name ? 1 : -1;
+        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
+        return a.isDir ? -1 : 1;
+      };
+
+      const filterFn = (f: File): boolean => {
+        const HIDEN_FILE_REGEX = new RegExp("^\\.\\w.*$", "g");
+        const paths = f.name.split(constants.PATH_SEPARATOR);
+        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
+        return !match;
+      };
+
+      return this.dirFiles.filter(filterFn).sort(sortFn);
     },
   },
 
   methods: {
-    onRowClick(file: File) {
-      if (file.isDir) {
-        this.path = [this.path, file.name]
-          .join(constants.PATH_SEPARATOR)
-          .replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
+    insertParentDirectory(path: string, files: File[]) {
+      if (path == constants.PATH_SEPARATOR) return;
+
+      files.unshift({
+        id: "",
+        name: constants.PARENT_DIRECTORY,
+        isDir: true,
+        isDragSource: false,
+      });
+    },
+
+    createNewFolder(name: string) {
+      const normalized = this.normalizePath(this.path);
+      const newFolder: File = {
+        id: "",
+        name: name,
+        isDir: true,
+        updatedAt: new Date(),
+        new: true,
+        tags: [constants.TAGS.VIRTUAL],
+      };
+
+      this.dirs[normalized] = [newFolder].concat(this.dirFiles);
+    },
+
+    isValidFolderName(name: string): string {
+      if (this.dirFiles.some((file) => file.name == name)) {
+        return "Name already exists";
       }
+
+      return "";
+    },
+
+    onSwtichThemeClick() {
+      SwitchTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    },
+
+    onSearchInput(ctrl: FieldController) {
+      const filter = ctrl.value();
+      if (!filter) {
+        this.search = [];
+        return;
+      }
+
+      this.pullDirectoryFiles("", filter, (files) => {
+        this.search = files;
+      });
+    },
+
+    onOpenfile(file: File) {
+      if (file.isDir) return;
     },
 
     onChangeDirectory(path: string) {
-      this.path = path;
+      // avoid highlighting new items each time they are displayed
+      this.dirFiles?.forEach((file) => (file.new = false));
+
+      const normalized = this.normalizePath(path);
+      if (normalized in this.dirs) {
+        this.path = normalized;
+        return;
+      }
+
+      this.pullDirectoryFiles(normalized, "", (files) => {
+        this.insertParentDirectory(normalized, files);
+        this.dirs[normalized] = files;
+        this.path = normalized;
+      });
     },
 
     onResponseError(error: Error): void {
@@ -125,6 +223,7 @@ export default defineComponent({
         PATH_REPLACE_REGEX,
         constants.PATH_SEPARATOR
       );
+
       if (normalized[0] != constants.PATH_SEPARATOR) {
         normalized = constants.PATH_SEPARATOR.concat(normalized);
       }
@@ -136,21 +235,22 @@ export default defineComponent({
       this.warning = undefined;
     },
 
-    pullDirectoryFiles(target: string) {
-      this.fetching = true;
+    pullDirectoryFiles(
+      path: string,
+      filter: string,
+      callback: (files: File[]) => void
+    ) {
+      this.fetching += 1;
 
       const headers: { [key: string]: string } = {};
-      if (process.env.VUE_APP_TOKEN_COOKIE_KEY && this.SESSION_TOKEN) {
-        headers[process.env.VUE_APP_TOKEN_COOKIE_KEY] = this.SESSION_TOKEN;
-      }
-
       headers["x-uid"] = "1";
 
       filebrowserService
-        .getDirectory(target, headers)
+        .getDirectory(path, filter, headers)
         .then((dir) => {
-          this.dirs[target] = Object.values(dir.files).map((file) => {
+          const files = Object.values(dir.files).map((file) => {
             const f: File = {
+              id: file.id,
               name: file.name,
               isDir: (file.flags & Flags.Directory) != 0,
               updatedAt: new Date(),
@@ -161,21 +261,62 @@ export default defineComponent({
             )?.value;
 
             if (updatedAt) {
-              f.updatedAt.setTime(parseInt(updatedAt));
+              f.updatedAt?.setTime(parseInt(updatedAt));
             }
 
             return f;
           });
+
+          callback(files);
         })
         .catch((error) => this.onResponseError(error))
         .finally(() => {
-          this.fetching = false;
+          this.fetching -= 1;
+        });
+    },
+
+    relocate(source: string, target: string) {
+      this.fetching += 1;
+
+      const headers: { [key: string]: string } = {};
+      headers["x-uid"] = "1";
+
+      target = this.normalizePath(target);
+      const components = this.normalizePath(source).split(
+        constants.PATH_SEPARATOR
+      );
+
+      const filter = `^${components
+        .slice(0, -1)
+        .join(constants.PATH_SEPARATOR)}/(${
+        components[components.length - 1]
+      }.*)$`;
+
+      const path = this.normalizePath(this.path);
+
+      filebrowserService
+        .relocate(target, filter, headers)
+        .then(() => {
+          delete this.dirs[target];
+          this.pullDirectoryFiles(path, "", (files) => {
+            this.insertParentDirectory(path, files);
+            this.dirs[path] = files;
+          });
+        })
+        .catch((error) => {
+          this.onResponseError(error);
+        })
+        .finally(() => {
+          this.fetching -= 1;
         });
     },
   },
 
   mounted() {
-    this.theme = GetDefaultTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    GetTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    window.onpopstate = () => {
+      this.path = window.location.pathname ?? ROOT_PATH;
+    };
   },
 });
 </script>
@@ -184,14 +325,23 @@ export default defineComponent({
 @import "fibonacci-styles";
 
 * {
-  @extend .theme-dark;
   margin: 0;
   padding: 0;
   font-family: "Raleway", Helvetica, Arial, sans-serif;
 }
 
 body {
-  background: var(--color-background-secondary);
+  background: var(--color-bg-secondary);
+}
+
+.search-item {
+  font-size: medium;
+  margin-left: $fib-5 * 1px;
+  color: var(--color-text-primary);
+
+  i {
+    margin-right: $fib-6 * 1px;
+  }
 }
 
 #sidenav {
@@ -236,21 +386,8 @@ body {
   white-space: nowrap;
   min-width: fit-content;
 
-  button {
-    &:not(:first-child) {
-      margin-left: $fib-5 * 1px;
-
-      i {
-        font-size: $fib-7 * 1px;
-        color: var(--color-secondary-text);
-        padding-right: $fib-6 * 1px;
-      }
-    }
-
-    &.submit {
-      background: var(--color-accent);
-      border: none;
-    }
+  & > :first-child {
+    margin-right: $fib-5 * 1px;
   }
 }
 

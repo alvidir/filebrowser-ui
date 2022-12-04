@@ -6,45 +6,31 @@
         <button
           v-for="(dir, index) in directories"
           :key="dir"
-          @click="onChangeDirectory(index)"
+          @click="onDirectoryClick(index)"
         >
           {{ dir }}
         </button>
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
-      <table>
-        <tr v-if="!filteredFiles.length">
+      <table @dragend="onDragEnd()">
+        <tr v-if="!filesList.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
-        <tr
-          v-for="file in filteredFiles"
+        <dir-list-row
+          v-for="file in filesList"
           :key="file.name"
-          @click="onClick(file)"
-        >
-          <td>
-            <i v-if="file.isDir" class="bx bxs-folder"></i>
-            <i v-else class="bx bx-file-blank"></i>
-            <span>{{ file.name }}</span>
-          </td>
-          <td class="tags-list">
-            <label v-for="tag in file.tags" :key="tag" class="round-corners">
-              {{ tag }}
-            </label>
-          </td>
-          <td>
-            <span v-if="file.size">
-              {{ file.size.value }} {{ file.size.unit }}
-            </span>
-            <span v-else>&nbsp;</span>
-          </td>
-          <td class="elapsed-time">
-            {{ printElapsedTimeSince(file.updatedAt) }}
-          </td>
-        </tr>
+          :class="{ new: file.new }"
+          :draggable="isDraggable(file)"
+          @open="onOpenClick(file)"
+          @dragstart="onDragStart(file)"
+          @dragenter="onDragEnter(file)"
+          @dragexit="onDragExit(file, $event)"
+          v-bind="file"
+        />
       </table>
     </div>
   </div>
@@ -52,150 +38,179 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
+import DirListRow from "@/components/DirListRow.vue";
 import * as constants from "@/constants";
 
-const SECONDS_PER_MINUTE = 60;
-const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
-const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
-const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
-const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
-
-export enum DisplayOps {
-  LIST = "list",
-  GRID = "grid",
-}
-
 export interface File {
+  id: string;
   name: string;
   isDir: boolean;
-  updatedAt: Date;
+  updatedAt?: Date;
+  new?: boolean;
   size?: {
     value: number;
     unit: string;
   };
   tags?: string[];
+
+  isDragSource?: boolean;
+  isDragTarget?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
-const HIDEN_FILE_REGEX = new RegExp("^\\..*$", "g");
 
-export const CLICK_EVENT_NAME = "click";
-export const NAVIGATE_EVENT_NAME = "navigate";
+export const CHANGEDIR_EVENT_NAME = "changedir";
+export const OPENFILE_EVENT_NAME = "openfile";
+export const RELOCATE_EVENT_NAME = "relocate";
 
 export default defineComponent({
   name: "DirList",
-  events: [CLICK_EVENT_NAME, NAVIGATE_EVENT_NAME],
+  events: [CHANGEDIR_EVENT_NAME, OPENFILE_EVENT_NAME, RELOCATE_EVENT_NAME],
+  components: { DirListRow },
   props: {
-    display: {
-      type: String as PropType<DisplayOps>,
-      default: DisplayOps.LIST,
-    },
     files: {
       type: Object as PropType<Array<File>>,
-      required: false,
+      required: true,
     },
     path: {
       type: String,
       required: true,
     },
-    sort: {
-      type: Function as PropType<(a: File, b: File) => number>,
-      default: (a: File, b: File): number => {
-        const sortIndex = a.name > b.name ? 1 : -1;
-        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
-        return a.isDir ? -1 : 1;
-      },
+    maxTags: {
+      type: Number,
+      default: 8,
     },
-    filter: {
-      type: Function as PropType<(f: File) => boolean>,
-      default: (f: File): boolean => {
-        const paths = f.name.split(constants.PATH_SEPARATOR);
-        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
-        return !match;
-      },
+    maxDirsLength: {
+      type: Number,
+      default: 55,
     },
   },
 
   setup() {
     return {
-      DisplayOps,
       NOTHING_TO_DISPLAY,
     };
   },
 
-  data() {
-    return {
-      backup: [] as File[],
-    };
-  },
-
-  watch: {
-    files(_: File[], old: File[]) {
-      this.backup = old;
-    },
-  },
-
   computed: {
-    filteredFiles(): File[] {
-      let files = this.files ?? this.backup;
-      if (!files) return [];
+    filesList(): File[] {
+      return this.files ?? [];
+    },
 
-      return files.filter(this.filter).sort(this.sort);
+    paths(): string[] {
+      return this.path.split(constants.PATH_SEPARATOR);
+    },
+
+    maxDirs(): number {
+      let allDirs = ["root"].concat(this.paths.filter((path) => path.length));
+      let totalLength = 0;
+      let howMany = 1;
+
+      for (let index = allDirs.length; index > 0; index--) {
+        if (totalLength + allDirs[index - 1].length > this.maxDirsLength) {
+          break;
+        }
+
+        totalLength += allDirs[index - 1].length;
+        howMany++;
+      }
+
+      return howMany;
     },
 
     directories(): string[] {
-      return ["root"].concat(
-        this.path.split(constants.PATH_SEPARATOR).filter((dir) => dir.length)
-      );
+      return ["root"]
+        .concat(this.paths.filter((path) => path.length))
+        .slice(-this.maxDirs);
+    },
+
+    absolutePath(): string {
+      if (this.path && this.path[0] != constants.PATH_SEPARATOR) {
+        return `${constants.PATH_SEPARATOR}${this.path}`;
+      }
+
+      return this.path;
+    },
+
+    parentDirectory(): string {
+      return this.paths.slice(0, -1).join(constants.PATH_SEPARATOR);
     },
   },
 
   methods: {
-    printElapsedTimeSince(from: Date): string {
-      const now = new Date().getTime();
-      const seconds = (now - from.getTime()) / 1000;
-
-      if (seconds < SECONDS_PER_MINUTE) {
-        return "few seconds ago";
-      }
-
-      const scaleTime = (scale: number): number => {
-        return Math.floor(seconds / scale);
-      };
-
-      if (seconds < SECONDS_PER_HOUR) {
-        const total = scaleTime(SECONDS_PER_MINUTE);
-        return `${total} minute${total > 1 ? "s" : ""} ago`;
-      }
-
-      if (seconds < SECONDS_PER_DAY) {
-        const total = scaleTime(SECONDS_PER_HOUR);
-        return `${total} hour${total > 1 ? "s" : ""} ago`;
-      }
-
-      if (seconds < SECONDS_PER_MONTH) {
-        const total = scaleTime(SECONDS_PER_DAY);
-        return `${total} day${total > 1 ? "s" : ""} ago`;
-      }
-
-      if (seconds < SECONDS_PER_YEAR) {
-        const total = scaleTime(SECONDS_PER_MONTH);
-        return `${total} month${total > 1 ? "s" : ""} ago`;
-      }
-
-      const total = scaleTime(SECONDS_PER_YEAR);
-      return `${total} year${total > 1 ? "s" : ""} ago`;
+    onDragStart(file: File) {
+      file.isDragSource = true;
     },
 
-    onClick(file: File) {
-      this.$emit(CLICK_EVENT_NAME, file);
+    onDragExit(file: File, e: any) {
+      if (e.buttons && !file.isDragSource) {
+        file.isDragTarget = false;
+      }
     },
 
-    onChangeDirectory(index: number) {
-      this.$emit(
-        NAVIGATE_EVENT_NAME,
-        this.directories.slice(1, index + 1).join(constants.PATH_SEPARATOR)
+    onDragEnter(file: File) {
+      if (file.isDragSource || !file.isDir) return;
+      file.isDragTarget = true;
+    },
+
+    onDragEnd() {
+      // TODO: all three iterations can be simplified in a single one
+      const sourceFile = this.files?.find((file) => file.isDragSource);
+      const targetFile = this.files?.find((file) => file.isDragTarget);
+
+      this.files?.map((file) => {
+        file.isDragSource = false;
+        file.isDragTarget = false;
+      });
+
+      if (!sourceFile || !targetFile) return;
+
+      const source = [this.absolutePath, sourceFile.name].join(
+        constants.PATH_SEPARATOR
       );
+
+      if (targetFile.name == constants.PARENT_DIRECTORY) {
+        this.$emit(RELOCATE_EVENT_NAME, source, this.parentDirectory);
+        return;
+      }
+
+      const target = [this.absolutePath, targetFile.name].join(
+        constants.PATH_SEPARATOR
+      );
+
+      this.$emit(RELOCATE_EVENT_NAME, source, target);
+    },
+
+    onOpenClick(file: File) {
+      if (!file.isDir) {
+        this.$emit(OPENFILE_EVENT_NAME, file);
+        return;
+      }
+
+      let target: string;
+      if (file.name != constants.PARENT_DIRECTORY) {
+        target = [this.absolutePath, file.name].join(constants.PATH_SEPARATOR);
+      } else {
+        target = this.parentDirectory;
+      }
+
+      this.$emit(CHANGEDIR_EVENT_NAME, target);
+    },
+
+    onDirectoryClick(index: number) {
+      let hidden = 0;
+      if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
+        hidden = this.directories.length - this.maxDirs + 1;
+      }
+
+      this.$emit(
+        CHANGEDIR_EVENT_NAME,
+        this.paths.slice(1, index + hidden + 1).join(constants.PATH_SEPARATOR)
+      );
+    },
+
+    isDraggable(file: File): boolean {
+      return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
     },
   },
 });
@@ -204,21 +219,25 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
-
-$border-color: var(--color-text-disabled);
+@import url(@/styles.css);
 
 .dir-list {
   display: flex;
   flex-direction: column;
-  //min-width: fit-content;
+}
+
+i {
+  font-size: large;
+  color: var(--color-text-secondary);
+  padding-right: $fib-6 * 1px;
 }
 
 .header {
   width: 100%;
   height: $fib-9 * 1px;
-  background: var(--color-button);
+  background: var(--color-bg-primary);
   border: 1px solid;
-  border-color: $border-color;
+  border-color: var(--color-border);
   box-sizing: border-box;
 
   .path-nav {
@@ -229,23 +248,23 @@ $border-color: var(--color-text-disabled);
 
     .directory {
       height: fit-content;
-      font-size: $default-fontsize;
-      color: var(--color-secondary-text);
+      font-size: medium;
+      color: var(--color-text-secondary);
       background: transparent;
-      font-weight: 900;
       border: none;
     }
 
     button {
       @extend .directory;
 
-      &:hover {
-        color: var(--color-accent);
-      }
-
       &:last-child {
         cursor: default;
-        color: var(--color-text);
+        color: var(--color-text-primary);
+        font-weight: 600;
+      }
+
+      &:not(:last-child):hover {
+        color: var(--color-accent);
       }
 
       &:not(:last-child)::after {
@@ -256,28 +275,11 @@ $border-color: var(--color-text-disabled);
   }
 }
 
-.elapsed-time {
-  text-align: right;
-}
-
-.tags-list {
-  width: 50%;
-  text-align: center;
-}
-
-i {
-  font-size: $fib-7 * 1px;
-  color: var(--color-secondary-text);
-  padding-right: $fib-6 * 1px;
-}
-
 .table-wrapper {
-  color: var(--color-text);
-  font-size: $default-fontsize;
-
-  width: 100%;
+  color: var(--color-text-primary);
+  font-size: medium;
   border: 1px solid;
-  border-color: $border-color;
+  border-color: var(--color-border);
   box-sizing: border-box;
   overflow: hidden;
 
@@ -286,54 +288,21 @@ i {
     border: none;
     outline: none;
     border-collapse: collapse;
-    white-space: nowrap;
+  }
 
-    tr {
-      height: $fib-8 * 1px;
+  td.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: $fib-12 * 1px;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    border-top: 1px solid var(--color-border);
+    width: 100%;
 
-      &:hover td:not(.empty) {
-        background: var(--color-button);
-      }
-
-      td {
-        border-top: 1px solid;
-        border-color: $border-color;
-
-        &:first-child {
-          padding-left: $fib-6 * 1px;
-        }
-
-        &:not(:first-child) {
-          color: var(--color-secondary-text);
-          padding-right: $fib-6 * 1px;
-        }
-
-        &.empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          height: $fib-12 * 1px;
-          justify-content: center;
-
-          i {
-            font-size: $fib-9 * 1px;
-          }
-        }
-
-        label {
-          border: 1px solid var(--color-text-disabled);
-          transition: background $default-duration;
-          padding: $fib-3 * 1px $fib-5 * 1px;
-
-          &:hover {
-            background: var(--color-button-active);
-          }
-
-          &:not(:first-child) {
-            margin-left: $fib-4 * 1px;
-          }
-        }
-      }
+    i {
+      font-size: xx-large;
+      margin-bottom: $fib-5 * 1px;
     }
   }
 }

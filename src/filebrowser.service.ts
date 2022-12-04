@@ -1,6 +1,10 @@
 import * as grpcWeb from "grpc-web";
 import { DirectoryClient } from "./proto/DirectoryServiceClientPb";
-import { DirectoryLocator, DirectoryDescriptor } from "./proto/directory_pb";
+import {
+  DirectoryLocator,
+  DirectoryDescriptor,
+  Empty,
+} from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
 import { FileDescriptor } from "./proto/file_pb";
 
@@ -18,6 +22,10 @@ enum Error {
 
 enum Flags {
   Directory = 0x04,
+}
+
+enum MetadataKey {
+  MetadataUrlKey = "url",
 }
 
 type RpcMetadata = { [key: string]: string };
@@ -57,6 +65,10 @@ class File {
     this.permissions = file.getPermissionsList().map((p) => p.toObject());
     this.flags = file.getFlags();
   }
+
+  getMetadata(key: MetadataKey): string | undefined {
+    return this.metadata.find((meta) => meta.key == key.toString())?.value;
+  }
 }
 
 class Directory {
@@ -81,13 +93,18 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  getDirectory(path: string, headers: RpcMetadata): Promise<Directory> {
+  getDirectory(
+    path: string,
+    filter: string,
+    headers: RpcMetadata
+  ): Promise<Directory> {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason?: Error) => void
       ) => {
         const request = new DirectoryLocator();
+        request.setFilter(filter);
         request.setPath(path);
 
         this.directoryClient.retrieve(
@@ -105,6 +122,32 @@ class FilebrowserService {
       }
     );
   }
+
+  relocate(path: string, filter: string, headers: RpcMetadata): Promise<void> {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new DirectoryLocator();
+        request.setFilter(filter);
+        request.setPath(path);
+
+        this.directoryClient.relocate(
+          request,
+          headers,
+          (err: grpcWeb.RpcError, data: Empty) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
+
+            resolve();
+          }
+        );
+      }
+    );
+  }
 }
 
 export default FilebrowserService;
@@ -115,5 +158,6 @@ export {
   Response,
   FileMetadata,
   FilePermissions,
+  MetadataKey,
   Flags,
 };
