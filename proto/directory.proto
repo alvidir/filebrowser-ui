@@ -2,16 +2,23 @@ syntax = "proto3";
 option go_package = "github.com/alvidir/filebrowser/proto";
 
 package proto;
+import "proto/file.proto";
 
-message DirectoryLocator {}
+message DirectoryLocator {
+    string path = 1;
+    string filter = 2;
+}
 
 message DirectoryDescriptor {
     string id = 1;
-    map<string, string> files = 2;
+    repeated FileDescriptor files = 2;
 }
+
+message Empty {}
 
 service Directory {
     rpc Create(DirectoryLocator) returns (DirectoryDescriptor);
-    rpc Describe(DirectoryLocator) returns (DirectoryDescriptor);
-    rpc Delete(DirectoryLocator) returns (DirectoryDescriptor);
+    rpc Retrieve(DirectoryLocator) returns (DirectoryDescriptor);
+    rpc Delete(DirectoryLocator) returns (Empty);
+    rpc Relocate(DirectoryLocator) returns (Empty);
 }

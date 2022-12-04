@@ -1,8 +1,88 @@
 import * as grpcWeb from "grpc-web";
 import { DirectoryClient } from "./proto/DirectoryServiceClientPb";
-import { DirectoryLocator, DirectoryDescriptor } from "./proto/directory_pb";
+import {
+  DirectoryLocator,
+  DirectoryDescriptor,
+  Empty,
+} from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
-import { Error, Directory } from "./model";
+import { FileDescriptor } from "./proto/file_pb";
+
+enum Error {
+  ERR_UNKNOWN = "E001",
+  ERR_NOT_FOUND = "E002",
+  ERR_NOT_AVAILABLE = "E003",
+  ERR_UNAUTHORIZED = "E004",
+  ERR_INVALID_TOKEN = "E005",
+  ERR_INVALID_FORMAT = "E006",
+  ERR_INVALID_HEADER = "E007",
+  ERR_WRONG_CREDENTIALS = "E008",
+  ERR_REGEX_NOT_MATCH = "E009",
+}
+
+enum Flags {
+  Directory = 0x04,
+}
+
+enum MetadataKey {
+  MetadataUrlKey = "url",
+}
+
+type RpcMetadata = { [key: string]: string };
+
+type Response = {
+  data?: object;
+  metadata?: FileMetadata[];
+  error?: Error;
+};
+
+interface FileMetadata {
+  key: string;
+  value: string;
+}
+
+interface Permissions {
+  read: boolean;
+  write: boolean;
+  owner: boolean;
+}
+interface FilePermissions {
+  uid: number;
+  permissions?: Permissions;
+}
+
+class File {
+  id: string;
+  name: string;
+  metadata: FileMetadata[];
+  permissions: FilePermissions[];
+  flags: number;
+
+  constructor(file: FileDescriptor) {
+    this.id = file.getId();
+    this.name = file.getName();
+    this.metadata = file.getMetadataList().map((f) => f.toObject());
+    this.permissions = file.getPermissionsList().map((p) => p.toObject());
+    this.flags = file.getFlags();
+  }
+
+  getMetadata(key: MetadataKey): string | undefined {
+    return this.metadata.find((meta) => meta.key == key.toString())?.value;
+  }
+}
+
+class Directory {
+  id: string;
+  files: Array<File>;
+
+  constructor(dir: DirectoryDescriptor) {
+    this.id = dir.getId();
+    this.files = new Array(dir.getFilesList().length);
+    dir.getFilesList().forEach((file) => {
+      this.files.push(new File(file));
+    });
+  }
+}
 
 class FilebrowserService {
   directoryClient: DirectoryClient;
@@ -13,32 +93,71 @@ class FilebrowserService {
     this.fileClient = new FileClient(url, null, null);
   }
 
-  async getDirectory(headers: any = {}): Promise<Directory> {
-    const promise: Promise<Directory> = new Promise((resolve, reject) => {
-      const handler = (
-        err: grpcWeb.RpcError,
-        response: DirectoryDescriptor
-      ): void => {
-        if (err.code !== grpcWeb.StatusCode.OK) {
-          reject(err.message as Error);
-          return;
-        }
+  getDirectory(
+    path: string,
+    filter: string,
+    headers: RpcMetadata
+  ): Promise<Directory> {
+    return new Promise(
+      (
+        resolve: (value: Directory | PromiseLike<Directory>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new DirectoryLocator();
+        request.setFilter(filter);
+        request.setPath(path);
 
-        const directory = new Directory(
-          response.getId(),
-          response.getFilesMap()
+        this.directoryClient.retrieve(
+          request,
+          headers,
+          (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
+
+            resolve(new Directory(data));
+          }
         );
+      }
+    );
+  }
 
-        resolve(directory);
-      };
+  relocate(path: string, filter: string, headers: RpcMetadata): Promise<void> {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new DirectoryLocator();
+        request.setFilter(filter);
+        request.setPath(path);
 
-      const request = new DirectoryLocator();
-      this.directoryClient.describe(request, headers, handler);
-    });
+        this.directoryClient.relocate(
+          request,
+          headers,
+          (err: grpcWeb.RpcError, data: Empty) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
 
-    return promise;
+            resolve();
+          }
+        );
+      }
+    );
   }
 }
 
 export default FilebrowserService;
-export { Error };
+export {
+  Error,
+  Directory,
+  File,
+  Response,
+  FileMetadata,
+  FilePermissions,
+  MetadataKey,
+  Flags,
+};
