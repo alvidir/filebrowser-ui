@@ -52,7 +52,6 @@ import DirList, { File } from "@/components/DirList.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
-import * as cookies from "@/cookies";
 import { FieldController } from "vue-fields/src/main";
 
 const filebrowserService = new Filebrowser(
