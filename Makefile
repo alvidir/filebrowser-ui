@@ -23,6 +23,14 @@ proto: install
 build:
 	podman build --no-cache --security-opt label=disable -t alvidir/filebrowser-ui:latest -f ./container/filebrowser-ui/containerfile .
 
+
+deploy:
+	podman run -p 8080:80 --name filebrowser-ui --env-file .env alvidir/filebrowser-ui:latest
+
+undeploy:
+	podman stop filebrowser-ui
+	podman rm -f filebrowser-ui
+
 clean:
 	rm -rf bin
 

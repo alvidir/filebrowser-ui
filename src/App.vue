@@ -50,13 +50,12 @@ import { defineComponent } from "vue";
 import Filebrowser, { Flags, Error } from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
 import NewFolder from "@/components/NewFolder.vue";
+import Config from "@/config.json";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import { FieldController } from "vue-fields/src/main";
 
-const filebrowserService = new Filebrowser(
-  process.env.VUE_APP_FILEBROWSER_URI ?? "http://localhost:8080"
-);
+const filebrowserService = new Filebrowser(Config.FILEBROWSER_URI);
 
 const NEW_PROJECT = "New project";
 const NEW_FILE = "New file";
@@ -168,7 +167,7 @@ export default defineComponent({
     },
 
     onSwtichThemeClick() {
-      SwitchTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+      SwitchTheme(Config.THEME_STORAGE_KEY);
     },
 
     onSearchInput(ctrl: FieldController) {
@@ -301,7 +300,7 @@ export default defineComponent({
   },
 
   mounted() {
-    GetTheme(process.env.VUE_APP_THEME_STORAGE_KEY);
+    GetTheme(Config.THEME_STORAGE_KEY);
     window.onpopstate = () => {
       this.path = window.location.pathname ?? ROOT_PATH;
     };
