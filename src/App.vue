@@ -104,7 +104,7 @@ export default defineComponent({
       const target = this.path;
       const normalized = this.normalizePath(target);
 
-      if (!this.dirs[normalized]) {
+      if (this.dirs[normalized] === undefined) {
         this.onChangeDirectory(normalized);
       }
 
