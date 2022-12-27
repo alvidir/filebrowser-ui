@@ -18,14 +18,13 @@
           </div>
         </search-field>
         <span id="action-buttons">
-          <submit-button
+          <new-project
             class="action"
-            color="var(--color-accent)"
-            @click="onSwtichThemeClick()"
+            :path="path"
+            :apps="apps"
+            @submit="onNewProject"
           >
-            <i class="bx bxs-bulb"></i>
-            {{ NEW_PROJECT }}
-          </submit-button>
+          </new-project>
           <new-folder
             class="action"
             :path="path"
@@ -47,45 +46,60 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import Filebrowser, { Flags, Error } from "@/filebrowser.service";
+import Filebrowser, {
+  Flags,
+  Error,
+  FileMetadata,
+  MetadataKey,
+} from "@/filebrowser.service";
 import DirList, { File } from "@/components/DirList.vue";
+import NewProject, { App } from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import Config from "@/config.json";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import { FieldController } from "vue-fields/src/main";
+import Apps from "@/assets/applications.json";
 
 const filebrowserService = new Filebrowser(Config.FILEBROWSER_URI);
 
-const NEW_PROJECT = "New project";
-const NEW_FILE = "New file";
 const ROOT_PATH = constants.PATH_SEPARATOR;
 const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
-const METADATA_UPDATED_AT_KEY = "updated_at";
 const SEARCH_DEBOUNCE = 300;
+const DEFAULT_PROJECT_NAME = "Untitled project";
 
 export default defineComponent({
   name: "App",
   components: {
     DirList,
+    NewProject,
     NewFolder,
   },
 
   setup() {
     return {
-      NEW_PROJECT,
-      NEW_FILE,
       SEARCH_DEBOUNCE,
       SwitchTheme,
     };
   },
 
   data() {
+    const apps = Apps.map((value) => {
+      return {
+        id: value.id,
+        title: value.title,
+        icon: value.icon,
+        url: value.url,
+        fetching: false,
+      };
+    });
+
     return {
       warning: undefined as constants.WarningProps | undefined,
       path: window.location.pathname ?? ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
       search: [] as File[],
+      apps: apps as App[],
       fetching: 0,
     };
   },
@@ -133,6 +147,11 @@ export default defineComponent({
   },
 
   methods: {
+    dateFromUnix(unix: string | undefined): Date {
+      if (!unix) unix = "0";
+      return new Date(parseInt(unix, 16) * 1000);
+    },
+
     insertParentDirectory(path: string, files: File[]) {
       if (path == constants.PATH_SEPARATOR) return;
 
@@ -236,23 +255,17 @@ export default defineComponent({
       this.fetching += 1;
 
       filebrowserService
-        .getDirectory(path, filter, {})
+        .getDirectory(path, filter, this.getBaseHeaders())
         .then((dir) => {
           const files = Object.values(dir.files).map((file) => {
             const f: File = {
               id: file.id,
               name: file.name,
               isDir: (file.flags & Flags.Directory) != 0,
-              updatedAt: new Date(),
+              updatedAt: this.dateFromUnix(
+                file.getMetadata(MetadataKey.UpdatedAt)
+              ),
             };
-
-            const updatedAt = file.metadata.find(
-              (meta) => meta.key == METADATA_UPDATED_AT_KEY
-            )?.value;
-
-            if (updatedAt) {
-              f.updatedAt?.setTime(parseInt(updatedAt));
-            }
 
             return f;
           });
@@ -275,14 +288,16 @@ export default defineComponent({
 
       const filter = `^${components
         .slice(0, -1)
-        .join(constants.PATH_SEPARATOR)}/(${
-        components[components.length - 1]
-      }.*)$`;
+        .join(constants.PATH_SEPARATOR)
+        .replaceAll("(", "\\(")
+        .replaceAll(")", "\\)")}/(${components[components.length - 1]
+        .replaceAll("(", "\\(")
+        .replaceAll(")", "\\)")}(/.*)?)$`;
 
       const path = this.normalizePath(this.path);
 
       filebrowserService
-        .relocate(target, filter, {})
+        .relocate(target, filter, this.getBaseHeaders())
         .then(() => {
           delete this.dirs[target];
           this.pullDirectoryFiles(path, "", (files) => {
@@ -296,6 +311,59 @@ export default defineComponent({
         .finally(() => {
           this.fetching -= 1;
         });
+    },
+
+    onNewProject(app: App) {
+      app.fetching = true;
+
+      const normalized = this.normalizePath(this.path);
+      const target = this.normalizePath(
+        [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
+      );
+
+      const headers = this.getBaseHeaders();
+      const metadata: FileMetadata[] = [
+        {
+          key: MetadataKey.AppId,
+          value: app.id,
+        },
+      ];
+
+      filebrowserService
+        .createEmptyFile(target, metadata, headers)
+        .then((file) => {
+          const targetUrl = `${app.url}/${file.id}`;
+          window.open(targetUrl, "_blank")?.focus();
+
+          const newFile: File = {
+            id: file.id,
+            name: file.name,
+            isDir: false,
+            updatedAt: this.dateFromUnix(
+              file.getMetadata(MetadataKey.UpdatedAt)
+            ),
+            new: true,
+          };
+
+          this.dirs[normalized] = this.dirFiles.concat(newFile);
+        })
+        .catch((error) => {
+          this.onResponseError(error);
+        })
+        .finally(() => {
+          app.fetching = false;
+        });
+    },
+
+    // getBaseHeaders returns a dictionary with some default values
+    // when running in development mode
+    getBaseHeaders(): { [key: string]: string } {
+      const headers: { [key: string]: string } = {};
+      if (process.env.NODE_ENV === "development") {
+        headers["X-Uid"] = "1";
+      }
+
+      return headers;
     },
   },
 

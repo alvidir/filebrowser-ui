@@ -29,16 +29,24 @@
           @dragstart="onDragStart(file)"
           @dragenter="onDragEnter(file)"
           @dragexit="onDragExit(file, $event)"
+          @mouseup.right="onRightClick(file)"
+          @contextmenu.prevent
           v-bind="file"
         />
       </table>
     </div>
+    <right-click-menu
+      :active="menu.active"
+      :options="RIGHT_MENU_OPTIONS"
+      v-click-outside="closeMenu"
+    ></right-click-menu>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
+import RightClickMenu, { Option } from "@/components/RightClickMenu.vue";
 import * as constants from "@/constants";
 
 export interface File {
@@ -66,7 +74,7 @@ export const RELOCATE_EVENT_NAME = "relocate";
 export default defineComponent({
   name: "DirList",
   events: [CHANGEDIR_EVENT_NAME, OPENFILE_EVENT_NAME, RELOCATE_EVENT_NAME],
-  components: { DirListRow },
+  components: { DirListRow, RightClickMenu },
   props: {
     files: {
       type: Object as PropType<Array<File>>,
@@ -87,8 +95,24 @@ export default defineComponent({
   },
 
   setup() {
+    const RIGHT_MENU_OPTIONS: Option[] = [
+      {
+        id: "delete",
+        title: "delete",
+      },
+    ];
+
     return {
       NOTHING_TO_DISPLAY,
+      RIGHT_MENU_OPTIONS,
+    };
+  },
+
+  data() {
+    return {
+      menu: {
+        active: false,
+      },
     };
   },
 
@@ -211,6 +235,14 @@ export default defineComponent({
 
     isDraggable(file: File): boolean {
       return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
+    },
+
+    onRightClick(file: File) {
+      this.menu.active = !this.menu.active;
+    },
+
+    closeMenu() {
+      this.menu.active = false;
     },
   },
 });

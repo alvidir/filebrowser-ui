@@ -1,6 +1,9 @@
 <template>
   <tr
-    :class="{ 'drag-target': isDragTarget, 'parent-dir': isParentDir }"
+    :class="{
+      'drag-target': isDragTarget,
+      'parent-dir': isParentDir,
+    }"
     @click="isParentDir && onClick()"
   >
     <td class="filename">
@@ -183,7 +186,7 @@ tr {
     animation-timing-function: ease-in;
   }
 
-  &:hover td:not(.empty) {
+  &:not(.focused):hover td:not(.empty) {
     background: var(--color-button);
   }
 }

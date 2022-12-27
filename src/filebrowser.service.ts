@@ -6,7 +6,11 @@ import {
   Empty,
 } from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
-import { FileDescriptor } from "./proto/file_pb";
+import {
+  FileConstructor,
+  FileDescriptor,
+  FileMetadata as ProtoFileMetadata,
+} from "./proto/file_pb";
 
 enum Error {
   ERR_UNKNOWN = "E001",
@@ -25,7 +29,9 @@ enum Flags {
 }
 
 enum MetadataKey {
-  MetadataUrlKey = "url",
+  Url = "url",
+  UpdatedAt = "updated_at",
+  AppId = "app_id",
 }
 
 type RpcMetadata = { [key: string]: string };
@@ -103,9 +109,7 @@ class FilebrowserService {
         resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason?: Error) => void
       ) => {
-        const request = new DirectoryLocator();
-        request.setFilter(filter);
-        request.setPath(path);
+        const request = new DirectoryLocator().setFilter(filter).setPath(path);
 
         this.directoryClient.retrieve(
           request,
@@ -129,9 +133,7 @@ class FilebrowserService {
         resolve: (value: void | PromiseLike<void>) => void,
         reject: (reason?: Error) => void
       ) => {
-        const request = new DirectoryLocator();
-        request.setFilter(filter);
-        request.setPath(path);
+        const request = new DirectoryLocator().setFilter(filter).setPath(path);
 
         this.directoryClient.relocate(
           request,
@@ -143,6 +145,41 @@ class FilebrowserService {
             }
 
             resolve();
+          }
+        );
+      }
+    );
+  }
+
+  createEmptyFile(
+    path: string,
+    metadata: FileMetadata[],
+    headers: RpcMetadata
+  ): Promise<File> {
+    return new Promise(
+      (
+        resolve: (value: File | PromiseLike<File>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new FileConstructor().setPath(path).setMetadataList(
+          metadata.map((meta) => {
+            return new ProtoFileMetadata()
+              .setKey(meta.key)
+              .setValue(meta.value);
+          })
+        );
+
+        this.fileClient.create(
+          request,
+          headers,
+          (err: grpcWeb.RpcError, data: FileDescriptor) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
+
+            console.log(data);
+            resolve(new File(data));
           }
         );
       }

@@ -1,0 +1,173 @@
+<template>
+  <div class="new-project-dialog" v-click-outside="close">
+    <submit-button color="var(--color-accent)" @click="open">
+      <i class="bx bxs-bulb"></i>
+      {{ NEW_PROJECT }}
+    </submit-button>
+    <regular-card :class="{ active: active }" @close="close" closable>
+      <template #header>
+        <span class="card-title">
+          <i class="bx bxs-bulb"></i>&nbsp; Start building your new project
+        </span>
+        <small>
+          It will be created at
+          <a href="#">{{ directory }}</a>
+        </small>
+      </template>
+      <div class="menu">
+        <submit-button
+          v-for="app in apps"
+          :key="app.id"
+          class="app"
+          color="var(--color-button)"
+          :loading="app.fetching"
+          @submit="submit(app)"
+        >
+          <img :src="getImgUrl(app.icon)" :alt="app.title" />
+          <small>{{ app.title }}</small>
+        </submit-button>
+      </div>
+    </regular-card>
+  </div>
+</template>
+
+<script lang="ts">
+import { defineComponent, PropType } from "vue";
+import * as constants from "@/constants";
+
+export const SUBMIT_EVENT_NAME = "submit";
+
+const NEW_PROJECT = "New project";
+
+export interface App {
+  id: string;
+  title: string;
+  icon: string;
+  url: string;
+  fetching: boolean;
+}
+
+export default defineComponent({
+  name: "NewFolder",
+  events: [SUBMIT_EVENT_NAME],
+  props: {
+    path: {
+      type: String,
+      required: true,
+    },
+    apps: {
+      type: Object as PropType<App[]>,
+      required: true,
+    },
+  },
+
+  setup() {
+    return {
+      NEW_PROJECT,
+    };
+  },
+
+  data() {
+    return {
+      active: false,
+    };
+  },
+
+  computed: {
+    directory(): string {
+      const dirs = this.path.split(constants.PATH_SEPARATOR);
+      return `/${dirs[dirs.length - 1]}`;
+    },
+  },
+
+  methods: {
+    open() {
+      this.active = true;
+    },
+
+    close() {
+      if (!this.active) return;
+      this.active = false;
+    },
+
+    getImgUrl(src: string): string {
+      return require("@/assets/" + src);
+    },
+
+    submit(app: App) {
+      this.$emit(SUBMIT_EVENT_NAME, app);
+    },
+  },
+});
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+@import "fibonacci-styles";
+
+.new-project-dialog {
+  position: relative;
+
+  .card-title {
+    color: var(--color-accent);
+  }
+
+  .menu {
+    display: grid;
+    position: relative;
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: $fib-6 * 1px;
+  }
+
+  button.submit.app {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    aspect-ratio: 1/1;
+    width: 100%;
+    height: auto;
+
+    &:hover {
+      border: 1px solid var(--color-border) !important;
+    }
+
+    &:focus,
+    &.off {
+      border: 1px solid var(--color-border-active) !important;
+    }
+
+    img {
+      height: $fib-8 * 1px;
+    }
+
+    small {
+      margin-top: $fib-6 * 1px;
+    }
+  }
+
+  .regular-card {
+    @extend .shadow-box;
+
+    position: absolute;
+    margin-top: $fib-5 * 1px;
+    min-width: $fib-13 * 1px;
+    visibility: hidden;
+
+    border-color: var(--color-accent);
+
+    &.active {
+      visibility: visible;
+    }
+
+    a {
+      &:not(:hover) {
+        color: var(--color-text-secondary);
+      }
+    }
+
+    i {
+      color: var(--color-text-secondary);
+    }
+  }
+}
+</style>
