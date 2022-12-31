@@ -16,6 +16,7 @@
     "vue-cards": "github:alvidir/vue-cards",
     "vue-dock": "github:alvidir/vue-dock",
     "vue-fields": "github:alvidir/vue-fields",
+    "vue-directives": "github:alvidir/vue-directives",
     "vue-spinner": "^1.0.4"
   },
   "devDependencies": {
