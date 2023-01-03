@@ -14,7 +14,7 @@
           <a href="#">{{ directory }}</a>
         </small>
       </template>
-      <div class="menu">
+      <div class="apps">
         <submit-button
           v-for="app in apps"
           :key="app.id"
@@ -112,7 +112,7 @@ export default defineComponent({
     color: var(--color-accent);
   }
 
-  .menu {
+  .apps {
     display: grid;
     position: relative;
     grid-template-columns: repeat(3, 1fr);

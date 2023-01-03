@@ -1,10 +1,6 @@
 import * as grpcWeb from "grpc-web";
 import { DirectoryClient } from "./proto/DirectoryServiceClientPb";
-import {
-  DirectoryLocator,
-  DirectoryDescriptor,
-  Empty,
-} from "./proto/directory_pb";
+import { DirectoryLocator, DirectoryDescriptor } from "./proto/directory_pb";
 import { FileClient } from "./proto/FileServiceClientPb";
 import {
   FileConstructor,
@@ -138,7 +134,7 @@ class FilebrowserService {
         this.directoryClient.relocate(
           request,
           headers,
-          (err: grpcWeb.RpcError, data: Empty) => {
+          (err: grpcWeb.RpcError) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(err.message as Error);
               return;

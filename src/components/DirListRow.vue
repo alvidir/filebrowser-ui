@@ -1,7 +1,7 @@
 <template>
   <tr
     :class="{
-      'drag-target': isDragTarget,
+      'drag-target': isTarget,
       'parent-dir': isParentDir,
     }"
     @click="isParentDir && onClick()"
@@ -59,7 +59,7 @@ export default defineComponent({
     tags: Object as PropType<Array<string>>,
     size: Object as PropType<Size>,
     updatedAt: Date,
-    isDragTarget: Boolean,
+    isTarget: Boolean,
   },
 
   computed: {

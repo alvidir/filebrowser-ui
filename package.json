@@ -14,8 +14,8 @@
     "vue": "^3.2.37",
     "vue-buttons": "github:alvidir/vue-buttons",
     "vue-cards": "github:alvidir/vue-cards",
-    "vue-dock": "github:alvidir/vue-dock",
     "vue-fields": "github:alvidir/vue-fields",
+    "vue-menus": "github:alvidir/vue-menus",
     "vue-directives": "github:alvidir/vue-directives",
     "vue-spinner": "^1.0.4"
   },

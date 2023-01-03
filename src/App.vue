@@ -159,7 +159,7 @@ export default defineComponent({
         id: "",
         name: constants.PARENT_DIRECTORY,
         isDir: true,
-        isDragSource: false,
+        isSource: false,
       });
     },
 

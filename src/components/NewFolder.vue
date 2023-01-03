@@ -93,7 +93,6 @@ export default defineComponent({
     },
 
     onFolderNameInput(ctrl: FieldController) {
-      const separator = constants.PATH_SEPARATOR;
       const name = this.normalizeName(ctrl.value());
       this.error = "";
 

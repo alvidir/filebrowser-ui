@@ -35,18 +35,16 @@
         />
       </table>
     </div>
-    <right-click-menu
-      :active="menu.active"
-      :options="RIGHT_MENU_OPTIONS"
-      v-click-outside="closeMenu"
-    ></right-click-menu>
+    <context-menu :toggle="menu.toggle" @close="clearTarget">
+      <button>Open</button>
+      <button class="danger">Remove</button>
+    </context-menu>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
-import RightClickMenu, { Option } from "@/components/RightClickMenu.vue";
 import * as constants from "@/constants";
 
 export interface File {
@@ -61,8 +59,8 @@ export interface File {
   };
   tags?: string[];
 
-  isDragSource?: boolean;
-  isDragTarget?: boolean;
+  isSource?: boolean;
+  isTarget?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
@@ -74,7 +72,7 @@ export const RELOCATE_EVENT_NAME = "relocate";
 export default defineComponent({
   name: "DirList",
   events: [CHANGEDIR_EVENT_NAME, OPENFILE_EVENT_NAME, RELOCATE_EVENT_NAME],
-  components: { DirListRow, RightClickMenu },
+  components: { DirListRow },
   props: {
     files: {
       type: Object as PropType<Array<File>>,
@@ -95,23 +93,16 @@ export default defineComponent({
   },
 
   setup() {
-    const RIGHT_MENU_OPTIONS: Option[] = [
-      {
-        id: "delete",
-        title: "delete",
-      },
-    ];
-
     return {
       NOTHING_TO_DISPLAY,
-      RIGHT_MENU_OPTIONS,
     };
   },
 
   data() {
     return {
       menu: {
-        active: false,
+        toggle: false,
+        context: undefined as File | undefined,
       },
     };
   },
@@ -162,29 +153,34 @@ export default defineComponent({
   },
 
   methods: {
+    clearTarget() {
+      this.files.forEach((file) => (file.isTarget = false));
+    },
+
     onDragStart(file: File) {
-      file.isDragSource = true;
+      this.clearTarget();
+      file.isSource = true;
     },
 
     onDragExit(file: File, e: any) {
-      if (e.buttons && !file.isDragSource) {
-        file.isDragTarget = false;
+      if (e.buttons && !file.isSource) {
+        file.isTarget = false;
       }
     },
 
     onDragEnter(file: File) {
-      if (file.isDragSource || !file.isDir) return;
-      file.isDragTarget = true;
+      if (file.isSource || !file.isDir) return;
+      file.isTarget = true;
     },
 
     onDragEnd() {
       // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.isDragSource);
-      const targetFile = this.files?.find((file) => file.isDragTarget);
+      const sourceFile = this.files?.find((file) => file.isSource);
+      const targetFile = this.files?.find((file) => file.isTarget);
 
       this.files?.map((file) => {
-        file.isDragSource = false;
-        file.isDragTarget = false;
+        file.isSource = false;
+        file.isTarget = false;
       });
 
       if (!sourceFile || !targetFile) return;
@@ -238,11 +234,10 @@ export default defineComponent({
     },
 
     onRightClick(file: File) {
-      this.menu.active = !this.menu.active;
-    },
+      if (file.name == constants.PARENT_DIRECTORY) return;
 
-    closeMenu() {
-      this.menu.active = false;
+      this.menu.toggle = !this.menu.toggle;
+      file.isTarget = true;
     },
   },
 });
