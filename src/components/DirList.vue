@@ -35,7 +35,7 @@
         />
       </table>
     </div>
-    <context-menu :toggle="menu.toggle" @close="clearTarget">
+    <context-menu :active="menu.active" @close="onContextClose">
       <button>Open</button>
       <button class="danger">Remove</button>
     </context-menu>
@@ -101,7 +101,7 @@ export default defineComponent({
   data() {
     return {
       menu: {
-        toggle: false,
+        active: false,
         context: undefined as File | undefined,
       },
     };
@@ -162,6 +162,7 @@ export default defineComponent({
       file.isSource = true;
     },
 
+    // eslint-disable-next-line
     onDragExit(file: File, e: any) {
       if (e.buttons && !file.isSource) {
         file.isTarget = false;
@@ -236,8 +237,13 @@ export default defineComponent({
     onRightClick(file: File) {
       if (file.name == constants.PARENT_DIRECTORY) return;
 
-      this.menu.toggle = !this.menu.toggle;
+      this.menu.active = true;
       file.isTarget = true;
+    },
+
+    onContextClose() {
+      this.menu.active = false;
+      this.clearTarget();
     },
   },
 });

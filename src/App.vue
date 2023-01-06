@@ -267,6 +267,18 @@ export default defineComponent({
               ),
             };
 
+            if ((file.flags & Flags.Directory) != 0) {
+              const size = file.metadata.find(
+                (meta) => meta.key == MetadataKey.Size
+              )?.value;
+
+              if (size) {
+                const value = parseInt(size);
+                const unit = value > 1 ? "files" : "file";
+                f.size = { value, unit };
+              }
+            }
+
             return f;
           });
 

@@ -21,7 +21,7 @@
         </file-flag>
       </div>
     </td>
-    <td>
+    <td class="file-size">
       <span v-if="size"> {{ size.value }} {{ size.unit }} </span>
       <span v-else>&nbsp;</span>
     </td>
@@ -156,10 +156,18 @@ export default defineComponent({
   }
 }
 
-.elapsed-time {
-  min-width: 25%;
+.elapsed-time,
+.file-size {
   text-align: right;
   white-space: nowrap;
+}
+
+.elapsed-time {
+  min-width: 20%;
+}
+
+.file-size {
+  min-width: 10%;
 }
 
 .tags-list {

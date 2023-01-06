@@ -28,6 +28,7 @@ enum MetadataKey {
   Url = "url",
   UpdatedAt = "updated_at",
   AppId = "app_id",
+  Size = "size",
 }
 
 type RpcMetadata = { [key: string]: string };
