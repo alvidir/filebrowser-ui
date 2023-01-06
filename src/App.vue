@@ -38,9 +38,20 @@
         :path="path"
         @openfile="onOpenfile"
         @changedir="onChangeDirectory"
-        @relocate="relocate"
+        @relocate="onRelocate"
+        @delete="onDelete"
       />
     </div>
+    <action-dialog
+      v-if="dialog"
+      :path="dialog.path"
+      :action="dialog.action"
+      :context="dialog.context"
+      :active="!!dialog.context"
+      @submit="onCloseDialog(true)"
+      @cancel="onCloseDialog(false)"
+    >
+    </action-dialog>
   </div>
 </template>
 
@@ -55,16 +66,16 @@ import Filebrowser, {
 import DirList, { File } from "@/components/DirList.vue";
 import NewProject, { App } from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
+import ActionDialog from "@/components/ActionDialog.vue";
 import Config from "@/config.json";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import { FieldController } from "vue-fields/src/main";
-import Apps from "@/assets/applications.json";
+import { normalizePath } from "./utils";
 
 const filebrowserService = new Filebrowser(Config.FILEBROWSER_URI);
 
 const ROOT_PATH = constants.PATH_SEPARATOR;
-const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 const SEARCH_DEBOUNCE = 300;
 const DEFAULT_PROJECT_NAME = "Untitled project";
 
@@ -74,6 +85,7 @@ export default defineComponent({
     DirList,
     NewProject,
     NewFolder,
+    ActionDialog,
   },
 
   setup() {
@@ -84,23 +96,19 @@ export default defineComponent({
   },
 
   data() {
-    const apps = Apps.map((value) => {
-      return {
-        id: value.id,
-        title: value.title,
-        icon: value.icon,
-        url: value.url,
-        fetching: false,
-      };
-    });
-
     return {
       warning: undefined as constants.WarningProps | undefined,
       path: window.location.pathname ?? ROOT_PATH,
       dirs: {} as { [dir: string]: File[] },
       search: [] as File[],
-      apps: apps as App[],
       fetching: 0,
+      dialog: undefined as
+        | {
+            context: File;
+            action: string;
+            path: string;
+          }
+        | undefined,
     };
   },
 
@@ -116,7 +124,7 @@ export default defineComponent({
   computed: {
     dirFiles(): File[] {
       const target = this.path;
-      const normalized = this.normalizePath(target);
+      const normalized = normalizePath(target);
 
       if (this.dirs[normalized] === undefined) {
         this.onChangeDirectory(normalized);
@@ -144,6 +152,18 @@ export default defineComponent({
 
       return this.dirFiles.filter(filterFn).sort(sortFn);
     },
+
+    apps(): App[] {
+      return Object.values(constants.APPS_PROPS).map((value) => {
+        return {
+          id: value.id,
+          title: value.title,
+          icon: value.icon,
+          url: value.url,
+          fetching: false,
+        };
+      });
+    },
   },
 
   methods: {
@@ -164,7 +184,7 @@ export default defineComponent({
     },
 
     createNewFolder(name: string) {
-      const normalized = this.normalizePath(this.path);
+      const normalized = normalizePath(this.path);
       const newFolder: File = {
         id: "",
         name: name,
@@ -205,20 +225,44 @@ export default defineComponent({
       if (file.isDir) return;
     },
 
+    onDelete(target: string, source: File) {
+      target = normalizePath(target);
+
+      this.dialog = {
+        action: "delete",
+        context: source,
+        path: target,
+      };
+    },
+
+    onCloseDialog(submit: boolean) {
+      if (submit && this.dialog) {
+        const target = this.dialog.path;
+        const file = this.dialog.context;
+        const actions: { [key: string]: () => void } = {
+          delete: () => this.onRemoveFile(target, file),
+        };
+
+        actions[this.dialog.action]();
+      }
+
+      this.dialog = undefined;
+    },
+
     onChangeDirectory(path: string) {
       // avoid highlighting new items each time they are displayed
       this.dirFiles?.forEach((file) => (file.new = false));
 
-      const normalized = this.normalizePath(path);
-      if (normalized in this.dirs) {
-        this.path = normalized;
+      path = normalizePath(path);
+      if (path in this.dirs) {
+        this.path = path;
         return;
       }
 
-      this.pullDirectoryFiles(normalized, "", (files) => {
-        this.insertParentDirectory(normalized, files);
-        this.dirs[normalized] = files;
-        this.path = normalized;
+      this.pullDirectoryFiles(path, "", (files) => {
+        this.insertParentDirectory(path, files);
+        this.dirs[path] = files;
+        this.path = path;
       });
     },
 
@@ -228,19 +272,6 @@ export default defineComponent({
 
       this.warning = constants.WARNING_PROPS[Error.ERR_UNKNOWN];
       if (this.warning) this.warning.text = error;
-    },
-
-    normalizePath(path: string): string {
-      let normalized = path.replace(
-        PATH_REPLACE_REGEX,
-        constants.PATH_SEPARATOR
-      );
-
-      if (normalized[0] != constants.PATH_SEPARATOR) {
-        normalized = constants.PATH_SEPARATOR.concat(normalized);
-      }
-
-      return normalized;
     },
 
     quitWarning() {
@@ -290,13 +321,11 @@ export default defineComponent({
         });
     },
 
-    relocate(source: string, target: string) {
+    onRelocate(source: string, target: string) {
       this.fetching += 1;
 
-      target = this.normalizePath(target);
-      const components = this.normalizePath(source).split(
-        constants.PATH_SEPARATOR
-      );
+      target = normalizePath(target);
+      const components = normalizePath(source).split(constants.PATH_SEPARATOR);
 
       const filter = `^${components
         .slice(0, -1)
@@ -306,7 +335,7 @@ export default defineComponent({
         .replaceAll("(", "\\(")
         .replaceAll(")", "\\)")}(/.*)?)$`;
 
-      const path = this.normalizePath(this.path);
+      const path = normalizePath(this.path);
 
       filebrowserService
         .relocate(target, filter, this.getBaseHeaders())
@@ -328,8 +357,8 @@ export default defineComponent({
     onNewProject(app: App) {
       app.fetching = true;
 
-      const normalized = this.normalizePath(this.path);
-      const target = this.normalizePath(
+      const normalized = normalizePath(this.path);
+      const target = normalizePath(
         [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
       );
 
@@ -364,6 +393,31 @@ export default defineComponent({
         })
         .finally(() => {
           app.fetching = false;
+        });
+    },
+
+    onRemoveFile(target: string, file: File) {
+      this.fetching += 1;
+
+      const dirFiles = this.dirFiles;
+      const headers = this.getBaseHeaders();
+      let request: Promise<void>;
+      if (file.isDir) {
+        request = filebrowserService.removeDirectory(target, headers);
+      } else {
+        request = filebrowserService.removeFile(file.id, headers);
+      }
+
+      target = normalizePath(target);
+      request
+        .then(() => {
+          dirFiles.splice(dirFiles.indexOf(file), 1);
+        })
+        .catch((error) => {
+          this.onResponseError(error);
+        })
+        .finally(() => {
+          this.fetching -= 1;
         });
     },
 

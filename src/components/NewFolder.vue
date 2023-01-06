@@ -1,5 +1,9 @@
 <template>
-  <div class="new-folder-dialog" @close="close" @keydown.enter="submit">
+  <div
+    class="new-folder-dialog"
+    v-click-outside="close"
+    @keydown.enter="submit"
+  >
     <regular-button :active="active" @click="open">
       <i class="bx bxs-folder-plus"></i>
       {{ NEW_FOLDER }}

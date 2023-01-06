@@ -1,5 +1,5 @@
 <template>
-  <div class="new-project-dialog" @close="close">
+  <div class="new-project-dialog" v-click-outside="close">
     <submit-button color="var(--color-accent)" @click="open">
       <i class="bx bxs-bulb"></i>
       {{ NEW_PROJECT }}

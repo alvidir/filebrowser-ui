@@ -35,9 +35,11 @@
         />
       </table>
     </div>
-    <context-menu :active="menu.active" @close="onContextClose">
-      <button>Open</button>
-      <button class="danger">Remove</button>
+    <context-menu :active="!!menu.context" @close="onMenuClose">
+      <button @click="onMenuOptionClick('open')">Open</button>
+      <button class="danger" @click="onMenuOptionClick('delete')">
+        Remove
+      </button>
     </context-menu>
   </div>
 </template>
@@ -45,6 +47,7 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
+import { normalizePath } from "@/utils";
 import * as constants from "@/constants";
 
 export interface File {
@@ -68,10 +71,16 @@ const NOTHING_TO_DISPLAY = "Nothing to display";
 export const CHANGEDIR_EVENT_NAME = "changedir";
 export const OPENFILE_EVENT_NAME = "openfile";
 export const RELOCATE_EVENT_NAME = "relocate";
+export const DELETE_EVENT_NAME = "delete";
 
 export default defineComponent({
   name: "DirList",
-  events: [CHANGEDIR_EVENT_NAME, OPENFILE_EVENT_NAME, RELOCATE_EVENT_NAME],
+  events: [
+    CHANGEDIR_EVENT_NAME,
+    OPENFILE_EVENT_NAME,
+    RELOCATE_EVENT_NAME,
+    DELETE_EVENT_NAME,
+  ],
   components: { DirListRow },
   props: {
     files: {
@@ -101,7 +110,6 @@ export default defineComponent({
   data() {
     return {
       menu: {
-        active: false,
         context: undefined as File | undefined,
       },
     };
@@ -153,12 +161,8 @@ export default defineComponent({
   },
 
   methods: {
-    clearTarget() {
-      this.files.forEach((file) => (file.isTarget = false));
-    },
-
     onDragStart(file: File) {
-      this.clearTarget();
+      this.files.forEach((file) => (file.isTarget = false));
       file.isSource = true;
     },
 
@@ -218,6 +222,22 @@ export default defineComponent({
       this.$emit(CHANGEDIR_EVENT_NAME, target);
     },
 
+    onMenuOptionClick(action: string) {
+      let target = normalizePath(
+        [this.absolutePath, this.menu.context?.name].join(
+          constants.PATH_SEPARATOR
+        )
+      );
+
+      const actions: { [key: string]: () => void } = {
+        delete: () => this.$emit(action, target, this.menu.context),
+        open: () => this.menu.context && this.onOpenClick(this.menu.context),
+      };
+
+      actions[action]();
+      this.onMenuClose();
+    },
+
     onDirectoryClick(index: number) {
       let hidden = 0;
       if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
@@ -237,13 +257,13 @@ export default defineComponent({
     onRightClick(file: File) {
       if (file.name == constants.PARENT_DIRECTORY) return;
 
-      this.menu.active = true;
-      file.isTarget = true;
+      this.menu.context = file;
+      this.menu.context.isTarget = true;
     },
 
-    onContextClose() {
-      this.menu.active = false;
-      this.clearTarget();
+    onMenuClose() {
+      if (this.menu.context) this.menu.context.isTarget = false;
+      this.menu.context = undefined;
     },
   },
 });

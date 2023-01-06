@@ -5,6 +5,7 @@ import { FileClient } from "./proto/FileServiceClientPb";
 import {
   FileConstructor,
   FileDescriptor,
+  FileLocator,
   FileMetadata as ProtoFileMetadata,
 } from "./proto/file_pb";
 
@@ -133,6 +134,50 @@ class FilebrowserService {
         const request = new DirectoryLocator().setFilter(filter).setPath(path);
 
         this.directoryClient.relocate(
+          request,
+          headers,
+          (err: grpcWeb.RpcError) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(err.message as Error);
+              return;
+            }
+
+            resolve();
+          }
+        );
+      }
+    );
+  }
+
+  removeFile(fileId: string, headers: RpcMetadata): Promise<void> {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new FileLocator().setTarget(fileId);
+
+        this.fileClient.delete(request, headers, (err: grpcWeb.RpcError) => {
+          if (err && err.code !== grpcWeb.StatusCode.OK) {
+            reject(err.message as Error);
+            return;
+          }
+
+          resolve();
+        });
+      }
+    );
+  }
+
+  removeDirectory(target: string, headers: RpcMetadata): Promise<void> {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Error) => void
+      ) => {
+        const request = new DirectoryLocator().setPath(target);
+
+        this.directoryClient.removeFiles(
           request,
           headers,
           (err: grpcWeb.RpcError) => {
