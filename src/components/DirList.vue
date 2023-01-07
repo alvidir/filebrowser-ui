@@ -8,7 +8,7 @@
           :key="dir"
           @click="onDirectoryClick(index)"
         >
-          {{ dir }}
+          {{ underscoresToSpaces(dir) }}
         </button>
       </div>
     </div>
@@ -107,8 +107,11 @@ export default defineComponent({
   },
 
   setup() {
+    const underscoresToSpaces = utils.underscoresToSpaces;
+
     return {
       NOTHING_TO_DISPLAY,
+      underscoresToSpaces,
     };
   },
 
@@ -276,7 +279,7 @@ export default defineComponent({
 
     onFilenameChange(file: File, filename: string) {
       file.editable = false;
-      if (this.validate && this.validate(filename)) {
+      if (!filename || (this.validate && this.validate(filename))) {
         // the filename contains errors
         return;
       }

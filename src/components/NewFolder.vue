@@ -85,7 +85,7 @@ export default defineComponent({
     },
 
     onFolderNameInput(ctrl: FieldController) {
-      const name = utils.normalizeName(ctrl.value());
+      const name = utils.spacesToUnderscores(ctrl.value());
       if (this.validate) {
         this.error = this.validate(name);
       }
@@ -102,7 +102,10 @@ export default defineComponent({
     submit() {
       if (!this.field || !this.isValid) return;
 
-      this.$emit(SUBMIT_EVENT_NAME, utils.normalizeName(this.field.value()));
+      this.$emit(
+        SUBMIT_EVENT_NAME,
+        utils.spacesToUnderscores(this.field.value())
+      );
       this.close();
     },
   },

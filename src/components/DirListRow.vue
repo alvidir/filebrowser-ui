@@ -10,13 +10,13 @@
       <i v-if="isParentDir" class="bx bx-arrow-back"></i>
       <i v-else-if="isDir" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="!isParentDir && !editable" href="#" @click="onClick">
-        {{ name }}
+      <a v-if="name && !editable && !isParentDir" href="#" @click="onClick">
+        {{ underscoresToSpaces(name) }}
       </a>
       <input
         v-show="!isParentDir && editable"
-        ref="filename"
-        v-model="filename"
+        ref="edit_filename"
+        v-model="edit.filename"
         :placeholder="name"
         @blur="onBlur"
         @keydown.enter="onBlur"
@@ -79,13 +79,25 @@ export default defineComponent({
 
   watch: {
     editable(value: boolean) {
-      if (value) this.$nextTick(() => (this.$refs.filename as any)?.focus());
+      if (value)
+        this.$nextTick(() => (this.$refs.edit_filename as any)?.focus());
     },
+  },
+
+  setup() {
+    const underscoresToSpaces = utils.underscoresToSpaces;
+
+    return {
+      underscoresToSpaces,
+    };
   },
 
   data() {
     return {
-      filename: "",
+      edit: {
+        filename: "",
+      },
+
       error: "",
     };
   },
@@ -152,14 +164,19 @@ export default defineComponent({
     },
 
     onBlur() {
-      this.$emit(RENAME_EVENT_NAME, utils.normalizeName(this.filename));
-      this.filename = "";
+      this.$emit(
+        RENAME_EVENT_NAME,
+        utils.spacesToUnderscores(this.edit.filename)
+      );
+      this.edit.filename = "";
       this.error = "";
     },
 
     onChange() {
       if (this.validate) {
-        this.error = this.validate(utils.normalizeName(this.filename));
+        this.error = this.validate(
+          utils.spacesToUnderscores(this.edit.filename)
+        );
       }
     },
   },

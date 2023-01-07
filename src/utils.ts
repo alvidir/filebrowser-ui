@@ -14,8 +14,12 @@ export function normalizePath(path: string): string {
   return normalized;
 }
 
-export function normalizeName(p: string): string {
+export function spacesToUnderscores(p: string): string {
   return p.trim().replace(/ /g, "_");
+}
+
+export function underscoresToSpaces(p: string): string {
+  return p.trim().replace(/_/g, " ");
 }
 
 export function buildRelocateFilter(source: string[]): string {
