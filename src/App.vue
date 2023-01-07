@@ -125,7 +125,7 @@ export default defineComponent({
   computed: {
     dirFiles(): File[] {
       const target = this.path;
-      const normalized = utils.normalizePath(target);
+      const normalized = utils.cleanPath(target);
 
       if (this.dirs[normalized] === undefined) {
         this.onChangeDirectory(normalized);
@@ -185,7 +185,7 @@ export default defineComponent({
     },
 
     createNewFolder(name: string) {
-      const normalized = utils.normalizePath(this.path);
+      const normalized = utils.cleanPath(this.path);
       const newFolder: File = {
         id: "",
         name: name,
@@ -235,7 +235,7 @@ export default defineComponent({
     },
 
     onDelete(target: string, source: File) {
-      target = utils.normalizePath(target);
+      target = utils.cleanPath(target);
 
       this.dialog = {
         action: "delete",
@@ -262,7 +262,7 @@ export default defineComponent({
       // avoid highlighting new items each time they are displayed
       this.dirFiles?.forEach((file) => (file.new = false));
 
-      path = utils.normalizePath(path);
+      path = utils.cleanPath(path);
       if (path in this.dirs) {
         this.path = path;
         return;
@@ -338,9 +338,9 @@ export default defineComponent({
     ) {
       this.fetching += 1;
 
-      target = utils.normalizePath(target);
+      target = utils.cleanPath(target);
       const sourceComponents = utils
-        .normalizePath(source)
+        .cleanPath(source)
         .split(constants.PATH_SEPARATOR);
 
       let filter: string;
@@ -351,7 +351,7 @@ export default defineComponent({
         filter = utils.buildRelocateFilter(sourceComponents);
       }
 
-      const path = utils.normalizePath(this.path);
+      const path = utils.cleanPath(this.path);
       console.log(filter);
 
       filebrowserService
@@ -374,8 +374,8 @@ export default defineComponent({
     onNewProject(app: App) {
       app.fetching = true;
 
-      const normalized = utils.normalizePath(this.path);
-      const target = utils.normalizePath(
+      const normalized = utils.cleanPath(this.path);
+      const target = utils.cleanPath(
         [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
       );
 
@@ -425,7 +425,7 @@ export default defineComponent({
         request = filebrowserService.removeFile(file.id, headers);
       }
 
-      target = utils.normalizePath(target);
+      target = utils.cleanPath(target);
       request
         .then(() => {
           dirFiles.splice(dirFiles.indexOf(file), 1);

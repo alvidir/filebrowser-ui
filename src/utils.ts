@@ -4,7 +4,7 @@ const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 
 export type ValidateFn = (name: string) => string;
 
-export function normalizePath(path: string): string {
+export function cleanPath(path: string): string {
   let normalized = path.replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
 
   if (normalized[0] != constants.PATH_SEPARATOR) {
@@ -23,28 +23,15 @@ export function underscoresToSpaces(p: string): string {
 }
 
 export function buildRelocateFilter(source: string[]): string {
-  debugger;
-  return `^${source
-    .slice(0, -1)
-    .join(constants.PATH_SEPARATOR)
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")}/(${source[source.length - 1]
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")}(/.*)?)$`;
+  return `^${source.slice(0, -1).join(constants.PATH_SEPARATOR)}/(${
+    source[source.length - 1]
+  }(/.*)?)$`;
 }
 
 export function buildRenameDirFilter(source: string[]): string {
-  debugger;
-  return `^${source
-    .join(constants.PATH_SEPARATOR)
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")}(/.*)?$`;
+  return `^${source.join(constants.PATH_SEPARATOR)}(/.*)?$`;
 }
 
 export function buildRenameFileFilter(source: string[]): string {
-  debugger;
-  return `^(${source
-    .join(constants.PATH_SEPARATOR)
-    .replaceAll("(", "\\(")
-    .replaceAll(")", "\\)")}(/.*)?)$`;
+  return `^(${source.join(constants.PATH_SEPARATOR)}(/.*)?)$`;
 }

@@ -50,7 +50,6 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
-import { normalizePath } from "@/utils";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
 
@@ -231,7 +230,7 @@ export default defineComponent({
     },
 
     onMenuOptionClick(action: string) {
-      let target = normalizePath(
+      let target = utils.cleanPath(
         [this.absolutePath, this.menu.context?.name].join(
           constants.PATH_SEPARATOR
         )
