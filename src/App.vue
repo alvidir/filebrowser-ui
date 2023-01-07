@@ -28,7 +28,7 @@
           <new-folder
             class="action"
             :path="path"
-            :validate="isValidFolderName"
+            :validate="getNameError"
             @submit="createNewFolder"
           ></new-folder>
         </span>
@@ -36,6 +36,7 @@
       <dir-list
         :files="filteredFiles"
         :path="path"
+        :validate="getNameError"
         @openfile="onOpenfile"
         @changedir="onChangeDirectory"
         @relocate="onRelocate"
@@ -71,7 +72,7 @@ import Config from "@/config.json";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";
 import { FieldController } from "vue-fields/src/main";
-import { normalizePath } from "./utils";
+import * as utils from "@/utils";
 
 const filebrowserService = new Filebrowser(Config.FILEBROWSER_URI);
 
@@ -124,7 +125,7 @@ export default defineComponent({
   computed: {
     dirFiles(): File[] {
       const target = this.path;
-      const normalized = normalizePath(target);
+      const normalized = utils.normalizePath(target);
 
       if (this.dirs[normalized] === undefined) {
         this.onChangeDirectory(normalized);
@@ -184,7 +185,7 @@ export default defineComponent({
     },
 
     createNewFolder(name: string) {
-      const normalized = normalizePath(this.path);
+      const normalized = utils.normalizePath(this.path);
       const newFolder: File = {
         id: "",
         name: name,
@@ -197,7 +198,15 @@ export default defineComponent({
       this.dirs[normalized] = [newFolder].concat(this.dirFiles);
     },
 
-    isValidFolderName(name: string): string {
+    getNameError(name: string): string {
+      if (!name.match(/^[a-zA-Z0-9-_]*$/)) {
+        return "A name cannot contains special characters.";
+      }
+
+      if (name.length > 34) {
+        return "The name is too long.";
+      }
+
       if (this.dirFiles.some((file) => file.name == name)) {
         return "Name already exists";
       }
@@ -226,7 +235,7 @@ export default defineComponent({
     },
 
     onDelete(target: string, source: File) {
-      target = normalizePath(target);
+      target = utils.normalizePath(target);
 
       this.dialog = {
         action: "delete",
@@ -253,7 +262,7 @@ export default defineComponent({
       // avoid highlighting new items each time they are displayed
       this.dirFiles?.forEach((file) => (file.new = false));
 
-      path = normalizePath(path);
+      path = utils.normalizePath(path);
       if (path in this.dirs) {
         this.path = path;
         return;
@@ -321,21 +330,29 @@ export default defineComponent({
         });
     },
 
-    onRelocate(source: string, target: string) {
+    onRelocate(
+      source: string,
+      target: string,
+      isDir: boolean,
+      rename: boolean
+    ) {
       this.fetching += 1;
 
-      target = normalizePath(target);
-      const components = normalizePath(source).split(constants.PATH_SEPARATOR);
+      target = utils.normalizePath(target);
+      const sourceComponents = utils
+        .normalizePath(source)
+        .split(constants.PATH_SEPARATOR);
 
-      const filter = `^${components
-        .slice(0, -1)
-        .join(constants.PATH_SEPARATOR)
-        .replaceAll("(", "\\(")
-        .replaceAll(")", "\\)")}/(${components[components.length - 1]
-        .replaceAll("(", "\\(")
-        .replaceAll(")", "\\)")}(/.*)?)$`;
+      let filter: string;
+      if (rename) {
+        if (isDir) filter = utils.buildRenameDirFilter(sourceComponents);
+        else filter = utils.buildRenameFileFilter(sourceComponents);
+      } else {
+        filter = utils.buildRelocateFilter(sourceComponents);
+      }
 
-      const path = normalizePath(this.path);
+      const path = utils.normalizePath(this.path);
+      console.log(filter);
 
       filebrowserService
         .relocate(target, filter, this.getBaseHeaders())
@@ -357,8 +374,8 @@ export default defineComponent({
     onNewProject(app: App) {
       app.fetching = true;
 
-      const normalized = normalizePath(this.path);
-      const target = normalizePath(
+      const normalized = utils.normalizePath(this.path);
+      const target = utils.normalizePath(
         [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
       );
 
@@ -408,7 +425,7 @@ export default defineComponent({
         request = filebrowserService.removeFile(file.id, headers);
       }
 
-      target = normalizePath(target);
+      target = utils.normalizePath(target);
       request
         .then(() => {
           dirFiles.splice(dirFiles.indexOf(file), 1);

@@ -1,18 +1,29 @@
 <template>
   <tr
     :class="{
-      'drag-target': isTarget,
+      'drag-target': isTarget || editable,
       'parent-dir': isParentDir,
     }"
     @click="isParentDir && onClick()"
   >
-    <td class="filename">
+    <td class="filename" :class="{ error: error }">
       <i v-if="isParentDir" class="bx bx-arrow-back"></i>
       <i v-else-if="isDir" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="!isParentDir" href="#" @click="onClick">
+      <a v-if="!isParentDir && !editable" href="#" @click="onClick">
         {{ name }}
       </a>
+      <input
+        v-show="!isParentDir && editable"
+        ref="filename"
+        v-model="filename"
+        :placeholder="name"
+        @blur="onBlur"
+        @keydown.enter="onBlur"
+        @input="onChange"
+      />
+
+      <div class="cause" v-if="error">{{ error }}</div>
     </td>
     <td>
       <div class="tags-list">
@@ -35,6 +46,7 @@
 import { defineComponent, PropType } from "vue";
 import FileFlag from "@/components/FileTag.vue";
 import * as constants from "@/constants";
+import * as utils from "@/utils";
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
@@ -43,6 +55,7 @@ const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
 const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
 
 export const OPEN_EVENT_NAME = "open";
+export const RENAME_EVENT_NAME = "rename";
 
 export interface Size {
   value: number;
@@ -51,7 +64,7 @@ export interface Size {
 
 export default defineComponent({
   name: "DirListRow",
-  events: [OPEN_EVENT_NAME],
+  events: [OPEN_EVENT_NAME, RENAME_EVENT_NAME],
   components: { FileFlag },
   props: {
     name: String,
@@ -60,6 +73,21 @@ export default defineComponent({
     size: Object as PropType<Size>,
     updatedAt: Date,
     isTarget: Boolean,
+    editable: Boolean,
+    validate: Function as PropType<utils.ValidateFn>,
+  },
+
+  watch: {
+    editable(value: boolean) {
+      if (value) this.$nextTick(() => (this.$refs.filename as any)?.focus());
+    },
+  },
+
+  data() {
+    return {
+      filename: "",
+      error: "",
+    };
   },
 
   computed: {
@@ -122,6 +150,18 @@ export default defineComponent({
     onClick() {
       this.$emit(OPEN_EVENT_NAME);
     },
+
+    onBlur() {
+      this.$emit(RENAME_EVENT_NAME, utils.normalizeName(this.filename));
+      this.filename = "";
+      this.error = "";
+    },
+
+    onChange() {
+      if (this.validate) {
+        this.error = this.validate(utils.normalizeName(this.filename));
+      }
+    },
   },
 });
 </script>
@@ -151,8 +191,33 @@ export default defineComponent({
   min-width: 30%;
   white-space: nowrap;
 
+  &.error {
+    padding-top: $fib-6 * 1px;
+    padding-bottom: $fib-6 * 1px;
+    color: var(--color-red);
+
+    input {
+      color: var(--color-red);
+    }
+
+    .cause {
+      font-size: small;
+      margin-left: $fib-8 * 1px;
+    }
+  }
+
   a:not(:hover) {
     color: var(--color-text-primary);
+  }
+
+  input {
+    height: 100%;
+    width: 100%;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--color-text-primary);
+    font-size: medium;
   }
 }
 

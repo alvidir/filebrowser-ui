@@ -220,7 +220,6 @@ class FilebrowserService {
               return;
             }
 
-            console.log(data);
             resolve(new File(data));
           }
         );

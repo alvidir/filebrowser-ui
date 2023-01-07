@@ -18,9 +18,9 @@
     </template>
     {{ description }}
     <template #footer>
-      <submit-button :color="color" @submit="onSubmitClick">{{
-        buttonTitle
-      }}</submit-button>
+      <submit-button :color="color" @submit="onSubmitClick">
+        {{ buttonTitle }}
+      </submit-button>
       <regular-button @click="onCancelClick">Cancel</regular-button>
     </template>
   </dialog-card>
@@ -44,12 +44,16 @@ export default defineComponent({
     active: Boolean,
   },
   computed: {
-    color(): string {
-      return this.action ? constants.DIALOGS_PROPS[this.action].color : "";
+    color(): string | undefined {
+      if (!this.action) return undefined;
+      return constants.DIALOGS_PROPS[this.action].color;
     },
 
     iconClass(): string {
-      return this.action ? constants.DIALOGS_PROPS[this.action].iconClass : "";
+      return this.action
+        ? constants.DIALOGS_PROPS[this.action].iconClass ??
+            this.defaultIconClass
+        : "";
     },
 
     title(): string {
@@ -73,6 +77,14 @@ export default defineComponent({
       };
 
       return descriptions[this.action]();
+    },
+
+    defaultIconClass(): string {
+      if (this.context?.isDir) {
+        return "bx bxs-folder";
+      } else {
+        return "bx bx-file-blank";
+      }
     },
   },
 
@@ -128,6 +140,10 @@ $text-color: v-bind(color);
         color: $text-color;
       }
     }
+  }
+
+  .regular-field {
+    min-width: $fib-13 * 1px;
   }
 }
 </style>

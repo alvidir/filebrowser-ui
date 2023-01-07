@@ -76,9 +76,8 @@ interface DialogProps {
   title: string;
   subtitle: string;
   action: string;
-  description: string;
-  iconClass: string;
-  color: string;
+  iconClass?: string;
+  color?: string;
 }
 
 const enum DIALOGS {
@@ -91,8 +90,6 @@ const DIALOGS_PROPS: { [key: string]: DialogProps } = {
     color: "var(--color-red)",
     title: "Needs confirmation",
     subtitle: "Delete action on",
-    description:
-      "You are about to delete the folder /folder_name and the 2 files inside of it. Be aware that this action is permanent and cannot be undon.",
     iconClass: "bx bxs-castle",
   },
 };

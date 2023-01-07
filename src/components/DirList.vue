@@ -25,7 +25,9 @@
           :key="file.name"
           :class="{ new: file.new }"
           :draggable="isDraggable(file)"
+          :validate="validate"
           @open="onOpenClick(file)"
+          @rename="onFilenameChange(file, $event)"
           @dragstart="onDragStart(file)"
           @dragenter="onDragEnter(file)"
           @dragexit="onDragExit(file, $event)"
@@ -37,6 +39,7 @@
     </div>
     <context-menu :active="!!menu.context" @close="onMenuClose">
       <button @click="onMenuOptionClick('open')">Open</button>
+      <button @click="onMenuOptionClick('rename')">Rename</button>
       <button class="danger" @click="onMenuOptionClick('delete')">
         Remove
       </button>
@@ -49,6 +52,7 @@ import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
 import { normalizePath } from "@/utils";
 import * as constants from "@/constants";
+import * as utils from "@/utils";
 
 export interface File {
   id: string;
@@ -61,7 +65,7 @@ export interface File {
     unit: string;
   };
   tags?: string[];
-
+  editable?: boolean;
   isSource?: boolean;
   isTarget?: boolean;
 }
@@ -99,6 +103,7 @@ export default defineComponent({
       type: Number,
       default: 55,
     },
+    validate: Function as PropType<utils.ValidateFn>,
   },
 
   setup() {
@@ -230,7 +235,10 @@ export default defineComponent({
       );
 
       const actions: { [key: string]: () => void } = {
-        delete: () => this.$emit(action, target, this.menu.context),
+        delete: () => this.$emit(DELETE_EVENT_NAME, target, this.menu.context),
+        rename: () => {
+          if (this.menu.context) this.menu.context.editable = true;
+        },
         open: () => this.menu.context && this.onOpenClick(this.menu.context),
       };
 
@@ -264,6 +272,24 @@ export default defineComponent({
     onMenuClose() {
       if (this.menu.context) this.menu.context.isTarget = false;
       this.menu.context = undefined;
+    },
+
+    onFilenameChange(file: File, filename: string) {
+      file.editable = false;
+      if (this.validate && this.validate(filename)) {
+        // the filename contains errors
+        return;
+      }
+
+      const source = [this.absolutePath, file.name].join(
+        constants.PATH_SEPARATOR
+      );
+
+      const target = [this.absolutePath, filename].join(
+        constants.PATH_SEPARATOR
+      );
+
+      this.$emit(RELOCATE_EVENT_NAME, source, target, file.isDir, true);
     },
   },
 });
