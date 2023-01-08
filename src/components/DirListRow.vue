@@ -17,7 +17,7 @@
         v-show="!isParentDir && editable"
         ref="edit_filename"
         v-model="edit.filename"
-        :placeholder="name"
+        :placeholder="underscoresToSpaces(name)"
         @blur="onBlur"
         @keydown.enter="onBlur"
         @input="onChange"
