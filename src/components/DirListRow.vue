@@ -20,6 +20,7 @@
         :placeholder="underscoresToSpaces(name ?? '')"
         @blur="onBlur"
         @keydown.enter="onBlur"
+        @keydown.esc="onBlur"
         @input="onChange"
       />
 
@@ -60,6 +61,11 @@ export const RENAME_EVENT_NAME = "rename";
 export interface Size {
   value: number;
   unit: string;
+}
+
+interface KeyEvent {
+  type: string;
+  key?: string;
 }
 
 export default defineComponent({
@@ -165,11 +171,16 @@ export default defineComponent({
       this.$emit(OPEN_EVENT_NAME);
     },
 
-    onBlur() {
+    onBlur(event: KeyEvent) {
+      if (event.type == "blur" || event.key == "Escape") {
+        this.edit.filename = this.name ?? "";
+      }
+
       this.$emit(
         RENAME_EVENT_NAME,
         utils.spacesToUnderscores(this.edit.filename)
       );
+
       this.edit.filename = "";
       this.error = "";
     },

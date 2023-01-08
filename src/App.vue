@@ -352,7 +352,6 @@ export default defineComponent({
       }
 
       const path = utils.cleanPath(this.path);
-      console.log(filter);
 
       filebrowserService
         .relocate(target, filter, this.getBaseHeaders())
