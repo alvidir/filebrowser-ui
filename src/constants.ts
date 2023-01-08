@@ -72,14 +72,37 @@ const TAG_PROPS: { [key: string]: TagProps } = {
   },
 };
 
+interface AppProps {
+  id: string;
+  title: string;
+  icon: string;
+  url: string;
+}
+
+const enum APPS {
+  AGORA = "agora",
+}
+
+const APPS_PROPS = {
+  [APPS.AGORA]: {
+    id: "agora",
+    title: "Agora",
+    icon: "svg/greek_pillar.svg",
+    url: "https://agora.alvidir.com",
+  },
+};
+
 const PATH_SEPARATOR = "/";
 const PARENT_DIRECTORY = "..";
 
 export {
   TAGS,
+  APPS,
   WarningProps,
   TagProps,
+  AppProps,
   TAG_PROPS,
+  APPS_PROPS,
   PATH_SEPARATOR,
   PARENT_DIRECTORY,
   WARNING_PROPS,

@@ -1,4 +1,4 @@
 {
-  "FILEBROWSER_URI": "$FILEBROWSER_URI",
-  "THEME_STORAGE_KEY": "$THEME_STORAGE_KEY"
+  "FILEBROWSER_URI": "http://localhost:8080",
+  "THEME_STORAGE_KEY": "alvidir::theme"
 }

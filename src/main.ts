@@ -1,16 +1,16 @@
 import { createApp } from "vue";
 import App from "./App.vue";
-import { include as includeFields } from "vue-fields/src/main";
-import { include as includeDock } from "vue-dock/src/main";
-import { include as includeButtons } from "vue-buttons/src/main";
-import { include as includeCardsComponents } from "vue-cards/src/main";
-import clickOutside from "./directives/ClickOutside";
+import includeFields from "vue-fields/src/main";
+import includeButtons from "vue-buttons/src/main";
+import includeCards from "vue-cards/src/main";
+import includeMenus from "vue-menus/src/main";
+import includeDirectives from "vue-directives/src/main";
 
 const app = createApp(App);
-includeCardsComponents(app);
+includeDirectives(app);
+includeCards(app);
 includeButtons(app);
 includeFields(app);
-includeDock(app);
+includeMenus(app);
 
-app.directive("click-outside", clickOutside);
 app.mount("#app");

@@ -8,7 +8,7 @@
           :key="dir"
           @click="onDirectoryClick(index)"
         >
-          {{ dir }}
+          {{ underscoresToSpaces(dir) }}
         </button>
       </div>
     </div>
@@ -25,14 +25,25 @@
           :key="file.name"
           :class="{ new: file.new }"
           :draggable="isDraggable(file)"
+          :validate="validate"
           @open="onOpenClick(file)"
+          @rename="onFilenameChange(file, $event)"
           @dragstart="onDragStart(file)"
           @dragenter="onDragEnter(file)"
           @dragexit="onDragExit(file, $event)"
+          @mouseup.right="onRightClick(file)"
+          @contextmenu.prevent
           v-bind="file"
         />
       </table>
     </div>
+    <context-menu :active="!!menu.context" @close="onMenuClose">
+      <button @click="onMenuOptionClick('open')">Open</button>
+      <button @click="onMenuOptionClick('rename')">Rename</button>
+      <button class="danger" @click="onMenuOptionClick('delete')">
+        Remove
+      </button>
+    </context-menu>
   </div>
 </template>
 
@@ -40,6 +51,7 @@
 import { defineComponent, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
 import * as constants from "@/constants";
+import * as utils from "@/utils";
 
 export interface File {
   id: string;
@@ -52,9 +64,9 @@ export interface File {
     unit: string;
   };
   tags?: string[];
-
-  isDragSource?: boolean;
-  isDragTarget?: boolean;
+  editable?: boolean;
+  isSource?: boolean;
+  isTarget?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
@@ -62,10 +74,16 @@ const NOTHING_TO_DISPLAY = "Nothing to display";
 export const CHANGEDIR_EVENT_NAME = "changedir";
 export const OPENFILE_EVENT_NAME = "openfile";
 export const RELOCATE_EVENT_NAME = "relocate";
+export const DELETE_EVENT_NAME = "delete";
 
 export default defineComponent({
   name: "DirList",
-  events: [CHANGEDIR_EVENT_NAME, OPENFILE_EVENT_NAME, RELOCATE_EVENT_NAME],
+  events: [
+    CHANGEDIR_EVENT_NAME,
+    OPENFILE_EVENT_NAME,
+    RELOCATE_EVENT_NAME,
+    DELETE_EVENT_NAME,
+  ],
   components: { DirListRow },
   props: {
     files: {
@@ -84,11 +102,23 @@ export default defineComponent({
       type: Number,
       default: 55,
     },
+    validate: Function as PropType<utils.ValidateFn>,
   },
 
   setup() {
+    const underscoresToSpaces = utils.underscoresToSpaces;
+
     return {
       NOTHING_TO_DISPLAY,
+      underscoresToSpaces,
+    };
+  },
+
+  data() {
+    return {
+      menu: {
+        context: undefined as File | undefined,
+      },
     };
   },
 
@@ -139,28 +169,30 @@ export default defineComponent({
 
   methods: {
     onDragStart(file: File) {
-      file.isDragSource = true;
+      this.files.forEach((file) => (file.isTarget = false));
+      file.isSource = true;
     },
 
+    // eslint-disable-next-line
     onDragExit(file: File, e: any) {
-      if (e.buttons && !file.isDragSource) {
-        file.isDragTarget = false;
+      if (e.buttons && !file.isSource) {
+        file.isTarget = false;
       }
     },
 
     onDragEnter(file: File) {
-      if (file.isDragSource || !file.isDir) return;
-      file.isDragTarget = true;
+      if (file.isSource || !file.isDir) return;
+      file.isTarget = true;
     },
 
     onDragEnd() {
       // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.isDragSource);
-      const targetFile = this.files?.find((file) => file.isDragTarget);
+      const sourceFile = this.files?.find((file) => file.isSource);
+      const targetFile = this.files?.find((file) => file.isTarget);
 
       this.files?.map((file) => {
-        file.isDragSource = false;
-        file.isDragTarget = false;
+        file.isSource = false;
+        file.isTarget = false;
       });
 
       if (!sourceFile || !targetFile) return;
@@ -197,6 +229,25 @@ export default defineComponent({
       this.$emit(CHANGEDIR_EVENT_NAME, target);
     },
 
+    onMenuOptionClick(action: string) {
+      let target = utils.cleanPath(
+        [this.absolutePath, this.menu.context?.name].join(
+          constants.PATH_SEPARATOR
+        )
+      );
+
+      const actions: { [key: string]: () => void } = {
+        delete: () => this.$emit(DELETE_EVENT_NAME, target, this.menu.context),
+        rename: () => {
+          if (this.menu.context) this.menu.context.editable = true;
+        },
+        open: () => this.menu.context && this.onOpenClick(this.menu.context),
+      };
+
+      actions[action]();
+      this.onMenuClose();
+    },
+
     onDirectoryClick(index: number) {
       let hidden = 0;
       if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
@@ -211,6 +262,36 @@ export default defineComponent({
 
     isDraggable(file: File): boolean {
       return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
+    },
+
+    onRightClick(file: File) {
+      if (file.name == constants.PARENT_DIRECTORY) return;
+
+      this.menu.context = file;
+      this.menu.context.isTarget = true;
+    },
+
+    onMenuClose() {
+      if (this.menu.context) this.menu.context.isTarget = false;
+      this.menu.context = undefined;
+    },
+
+    onFilenameChange(file: File, filename: string) {
+      file.editable = false;
+      if (!filename || (this.validate && this.validate(filename))) {
+        // the filename contains errors
+        return;
+      }
+
+      const source = [this.absolutePath, file.name].join(
+        constants.PATH_SEPARATOR
+      );
+
+      const target = [this.absolutePath, filename].join(
+        constants.PATH_SEPARATOR
+      );
+
+      this.$emit(RELOCATE_EVENT_NAME, source, target, file.isDir, true);
     },
   },
 });
