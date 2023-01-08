@@ -14,7 +14,7 @@
         >
           <div class="search-item">
             <i class="bx bx-file-blank"></i>
-            <label>{{ props.item.name }}</label>
+            <label>{{ underscoresToSpaces(props.item.name) }}</label>
           </div>
         </search-field>
         <span id="action-buttons">
@@ -90,9 +90,12 @@ export default defineComponent({
   },
 
   setup() {
+    const underscoresToSpaces = utils.underscoresToSpaces;
+
     return {
       SEARCH_DEBOUNCE,
       SwitchTheme,
+      underscoresToSpaces,
     };
   },
 
@@ -295,7 +298,7 @@ export default defineComponent({
       this.fetching += 1;
 
       filebrowserService
-        .getDirectory(path, filter, this.getBaseHeaders())
+        .getDirectory(path, filter, utils.baseHeaders())
         .then((dir) => {
           const files = Object.values(dir.files).map((file) => {
             const f: File = {
@@ -354,7 +357,7 @@ export default defineComponent({
       const path = utils.cleanPath(this.path);
 
       filebrowserService
-        .relocate(target, filter, this.getBaseHeaders())
+        .relocate(target, filter, utils.baseHeaders())
         .then(() => {
           delete this.dirs[target];
           this.pullDirectoryFiles(path, "", (files) => {
@@ -378,7 +381,7 @@ export default defineComponent({
         [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
       );
 
-      const headers = this.getBaseHeaders();
+      const headers = utils.baseHeaders();
       const metadata: FileMetadata[] = [
         {
           key: MetadataKey.AppId,
@@ -416,7 +419,7 @@ export default defineComponent({
       this.fetching += 1;
 
       const dirFiles = this.dirFiles;
-      const headers = this.getBaseHeaders();
+      const headers = utils.baseHeaders();
       let request: Promise<void>;
       if (file.isDir) {
         request = filebrowserService.removeDirectory(target, headers);
@@ -435,17 +438,6 @@ export default defineComponent({
         .finally(() => {
           this.fetching -= 1;
         });
-    },
-
-    // getBaseHeaders returns a dictionary with some default values
-    // when running in development mode
-    getBaseHeaders(): { [key: string]: string } {
-      const headers: { [key: string]: string } = {};
-      if (process.env.NODE_ENV === "development") {
-        headers["X-Uid"] = "1";
-      }
-
-      return headers;
     },
   },
 

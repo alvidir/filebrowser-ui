@@ -2,9 +2,9 @@ import * as constants from "./constants";
 
 const PATH_REPLACE_REGEX = new RegExp(constants.PATH_SEPARATOR + "{1,}", "g");
 
-export type ValidateFn = (name: string) => string;
+type ValidateFn = (name: string) => string;
 
-export function cleanPath(path: string): string {
+function cleanPath(path: string): string {
   let normalized = path.replace(PATH_REPLACE_REGEX, constants.PATH_SEPARATOR);
 
   if (normalized[0] != constants.PATH_SEPARATOR) {
@@ -14,29 +14,51 @@ export function cleanPath(path: string): string {
   return normalized;
 }
 
-export function spacesToUnderscores(p: string): string {
+function spacesToUnderscores(p: string): string {
   return p.trim().replace(/ /g, "_");
 }
 
-export function underscoresToSpaces(p: string): string {
+function underscoresToSpaces(p: string): string {
   return p.trim().replace(/_/g, " ");
 }
 
-export function buildRelocateFilter(source: string[]): string {
+function buildRelocateFilter(source: string[]): string {
   return `^${source.slice(0, -1).join(constants.PATH_SEPARATOR)}/(${
     source[source.length - 1]
   }(/.*)?)$`;
 }
 
-export function buildRenameDirFilter(source: string[]): string {
+function buildRenameDirFilter(source: string[]): string {
   return `^${source.join(constants.PATH_SEPARATOR)}(/.*)?$`;
 }
 
-export function buildRenameFileFilter(source: string[]): string {
+function buildRenameFileFilter(source: string[]): string {
   return `^(${source.join(constants.PATH_SEPARATOR)}(/.*)?)$`;
 }
 
-export function directory(path: string): string {
+function directory(path: string): string {
   const dirs = path.split(constants.PATH_SEPARATOR);
   return underscoresToSpaces(`/${dirs[dirs.length - 1]}`);
 }
+
+// baseHeaders returns a dictionary with some default values depending on the environment
+function baseHeaders(): { [key: string]: string } {
+  const headers: { [key: string]: string } = {};
+  if (process.env.NODE_ENV === "development") {
+    headers["X-Uid"] = "1";
+  }
+
+  return headers;
+}
+
+export {
+  ValidateFn,
+  cleanPath,
+  spacesToUnderscores,
+  underscoresToSpaces,
+  buildRelocateFilter,
+  buildRenameDirFilter,
+  buildRenameFileFilter,
+  directory,
+  baseHeaders,
+};
