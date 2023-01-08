@@ -33,7 +33,6 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import * as constants from "@/constants";
 import * as utils from "@/utils";
 import { FieldController } from "vue-fields/src/main";
 

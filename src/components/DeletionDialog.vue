@@ -29,7 +29,6 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import { File } from "./DirList.vue";
-import * as constants from "../constants";
 import * as utils from "../utils";
 
 export const SUBMIT_EVENT_NAME = "submit";

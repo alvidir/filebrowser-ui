@@ -80,7 +80,9 @@ export default defineComponent({
   watch: {
     editable(value: boolean) {
       if (value)
-        this.$nextTick(() => (this.$refs.edit_filename as any)?.focus());
+        this.$nextTick(() =>
+          (this.$refs.edit_filename as HTMLInputElement)?.focus()
+        );
     },
   },
 
