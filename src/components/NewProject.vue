@@ -11,7 +11,7 @@
         </span>
         <small>
           It will be created at
-          <a href="#">{{ directory }}</a>
+          <a href="#">{{ directory(path) }}</a>
         </small>
       </template>
       <div class="apps">
@@ -33,7 +33,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import * as constants from "@/constants";
+import * as utils from "@/utils";
 
 export const SUBMIT_EVENT_NAME = "submit";
 
@@ -62,8 +62,11 @@ export default defineComponent({
   },
 
   setup() {
+    const directory = utils.directory;
+
     return {
       NEW_PROJECT,
+      directory,
     };
   },
 
@@ -71,13 +74,6 @@ export default defineComponent({
     return {
       active: false,
     };
-  },
-
-  computed: {
-    directory(): string {
-      const dirs = this.path.split(constants.PATH_SEPARATOR);
-      return `/${dirs[dirs.length - 1]}`;
-    },
   },
 
   methods: {

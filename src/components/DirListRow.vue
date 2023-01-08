@@ -10,14 +10,14 @@
       <i v-if="isParentDir" class="bx bx-arrow-back"></i>
       <i v-else-if="isDir" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="name && !editable && !isParentDir" href="#" @click="onClick">
-        {{ underscoresToSpaces(name) }}
+      <a v-if="!editable && !isParentDir" href="#" @click="onClick">
+        {{ underscoresToSpaces(name ?? "") }}
       </a>
       <input
         v-show="!isParentDir && editable"
         ref="edit_filename"
         v-model="edit.filename"
-        :placeholder="underscoresToSpaces(name)"
+        :placeholder="underscoresToSpaces(name ?? '')"
         @blur="onBlur"
         @keydown.enter="onBlur"
         @input="onChange"

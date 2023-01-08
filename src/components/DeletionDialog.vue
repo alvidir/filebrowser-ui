@@ -7,19 +7,19 @@
   >
     <template #header>
       <span>
-        <i v-if="iconClass" :class="iconClass"></i>
-        &nbsp; {{ title }}
+        <i class="bx bxs-castle"></i>
+        &nbsp; Needs confirmation
       </span>
       <small>
-        {{ subtitle }}
-        <a href="#">{{ path }}</a>
+        Delete action on
+        <a href="#">{{ underscoresToSpaces(path ?? "") }}</a>
       </small>
       <small></small>
     </template>
     {{ description }}
     <template #footer>
       <submit-button :color="color" @submit="onSubmitClick">
-        {{ buttonTitle }}
+        Delete
       </submit-button>
       <regular-button @click="onCancelClick">Cancel</regular-button>
     </template>
@@ -30,66 +30,33 @@
 import { defineComponent, PropType } from "vue";
 import { File } from "./DirList.vue";
 import * as constants from "../constants";
+import * as utils from "../utils";
 
 export const SUBMIT_EVENT_NAME = "submit";
 export const CANCEL_EVENT_NAME = "cancel";
 
 export default defineComponent({
-  name: "ActionDialog",
+  name: "DeletionDialog",
   events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
   props: {
     path: String,
-    action: String,
     context: Object as PropType<File>,
     active: Boolean,
   },
+
+  setup() {
+    const underscoresToSpaces = utils.underscoresToSpaces;
+    return {
+      underscoresToSpaces,
+    };
+  },
+
   computed: {
-    color(): string | undefined {
-      if (!this.action) return undefined;
-      return constants.DIALOGS_PROPS[this.action].color;
-    },
-
-    iconClass(): string {
-      return this.action
-        ? constants.DIALOGS_PROPS[this.action].iconClass ??
-            this.defaultIconClass
-        : "";
-    },
-
-    title(): string {
-      return this.action ? constants.DIALOGS_PROPS[this.action].title : "";
-    },
-
-    subtitle(): string {
-      return this.action ? constants.DIALOGS_PROPS[this.action].subtitle : "";
-    },
-
-    buttonTitle(): string {
-      if (!this.action) return "";
-      return this.action.charAt(0).toUpperCase() + this.action.slice(1);
+    color(): string {
+      return "var(--color-red)";
     },
 
     description(): string {
-      if (!this.action) return "";
-
-      const descriptions: { [key: string]: () => string } = {
-        [constants.DIALOGS.DELETE]: this.onDeletionDescription,
-      };
-
-      return descriptions[this.action]();
-    },
-
-    defaultIconClass(): string {
-      if (this.context?.isDir) {
-        return "bx bxs-folder";
-      } else {
-        return "bx bx-file-blank";
-      }
-    },
-  },
-
-  methods: {
-    onDeletionDescription(): string {
       if (!this.context) return "";
 
       let description = "";
@@ -101,7 +68,9 @@ export default defineComponent({
 
       return `${description} Be aware that this action is permanent and cannot be undone.`;
     },
+  },
 
+  methods: {
     onCancelClick() {
       this.$emit(CANCEL_EVENT_NAME);
     },

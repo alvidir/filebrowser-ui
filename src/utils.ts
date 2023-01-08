@@ -35,3 +35,8 @@ export function buildRenameDirFilter(source: string[]): string {
 export function buildRenameFileFilter(source: string[]): string {
   return `^(${source.join(constants.PATH_SEPARATOR)}(/.*)?)$`;
 }
+
+export function directory(path: string): string {
+  const dirs = path.split(constants.PATH_SEPARATOR);
+  return underscoresToSpaces(`/${dirs[dirs.length - 1]}`);
+}

@@ -67,7 +67,7 @@ import Filebrowser, {
 import DirList, { File } from "@/components/DirList.vue";
 import NewProject, { App } from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
-import ActionDialog from "@/components/ActionDialog.vue";
+import ActionDialog from "@/components/DeletionDialog.vue";
 import Config from "@/config.json";
 import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
 import * as constants from "@/constants";

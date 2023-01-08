@@ -72,28 +72,6 @@ const TAG_PROPS: { [key: string]: TagProps } = {
   },
 };
 
-interface DialogProps {
-  title: string;
-  subtitle: string;
-  action: string;
-  iconClass?: string;
-  color?: string;
-}
-
-const enum DIALOGS {
-  DELETE = "delete",
-}
-
-const DIALOGS_PROPS: { [key: string]: DialogProps } = {
-  [DIALOGS.DELETE]: {
-    action: DIALOGS.DELETE,
-    color: "var(--color-red)",
-    title: "Needs confirmation",
-    subtitle: "Delete action on",
-    iconClass: "bx bxs-castle",
-  },
-};
-
 interface AppProps {
   id: string;
   title: string;
@@ -119,15 +97,12 @@ const PARENT_DIRECTORY = "..";
 
 export {
   TAGS,
-  DIALOGS,
   APPS,
   WarningProps,
   TagProps,
-  DialogProps,
   AppProps,
   TAG_PROPS,
   APPS_PROPS,
-  DIALOGS_PROPS,
   PATH_SEPARATOR,
   PARENT_DIRECTORY,
   WARNING_PROPS,
