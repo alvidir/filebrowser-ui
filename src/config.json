@@ -1,4 +1,7 @@
 {
   "FILEBROWSER_URI": "http://localhost:8080",
-  "THEME_STORAGE_KEY": "alvidir::theme"
+  "THEME_STORAGE_KEY": "alvidir::theme",
+  "ALVIDIR_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg",
+  "AGORA_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/greek_pillar.svg",
+  "AGORA_BASE_URL": "https://agora.alvidir.com"
 }

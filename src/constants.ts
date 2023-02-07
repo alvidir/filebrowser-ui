@@ -1,4 +1,5 @@
 import { Error } from "./filebrowser.service";
+import Config from "./config.json";
 
 interface WarningProps {
   title: string;
@@ -87,8 +88,8 @@ const APPS_PROPS = {
   [APPS.AGORA]: {
     id: "agora",
     title: "Agora",
-    icon: "svg/greek_pillar.svg",
-    url: "https://agora.alvidir.com",
+    icon: Config.AGORA_LOGO_URI,
+    url: Config.AGORA_BASE_URL,
   },
 };
 

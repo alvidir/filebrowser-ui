@@ -23,7 +23,7 @@
           :loading="app.fetching"
           @submit="submit(app)"
         >
-          <img :src="getImgUrl(app.icon)" :alt="app.title" />
+          <img :src="app.icon" :alt="app.title" />
           <small>{{ app.title }}</small>
         </submit-button>
       </div>
@@ -84,10 +84,6 @@ export default defineComponent({
     close() {
       if (!this.active) return;
       this.active = false;
-    },
-
-    getImgUrl(src: string): string {
-      return require("@/assets/" + src);
     },
 
     submit(app: App) {
