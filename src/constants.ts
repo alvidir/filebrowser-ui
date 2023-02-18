@@ -89,7 +89,7 @@ const APPS_PROPS = {
     id: "agora",
     title: "Agora",
     icon: Config.AGORA_LOGO_URI,
-    url: Config.AGORA_BASE_URL,
+    url: Config.AGORA_BASE_URI,
   },
 };
 

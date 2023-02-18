@@ -1,4 +1,5 @@
 <template>
+  <sidenav-menu :on-click="() => context.switchTheme()"></sidenav-menu>
   <div id="main-container">
     <div class="narrowed">
       <notice-card v-if="warning" v-bind="warning" @close="quitWarning()" />
@@ -68,13 +69,14 @@ import DirList, { File } from "@/components/DirList.vue";
 import NewProject, { App } from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import ActionDialog from "@/components/DeletionDialog.vue";
+import SidenavMenu from "@/components/SidenavMenu.vue";
 import Config from "@/config.json";
-import { GetTheme, SwitchTheme } from "fibonacci-styles/util";
+import Context from "fibonacci-styles/context";
 import * as constants from "@/constants";
 import { FieldController } from "vue-fields/src/main";
 import * as utils from "@/utils";
 
-const filebrowserService = new Filebrowser(Config.FILEBROWSER_URI);
+const filebrowserService = new Filebrowser(Config.FILEBROWSER_SERVER_URI);
 
 const ROOT_PATH = constants.PATH_SEPARATOR;
 const SEARCH_DEBOUNCE = 300;
@@ -87,14 +89,16 @@ export default defineComponent({
     NewProject,
     NewFolder,
     ActionDialog,
+    SidenavMenu,
   },
 
   setup() {
+    const context = new Context(Config.ALVIDIR_BASE_URI);
     const underscoresToSpaces = utils.underscoresToSpaces;
 
     return {
+      context,
       SEARCH_DEBOUNCE,
-      SwitchTheme,
       underscoresToSpaces,
     };
   },
@@ -215,10 +219,6 @@ export default defineComponent({
       }
 
       return "";
-    },
-
-    onSwtichThemeClick() {
-      SwitchTheme(Config.THEME_STORAGE_KEY);
     },
 
     onSearchInput(ctrl: FieldController) {
@@ -442,7 +442,6 @@ export default defineComponent({
   },
 
   mounted() {
-    GetTheme(Config.THEME_STORAGE_KEY);
     window.onpopstate = () => {
       this.path = window.location.pathname ?? ROOT_PATH;
     };
@@ -488,7 +487,7 @@ body {
   .narrowed {
     box-sizing: border-box;
     width: $fib-13 * 3px;
-    padding: 0 $fib-9 * 1px;
+    padding: 0 $fib-10 * 1px;
     margin-bottom: $fib-9 * 1px;
     margin-top: $fib-7 * 1px;
   }

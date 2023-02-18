@@ -15,17 +15,17 @@
         </small>
       </template>
       <div class="apps">
-        <submit-button
+        <regular-button
           v-for="app in apps"
           :key="app.id"
           class="app"
           color="var(--color-button)"
           :loading="app.fetching"
-          @submit="submit(app)"
+          @click="submit(app)"
         >
           <img :src="app.icon" :alt="app.title" />
           <small>{{ app.title }}</small>
-        </submit-button>
+        </regular-button>
       </div>
     </regular-card>
   </div>
@@ -111,16 +111,21 @@ export default defineComponent({
     grid-gap: $fib-6 * 1px;
   }
 
-  button.submit.app {
+  button.regular.app {
     display: flex;
     flex-direction: column;
+    color: var(--color-text-primary);
     position: relative;
     aspect-ratio: 1/1;
     width: 100%;
     height: auto;
 
     &:hover {
-      border: 1px solid var(--color-border) !important;
+      background: transparent !important;
+    }
+
+    &:not(:hover) {
+      border-color: transparent !important;
     }
 
     &:focus,

@@ -1,7 +1,8 @@
 {
-  "FILEBROWSER_URI": "http://localhost:8080",
-  "THEME_STORAGE_KEY": "alvidir::theme",
-  "ALVIDIR_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg",
+  "FILEBROWSER_SERVER_URI": "http://localhost:8080",
   "AGORA_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/greek_pillar.svg",
-  "AGORA_BASE_URL": "https://agora.alvidir.com"
+  "AGORA_BASE_URI": "https://agora.alvidir.com",
+  "ALVIDIR_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg",
+  "ALVIDIR_BASE_URI": "alvidir.com",
+  "ALVIDIR_VERSION": "alpha"
 }

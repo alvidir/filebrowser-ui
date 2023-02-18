@@ -65,9 +65,11 @@ $text-color: v-bind(color);
   }
 
   label {
+    @extend .smooth;
+
     border: 1px solid var(--color-border-disabled);
     background: var(--color-bg-primary);
-    transition: background $default-duration;
+    transition-property: background;
     padding: $fib-3 * 1px $fib-5 * 1px;
     font-size: small;
 
