@@ -67,7 +67,8 @@ const TOOLS: { [key: string]: Tool } = {
 };
 
 const PATH_SEPARATOR = "/";
+const PARENT_DIRECTORY = "..";
 const DEFAULT_PROJECT_NAME = "Untitled project";
 const SEARCH_DEBOUNCE = 300;
 
-export { TOOLS, TAGS, WARNINGS, PATH_SEPARATOR };
+export { TOOLS, TAGS, WARNINGS, PATH_SEPARATOR, PARENT_DIRECTORY };

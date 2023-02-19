@@ -1,27 +1,27 @@
 <template>
   <tr
     :class="{
-      'drag-target': isTarget || editable,
+      target: target || rename,
       'parent-dir': file.isParentDirectory(),
     }"
-    @click="file.isParentDirectory() && onClick()"
+    @click="onClick()"
   >
     <td class="filename" :class="{ error: error }">
-      <i v-if="isParentDir" class="bx bx-arrow-back"></i>
-      <i v-else-if="isDir" class="bx bxs-folder"></i>
+      <i v-if="file.isParentDirectory()" class="bx bx-arrow-back"></i>
+      <i v-else-if="file.isDirectory()" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="!editable && !isParentDir" href="#" @click="onClick">
-        {{ underscoresToSpaces(name ?? "") }}
+      <a v-if="!rename && !file.isParentDirectory()" :href="file.url()">
+        {{ file.filename() }}
       </a>
       <input
-        v-show="!isParentDir && editable"
-        ref="edit_filename"
-        v-model="edit.filename"
-        :placeholder="underscoresToSpaces(name ?? '')"
+        v-show="!file.isParentDirectory() && rename"
+        ref="rename"
+        v-model="renameValue"
+        :placeholder="file.filename()"
         @keydown.enter="applyRename"
         @keydown.esc="cancelRename"
+        @input="validateRenameValue"
         @blur="cancelRename"
-        @input="onChange"
       />
 
       <div class="cause" v-if="error">{{ error }}</div>
@@ -44,9 +44,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, PropType, inject } from "vue";
 import FileFlag from "@/components/FileTag.vue";
-import * as constants from "@/constants";
 import * as utils from "@/utils";
 import { FileData } from "@/domain/directory";
 
@@ -56,12 +55,11 @@ const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
 const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
 const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
 
-export const OPEN_EVENT_NAME = "open";
-export const RENAME_EVENT_NAME = "rename";
+const OPEN_EVENT_NAME = "open";
+const RENAME_EVENT_NAME = "rename";
 
-export interface Size {
-  value: number;
-  unit: string;
+interface DirectoryController {
+  checkFilename(name: string): string | undefined;
 }
 
 export default defineComponent({
@@ -73,32 +71,31 @@ export default defineComponent({
       type: Object as PropType<FileData>,
       required: true,
     },
+    rename: Boolean,
+    target: Boolean,
   },
 
   watch: {
     editable(value: boolean) {
       if (value)
-        this.$nextTick(() =>
-          (this.$refs.edit_filename as HTMLInputElement)?.focus()
-        );
+        this.$nextTick(() => (this.$refs.rename as HTMLInputElement)?.focus());
     },
   },
 
   setup() {
-    const underscoresToSpaces = utils.underscoresToSpaces;
+    let directoryCtrl = inject("directoryCtrl") as
+      | DirectoryController
+      | undefined;
 
     return {
-      underscoresToSpaces,
+      directoryCtrl,
     };
   },
 
   data() {
     return {
-      edit: {
-        filename: "",
-      },
-
-      error: "",
+      renameValue: "",
+      error: "" as string | undefined,
     };
   },
 
@@ -161,34 +158,30 @@ export default defineComponent({
     // },
 
     onClick() {
-      this.$emit(OPEN_EVENT_NAME);
+      if (this.file.isParentDirectory()) this.$emit(OPEN_EVENT_NAME);
+    },
+
+    validateRenameValue() {
+      this.error = this.directoryCtrl?.checkFilename(this.renameValue);
     },
 
     cancelRename() {
-      this.edit.filename = this.name ?? "";
+      this.renameValue = this.file.name;
       this.finishRename();
     },
 
     applyRename() {
       this.$emit(
         RENAME_EVENT_NAME,
-        utils.spacesToUnderscores(this.edit.filename)
+        utils.spacesToUnderscores(this.renameValue)
       );
 
       this.finishRename();
     },
 
     finishRename() {
-      this.edit.filename = "";
+      this.renameValue = "";
       this.error = "";
-    },
-
-    onChange() {
-      if (this.validate) {
-        this.error = this.validate(
-          utils.spacesToUnderscores(this.edit.filename)
-        );
-      }
     },
   },
 });
@@ -209,7 +202,7 @@ export default defineComponent({
   }
 }
 
-.drag-target {
+.target {
   @extend .shadow-box;
   background: var(--color-button) !important;
   z-index: 1 !important;
@@ -275,7 +268,7 @@ export default defineComponent({
 tr {
   height: $fib-8 * 1px;
 
-  &.drag-target {
+  &.target {
     @extend .shadow-box;
     background: var(--color-button);
     z-index: 1;

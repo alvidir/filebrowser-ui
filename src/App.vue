@@ -40,13 +40,12 @@
         </span>
       </div> -->
       <dir-list
-        :files="filteredFiles"
-        :path="path"
-        :validate="getNameError"
-        @openfile="onOpenfile"
-        @changedir="onChangeDirectory"
-        @relocate="onRelocate"
-        @delete="onDelete"
+        :files="files"
+        :path="directoryCtrl.getPath()"
+        @openfile="directoryCtrl.onOpenfile"
+        @changedir="directoryCtrl.onChangeDirectory"
+        @relocate="directoryCtrl.onRelocate"
+        @delete="directoryCtrl.onDelete"
       />
     </div>
     <!-- <action-dialog
@@ -66,7 +65,7 @@
 import { defineComponent, provide } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
-import DirList from "@/components/DirList.vue";
+import DirList, { ExtendedFileData } from "@/components/DirList.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import ActionDialog from "@/components/DeletionDialog.vue";
@@ -80,10 +79,7 @@ const ROOT_PATH = constants.PATH_SEPARATOR;
 
 const filebrowserService = new Filebrowser(config.FILEBROWSER_SERVER_URI);
 const warningCtrl = new WarningController();
-const directoriesCtrl = new DirectoryController(
-  filebrowserService,
-  warningCtrl
-);
+const directoryCtrl = new DirectoryController(filebrowserService, warningCtrl);
 
 export default defineComponent({
   name: "App",
@@ -100,12 +96,12 @@ export default defineComponent({
 
     provide("context", context);
     provide("warningCtrl", warningCtrl);
-    provide("directoriesCtrl", directoriesCtrl);
+    provide("directoryCtrl", directoryCtrl);
 
     return {
       context,
       warningCtrl,
-      directoriesCtrl,
+      directoryCtrl,
       constants,
     };
   },
@@ -122,6 +118,16 @@ export default defineComponent({
       if (path != current) {
         window.history.pushState("", "", path);
       }
+    },
+  },
+
+  computed: {
+    files(): Array<ExtendedFileData> {
+      return (
+        this.directoryCtrl.getDirectory()?.files.map((item) => {
+          return item as ExtendedFileData;
+        }) ?? []
+      );
     },
   },
 

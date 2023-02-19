@@ -8,24 +8,24 @@
           :key="dir"
           @click="onDirectoryClick(index)"
         >
-          {{ underscoresToSpaces(dir) }}
+          {{ utils.underscoresToSpaces(dir) }}
         </button>
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
-        <tr v-if="!filesList.length">
+        <tr v-if="!files.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
         <dir-list-row
-          v-for="file in filesList"
+          v-for="file in files"
           :key="file.name"
           :class="{ new: file.new }"
           :draggable="isDraggable(file)"
-          :validate="validate"
+          :file="file"
           @open="onOpenClick(file)"
           @rename="onFilenameChange(file, $event)"
           @dragstart="onDragStart(file)"
@@ -48,33 +48,25 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, inject, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
+import { FileData } from "@/domain/directory";
+import DirectoryController from "@/controllers/directory";
 
-export interface File {
-  id: string;
-  name: string;
-  isDir: boolean;
-  updatedAt?: Date;
-  new?: boolean;
-  size?: {
-    value: number;
-    unit: string;
-  };
-  tags?: string[];
-  editable?: boolean;
-  isSource?: boolean;
-  isTarget?: boolean;
+export class ExtendedFileData extends FileData {
+  rename: boolean = false;
+  source: boolean = false;
+  target: boolean = false;
+  new: boolean = false;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
-
-export const CHANGEDIR_EVENT_NAME = "changedir";
-export const OPENFILE_EVENT_NAME = "openfile";
-export const RELOCATE_EVENT_NAME = "relocate";
-export const DELETE_EVENT_NAME = "delete";
+const CHANGEDIR_EVENT_NAME = "changedir";
+const OPENFILE_EVENT_NAME = "openfile";
+const RELOCATE_EVENT_NAME = "relocate";
+const DELETE_EVENT_NAME = "delete";
 
 export default defineComponent({
   name: "DirList",
@@ -87,52 +79,46 @@ export default defineComponent({
   components: { DirListRow },
   props: {
     files: {
-      type: Object as PropType<Array<File>>,
+      type: Object as PropType<Array<ExtendedFileData>>,
       required: true,
     },
     path: {
       type: String,
       required: true,
     },
-    maxTags: {
-      type: Number,
-      default: 8,
-    },
     maxDirsLength: {
       type: Number,
       default: 55,
     },
-    validate: Function as PropType<utils.ValidateFn>,
   },
 
   setup() {
-    const underscoresToSpaces = utils.underscoresToSpaces;
+    let directoryCtrl = inject("directoryCtrl") as
+      | DirectoryController
+      | undefined;
 
     return {
       NOTHING_TO_DISPLAY,
-      underscoresToSpaces,
+      directoryCtrl,
+      utils,
     };
   },
 
   data() {
     return {
       menu: {
-        context: undefined as File | undefined,
+        context: undefined as ExtendedFileData | undefined,
       },
     };
   },
 
   computed: {
-    filesList(): File[] {
-      return this.files ?? [];
-    },
-
     paths(): string[] {
       return this.path.split(constants.PATH_SEPARATOR);
     },
 
     maxDirs(): number {
-      let allDirs = ["root"].concat(this.paths.filter((path) => path.length));
+      let allDirs = ["root"].concat(this.paths);
       let totalLength = 0;
       let howMany = 1;
 
@@ -149,17 +135,7 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return ["root"]
-        .concat(this.paths.filter((path) => path.length))
-        .slice(-this.maxDirs);
-    },
-
-    absolutePath(): string {
-      if (this.path && this.path[0] != constants.PATH_SEPARATOR) {
-        return `${constants.PATH_SEPARATOR}${this.path}`;
-      }
-
-      return this.path;
+      return ["root"].concat(this.paths).slice(-this.maxDirs);
     },
 
     parentDirectory(): string {
@@ -168,61 +144,58 @@ export default defineComponent({
   },
 
   methods: {
-    onDragStart(file: File) {
-      this.files.forEach((file) => (file.isTarget = false));
-      file.isSource = true;
+    onDragStart(file: ExtendedFileData) {
+      this.files.forEach((file) => (file.target = false));
+      file.source = true;
     },
 
-    // eslint-disable-next-line
-    onDragExit(file: File, e: any) {
-      if (e.buttons && !file.isSource) {
-        file.isTarget = false;
+    onDragExit(file: ExtendedFileData, event: DragEvent) {
+      if (event.buttons && !file.source) {
+        file.target = false;
       }
     },
 
-    onDragEnter(file: File) {
-      if (file.isSource || !file.isDir) return;
-      file.isTarget = true;
+    onDragEnter(file: ExtendedFileData) {
+      if (file.source || !file.isDirectory()) return;
+      file.target = true;
     },
 
     onDragEnd() {
       // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.isSource);
-      const targetFile = this.files?.find((file) => file.isTarget);
+      const sourceFile = this.files?.find((file) => file.source);
+      const targetFile = this.files?.find((file) => file.target);
 
       this.files?.map((file) => {
-        file.isSource = false;
-        file.isTarget = false;
+        file.source = false;
+        file.target = false;
       });
 
       if (!sourceFile || !targetFile) return;
 
-      const source = [this.absolutePath, sourceFile.name].join(
+      const source = [this.path, sourceFile.name].join(
         constants.PATH_SEPARATOR
       );
 
-      if (targetFile.name == constants.PARENT_DIRECTORY) {
+      if (targetFile.isParentDirectory()) {
         this.$emit(RELOCATE_EVENT_NAME, source, this.parentDirectory);
         return;
       }
 
-      const target = [this.absolutePath, targetFile.name].join(
+      const target = [this.path, targetFile.name].join(
         constants.PATH_SEPARATOR
       );
 
       this.$emit(RELOCATE_EVENT_NAME, source, target);
     },
 
-    onOpenClick(file: File) {
-      if (!file.isDir) {
+    onOpenClick(file: ExtendedFileData) {
+      if (!file.isDirectory()) {
         this.$emit(OPENFILE_EVENT_NAME, file);
         return;
       }
 
-      let target: string;
-      if (file.name != constants.PARENT_DIRECTORY) {
-        target = [this.absolutePath, file.name].join(constants.PATH_SEPARATOR);
-      } else {
+      let target = [this.path, file.name].join(constants.PATH_SEPARATOR);
+      if (file.isParentDirectory()) {
         target = this.parentDirectory;
       }
 
@@ -230,16 +203,14 @@ export default defineComponent({
     },
 
     onMenuOptionClick(action: string) {
-      let target = utils.cleanPath(
-        [this.absolutePath, this.menu.context?.name].join(
-          constants.PATH_SEPARATOR
-        )
+      let target = [this.path, this.menu.context?.name].join(
+        constants.PATH_SEPARATOR
       );
 
       const actions: { [key: string]: () => void } = {
         delete: () => this.$emit(DELETE_EVENT_NAME, target, this.menu.context),
         rename: () => {
-          if (this.menu.context) this.menu.context.editable = true;
+          if (this.menu.context) this.menu.context.rename = true;
         },
         open: () => this.menu.context && this.onOpenClick(this.menu.context),
       };
@@ -260,38 +231,34 @@ export default defineComponent({
       );
     },
 
-    isDraggable(file: File): boolean {
-      return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
+    isDraggable(file: ExtendedFileData): boolean {
+      return !file.metadata.get("tags")?.includes("virtual");
     },
 
-    onRightClick(file: File) {
-      if (file.name == constants.PARENT_DIRECTORY) return;
+    onRightClick(file: ExtendedFileData) {
+      if (file.isParentDirectory()) return;
 
       this.menu.context = file;
-      this.menu.context.isTarget = true;
+      this.menu.context.target = true;
     },
 
     onMenuClose() {
-      if (this.menu.context) this.menu.context.isTarget = false;
+      if (this.menu.context) this.menu.context.target = false;
       this.menu.context = undefined;
     },
 
-    onFilenameChange(file: File, filename: string) {
-      file.editable = false;
-      if (!filename || (this.validate && this.validate(filename))) {
+    onFilenameChange(file: ExtendedFileData, filename: string) {
+      file.rename = false;
+
+      if (!filename || this.directoryCtrl?.checkFilename(filename)) {
         // the filename contains errors
         return;
       }
 
-      const source = [this.absolutePath, file.name].join(
-        constants.PATH_SEPARATOR
-      );
+      const source = [this.path, file.name].join(constants.PATH_SEPARATOR);
+      const target = [this.path, filename].join(constants.PATH_SEPARATOR);
 
-      const target = [this.absolutePath, filename].join(
-        constants.PATH_SEPARATOR
-      );
-
-      this.$emit(RELOCATE_EVENT_NAME, source, target, file.isDir, true);
+      this.$emit(RELOCATE_EVENT_NAME, source, target);
     },
   },
 });

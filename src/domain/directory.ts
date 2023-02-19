@@ -1,4 +1,5 @@
-const PARENT_DIRECTORY = "..";
+import * as utils from "@/utils";
+import * as constants from "@/constants";
 
 enum Flags {
   Directory = 0x04,
@@ -7,7 +8,7 @@ enum Flags {
 enum MetadataKey {
   Url = "url",
   UpdatedAt = "updated_at",
-  AppId = "app_id",
+  ToolId = "tool_id",
   Size = "size",
 }
 
@@ -29,8 +30,16 @@ class FileData {
     this.name = name;
   }
 
+  filename(): string {
+    return utils.underscoresToSpaces(this.name);
+  }
+
   size(): string | undefined {
     return this.metadata.get(MetadataKey.Size);
+  }
+
+  url(): string | undefined {
+    return "";
   }
 
   updatedAt(): Date {
@@ -43,7 +52,7 @@ class FileData {
   }
 
   isParentDirectory(): boolean {
-    return this.name == PARENT_DIRECTORY;
+    return this.name == constants.PARENT_DIRECTORY;
   }
 }
 
