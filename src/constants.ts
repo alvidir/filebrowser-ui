@@ -1,22 +1,10 @@
-import { Error } from "./filebrowser.service";
+import { Error } from "./services/filebrowser";
 import Config from "./config.json";
+import { Warning } from "./domain/warning";
+import { Tag } from "./domain/tag";
+import { Tool } from "./domain/tool";
 
-interface WarningProps {
-  title: string;
-  text: string;
-  level?: string;
-}
-
-interface TagProps {
-  tag: string;
-  title?: string;
-  description?: string;
-  iconClass?: string;
-  color?: string;
-  active?: boolean;
-}
-
-const WARNING_PROPS: { [key: string]: WarningProps } = {
+const WARNINGS: { [key: string]: Warning } = {
   [Error.ERR_UNKNOWN]: {
     title: "Something bad did happen",
     text: "We could not proceed with your request, please try again.",
@@ -57,13 +45,9 @@ const WARNING_PROPS: { [key: string]: WarningProps } = {
   },
 };
 
-const enum TAGS {
-  VIRTUAL = "virtual",
-}
-
-const TAG_PROPS: { [key: string]: TagProps } = {
-  [TAGS.VIRTUAL]: {
-    tag: TAGS.VIRTUAL,
+const TAGS: { [key: string]: Tag } = {
+  virtual: {
+    tag: "virtual",
     color: "var(--color-yellow)",
     title: "Is it alive or dead?",
     description:
@@ -73,38 +57,17 @@ const TAG_PROPS: { [key: string]: TagProps } = {
   },
 };
 
-interface AppProps {
-  id: string;
-  title: string;
-  icon: string;
-  url: string;
-}
-
-const enum APPS {
-  AGORA = "agora",
-}
-
-const APPS_PROPS = {
-  [APPS.AGORA]: {
+const TOOLS: { [key: string]: Tool } = {
+  agora: {
     id: "agora",
-    title: "Agora",
-    icon: Config.AGORA_LOGO_URI,
-    url: Config.AGORA_BASE_URI,
+    name: "Agora",
+    iconUri: Config.AGORA_LOGO_URI,
+    baseUri: Config.AGORA_BASE_URI,
   },
 };
 
 const PATH_SEPARATOR = "/";
-const PARENT_DIRECTORY = "..";
+const DEFAULT_PROJECT_NAME = "Untitled project";
+const SEARCH_DEBOUNCE = 300;
 
-export {
-  TAGS,
-  APPS,
-  WarningProps,
-  TagProps,
-  AppProps,
-  TAG_PROPS,
-  APPS_PROPS,
-  PATH_SEPARATOR,
-  PARENT_DIRECTORY,
-  WARNING_PROPS,
-};
+export { TOOLS, TAGS, WARNINGS, PATH_SEPARATOR };

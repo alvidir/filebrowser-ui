@@ -2,8 +2,13 @@
   <sidenav-menu :on-click="() => context.switchTheme()"></sidenav-menu>
   <div id="main-container">
     <div class="narrowed">
-      <notice-card v-if="warning" v-bind="warning" @close="quitWarning()" />
-      <div id="actions-container">
+      <notice-card
+        v-for="(warning, index) in warningCtrl.getWarnings()"
+        v-key="index"
+        v-bind="warning"
+        @close="warningCtrl.removeWarning(warning)"
+      />
+      <!-- <div id="actions-container">
         <search-field
           id="search-field"
           :placeholder="'Search'"
@@ -15,14 +20,14 @@
         >
           <div class="search-item">
             <i class="bx bx-file-blank"></i>
-            <label>{{ underscoresToSpaces(props.item.name) }}</label>
+            <label>{{ props.item.name }}</label>
           </div>
         </search-field>
         <span id="action-buttons">
           <new-project
             class="action"
             :path="path"
-            :apps="apps"
+            :tools="apps"
             @submit="onNewProject"
           >
           </new-project>
@@ -33,7 +38,7 @@
             @submit="createNewFolder"
           ></new-folder>
         </span>
-      </div>
+      </div> -->
       <dir-list
         :files="filteredFiles"
         :path="path"
@@ -44,7 +49,7 @@
         @delete="onDelete"
       />
     </div>
-    <action-dialog
+    <!-- <action-dialog
       v-if="dialog"
       :path="dialog.path"
       :action="dialog.action"
@@ -53,34 +58,32 @@
       @submit="onCloseDialog(true)"
       @cancel="onCloseDialog(false)"
     >
-    </action-dialog>
+    </action-dialog> -->
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
-import Filebrowser, {
-  Flags,
-  Error,
-  FileMetadata,
-  MetadataKey,
-} from "@/filebrowser.service";
-import DirList, { File } from "@/components/DirList.vue";
-import NewProject, { App } from "@/components/NewProject.vue";
+import { defineComponent, provide } from "vue";
+import Context from "fibonacci-styles/context";
+import Filebrowser from "@/services/filebrowser";
+import DirList from "@/components/DirList.vue";
+import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import ActionDialog from "@/components/DeletionDialog.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
-import Config from "@/config.json";
-import Context from "fibonacci-styles/context";
+import DirectoryController from "@/controllers/directory";
+import WarningController from "@/controllers/warning";
 import * as constants from "@/constants";
-import { FieldController } from "vue-fields/src/main";
-import * as utils from "@/utils";
-
-const filebrowserService = new Filebrowser(Config.FILEBROWSER_SERVER_URI);
+import config from "@/config.json";
 
 const ROOT_PATH = constants.PATH_SEPARATOR;
-const SEARCH_DEBOUNCE = 300;
-const DEFAULT_PROJECT_NAME = "Untitled project";
+
+const filebrowserService = new Filebrowser(config.FILEBROWSER_SERVER_URI);
+const warningCtrl = new WarningController();
+const directoriesCtrl = new DirectoryController(
+  filebrowserService,
+  warningCtrl
+);
 
 export default defineComponent({
   name: "App",
@@ -93,30 +96,23 @@ export default defineComponent({
   },
 
   setup() {
-    const context = new Context(Config.ALVIDIR_BASE_URI);
-    const underscoresToSpaces = utils.underscoresToSpaces;
+    const context = new Context(config.ALVIDIR_BASE_URI);
+
+    provide("context", context);
+    provide("warningCtrl", warningCtrl);
+    provide("directoriesCtrl", directoriesCtrl);
 
     return {
       context,
-      SEARCH_DEBOUNCE,
-      underscoresToSpaces,
+      warningCtrl,
+      directoriesCtrl,
+      constants,
     };
   },
 
   data() {
     return {
-      warning: undefined as constants.WarningProps | undefined,
       path: window.location.pathname ?? ROOT_PATH,
-      dirs: {} as { [dir: string]: File[] },
-      search: [] as File[],
-      fetching: 0,
-      dialog: undefined as
-        | {
-            context: File;
-            action: string;
-            path: string;
-          }
-        | undefined,
     };
   },
 
@@ -126,318 +122,6 @@ export default defineComponent({
       if (path != current) {
         window.history.pushState("", "", path);
       }
-    },
-  },
-
-  computed: {
-    dirFiles(): File[] {
-      const target = this.path;
-      const normalized = utils.cleanPath(target);
-
-      if (this.dirs[normalized] === undefined) {
-        this.onChangeDirectory(normalized);
-      }
-
-      return this.dirs[normalized] || [];
-    },
-
-    filteredFiles(): File[] {
-      const sortFn = (a: File, b: File): number => {
-        if (a.name == constants.PARENT_DIRECTORY) return -1;
-        if (b.name == constants.PARENT_DIRECTORY) return 1;
-
-        const sortIndex = a.name > b.name ? 1 : -1;
-        if ((a.isDir && b.isDir) || (!a.isDir && !b.isDir)) return sortIndex;
-        return a.isDir ? -1 : 1;
-      };
-
-      const filterFn = (f: File): boolean => {
-        const HIDEN_FILE_REGEX = new RegExp("^\\.\\w.*$", "g");
-        const paths = f.name.split(constants.PATH_SEPARATOR);
-        const match = paths[paths.length - 1].match(HIDEN_FILE_REGEX);
-        return !match;
-      };
-
-      return this.dirFiles.filter(filterFn).sort(sortFn);
-    },
-
-    apps(): App[] {
-      return Object.values(constants.APPS_PROPS).map((value) => {
-        return {
-          id: value.id,
-          title: value.title,
-          icon: value.icon,
-          url: value.url,
-          fetching: false,
-        };
-      });
-    },
-  },
-
-  methods: {
-    dateFromUnix(unix: string | undefined): Date {
-      if (!unix) unix = "0";
-      return new Date(parseInt(unix, 16) * 1000);
-    },
-
-    insertParentDirectory(path: string, files: File[]) {
-      if (path == constants.PATH_SEPARATOR) return;
-
-      files.unshift({
-        id: "",
-        name: constants.PARENT_DIRECTORY,
-        isDir: true,
-        isSource: false,
-      });
-    },
-
-    createNewFolder(name: string) {
-      const normalized = utils.cleanPath(this.path);
-      const newFolder: File = {
-        id: "",
-        name: name,
-        isDir: true,
-        updatedAt: new Date(),
-        new: true,
-        tags: [constants.TAGS.VIRTUAL],
-      };
-
-      this.dirs[normalized] = [newFolder].concat(this.dirFiles);
-    },
-
-    getNameError(name: string): string {
-      if (!name.match(/^[a-zA-Z0-9-_]*$/)) {
-        return "A name cannot contains special characters.";
-      }
-
-      if (name.length > 34) {
-        return "The name is too long.";
-      }
-
-      if (this.dirFiles.some((file) => file.name == name)) {
-        return "Name already exists";
-      }
-
-      return "";
-    },
-
-    onSearchInput(ctrl: FieldController) {
-      const filter = ctrl.value();
-      if (!filter) {
-        this.search = [];
-        return;
-      }
-
-      this.pullDirectoryFiles("", filter, (files) => {
-        this.search = files;
-      });
-    },
-
-    onOpenfile(file: File) {
-      if (file.isDir) return;
-    },
-
-    onDelete(target: string, source: File) {
-      target = utils.cleanPath(target);
-
-      this.dialog = {
-        action: "delete",
-        context: source,
-        path: target,
-      };
-    },
-
-    onCloseDialog(submit: boolean) {
-      if (submit && this.dialog) {
-        const target = this.dialog.path;
-        const file = this.dialog.context;
-        const actions: { [key: string]: () => void } = {
-          delete: () => this.onRemoveFile(target, file),
-        };
-
-        actions[this.dialog.action]();
-      }
-
-      this.dialog = undefined;
-    },
-
-    onChangeDirectory(path: string) {
-      // avoid highlighting new items each time they are displayed
-      this.dirFiles?.forEach((file) => (file.new = false));
-
-      path = utils.cleanPath(path);
-      if (path in this.dirs) {
-        this.path = path;
-        return;
-      }
-
-      this.pullDirectoryFiles(path, "", (files) => {
-        this.insertParentDirectory(path, files);
-        this.dirs[path] = files;
-        this.path = path;
-      });
-    },
-
-    onResponseError(error: Error): void {
-      this.warning = constants.WARNING_PROPS[error];
-      if (this.warning) return;
-
-      this.warning = constants.WARNING_PROPS[Error.ERR_UNKNOWN];
-      if (this.warning) this.warning.text = error;
-    },
-
-    quitWarning() {
-      this.warning = undefined;
-    },
-
-    pullDirectoryFiles(
-      path: string,
-      filter: string,
-      callback: (files: File[]) => void
-    ) {
-      this.fetching += 1;
-
-      filebrowserService
-        .getDirectory(path, filter, utils.baseHeaders())
-        .then((dir) => {
-          const files = Object.values(dir.files).map((file) => {
-            const f: File = {
-              id: file.id,
-              name: file.name,
-              isDir: (file.flags & Flags.Directory) != 0,
-              updatedAt: this.dateFromUnix(
-                file.getMetadata(MetadataKey.UpdatedAt)
-              ),
-            };
-
-            if ((file.flags & Flags.Directory) != 0) {
-              const size = file.metadata.find(
-                (meta) => meta.key == MetadataKey.Size
-              )?.value;
-
-              if (size) {
-                const value = parseInt(size);
-                const unit = value > 1 ? "files" : "file";
-                f.size = { value, unit };
-              }
-            }
-
-            return f;
-          });
-
-          callback(files);
-        })
-        .catch((error) => this.onResponseError(error))
-        .finally(() => {
-          this.fetching -= 1;
-        });
-    },
-
-    onRelocate(
-      source: string,
-      target: string,
-      isDir: boolean,
-      rename: boolean
-    ) {
-      this.fetching += 1;
-
-      target = utils.cleanPath(target);
-      const sourceComponents = utils
-        .cleanPath(source)
-        .split(constants.PATH_SEPARATOR);
-
-      let filter: string;
-      if (rename) {
-        if (isDir) filter = utils.buildRenameDirFilter(sourceComponents);
-        else filter = utils.buildRenameFileFilter(sourceComponents);
-      } else {
-        filter = utils.buildRelocateFilter(sourceComponents);
-      }
-
-      const path = utils.cleanPath(this.path);
-
-      filebrowserService
-        .relocate(target, filter, utils.baseHeaders())
-        .then(() => {
-          delete this.dirs[target];
-          this.pullDirectoryFiles(path, "", (files) => {
-            this.insertParentDirectory(path, files);
-            this.dirs[path] = files;
-          });
-        })
-        .catch((error) => {
-          this.onResponseError(error);
-        })
-        .finally(() => {
-          this.fetching -= 1;
-        });
-    },
-
-    onNewProject(app: App) {
-      app.fetching = true;
-
-      const normalized = utils.cleanPath(this.path);
-      const target = utils.cleanPath(
-        [this.path, DEFAULT_PROJECT_NAME].join(constants.PATH_SEPARATOR)
-      );
-
-      const headers = utils.baseHeaders();
-      const metadata: FileMetadata[] = [
-        {
-          key: MetadataKey.AppId,
-          value: app.id,
-        },
-      ];
-
-      filebrowserService
-        .createEmptyFile(target, metadata, headers)
-        .then((file) => {
-          const targetUrl = `${app.url}/${file.id}`;
-          window.open(targetUrl, "_blank")?.focus();
-
-          const newFile: File = {
-            id: file.id,
-            name: file.name,
-            isDir: false,
-            updatedAt: this.dateFromUnix(
-              file.getMetadata(MetadataKey.UpdatedAt)
-            ),
-            new: true,
-          };
-
-          this.dirs[normalized] = this.dirFiles.concat(newFile);
-        })
-        .catch((error) => {
-          this.onResponseError(error);
-        })
-        .finally(() => {
-          app.fetching = false;
-        });
-    },
-
-    onRemoveFile(target: string, file: File) {
-      this.fetching += 1;
-
-      const dirFiles = this.dirFiles;
-      const headers = utils.baseHeaders();
-      let request: Promise<void>;
-      if (file.isDir) {
-        request = filebrowserService.removeDirectory(target, headers);
-      } else {
-        request = filebrowserService.removeFile(file.id, headers);
-      }
-
-      target = utils.cleanPath(target);
-      request
-        .then(() => {
-          dirFiles.splice(dirFiles.indexOf(file), 1);
-        })
-        .catch((error) => {
-          this.onResponseError(error);
-        })
-        .finally(() => {
-          this.fetching -= 1;
-        });
     },
   },
 
@@ -462,19 +146,15 @@ body {
   background: var(--color-bg-secondary);
 }
 
-.search-item {
-  font-size: medium;
-  margin-left: $fib-5 * 1px;
-  color: var(--color-text-primary);
+// .search-item {
+//   font-size: medium;
+//   margin-left: $fib-5 * 1px;
+//   color: var(--color-text-primary);
 
-  i {
-    margin-right: $fib-6 * 1px;
-  }
-}
-
-#sidenav {
-  z-index: 2;
-}
+//   i {
+//     margin-right: $fib-6 * 1px;
+//   }
+// }
 
 #main-container {
   display: flex;

@@ -12,18 +12,9 @@
       <i class="bx bxs-pyramid"></i>
       <label>Tools</label>
     </button>
-    <button>
-      <i class="bx bxs-trash"></i>
-      <label>Trash</label>
-    </button>
     <button class="flex">
       <i class="bx bx-cog"></i>
       <label>Settings</label>
-      <!-- <regular-menu class="tooltip bottom delayed" active="true">
-        <button>option 1</button>
-        <button>option 2</button>
-        <button>option 3</button>
-      </regular-menu> -->
     </button>
     <span></span>
     <button>

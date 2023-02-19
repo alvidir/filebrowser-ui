@@ -16,15 +16,13 @@
       </template>
       <div class="apps">
         <regular-button
-          v-for="app in apps"
-          :key="app.id"
+          v-for="tool in tools"
+          :key="tool.id"
           class="app"
           color="var(--color-button)"
-          :loading="app.fetching"
-          @click="submit(app)"
         >
-          <img :src="app.icon" :alt="app.title" />
-          <small>{{ app.title }}</small>
+          <img :src="tool.iconUri" :alt="tool.name" />
+          <small>{{ tool.name }}</small>
         </regular-button>
       </div>
     </regular-card>
@@ -34,18 +32,11 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import * as utils from "@/utils";
+import { Tool } from "@/domain/tool";
 
 export const SUBMIT_EVENT_NAME = "submit";
 
 const NEW_PROJECT = "New project";
-
-export interface App {
-  id: string;
-  title: string;
-  icon: string;
-  url: string;
-  fetching: boolean;
-}
 
 export default defineComponent({
   name: "NewFolder",
@@ -55,8 +46,8 @@ export default defineComponent({
       type: String,
       required: true,
     },
-    apps: {
-      type: Object as PropType<App[]>,
+    tools: {
+      type: Object as PropType<Array<Tool>>,
       required: true,
     },
   },
@@ -84,10 +75,6 @@ export default defineComponent({
     close() {
       if (!this.active) return;
       this.active = false;
-    },
-
-    submit(app: App) {
-      this.$emit(SUBMIT_EVENT_NAME, app);
     },
   },
 });

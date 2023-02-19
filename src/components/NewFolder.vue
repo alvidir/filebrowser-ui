@@ -94,6 +94,7 @@ export default defineComponent({
       this.active = false;
       this.field?.clear();
       this.field?.blur();
+      this.error = "";
     },
 
     submit() {

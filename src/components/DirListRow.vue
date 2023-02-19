@@ -2,9 +2,9 @@
   <tr
     :class="{
       'drag-target': isTarget || editable,
-      'parent-dir': isParentDir,
+      'parent-dir': file.isParentDirectory(),
     }"
-    @click="isParentDir && onClick()"
+    @click="file.isParentDirectory() && onClick()"
   >
     <td class="filename" :class="{ error: error }">
       <i v-if="isParentDir" class="bx bx-arrow-back"></i>
@@ -18,27 +18,27 @@
         ref="edit_filename"
         v-model="edit.filename"
         :placeholder="underscoresToSpaces(name ?? '')"
-        @blur="onBlur"
-        @keydown.enter="onBlur"
-        @keydown.esc="onBlur"
+        @keydown.enter="applyRename"
+        @keydown.esc="cancelRename"
+        @blur="cancelRename"
         @input="onChange"
       />
 
       <div class="cause" v-if="error">{{ error }}</div>
     </td>
-    <td>
+    <!-- <td>
       <div class="tags-list">
         <file-flag v-for="tag in tags" :key="tag" v-bind="getTagProps(tag)">
           {{ tag }}
         </file-flag>
       </div>
-    </td>
+    </td> -->
     <td class="file-size">
-      <span v-if="size"> {{ size.value }} {{ size.unit }} </span>
+      <span v-if="file.size()"> {{ contentSize }} </span>
       <span v-else>&nbsp;</span>
     </td>
     <td class="elapsed-time">
-      <span v-if="updatedAt">{{ printElapsedTimeSince(updatedAt) }}</span>
+      <span>{{ elapsedTime }}</span>
     </td>
   </tr>
 </template>
@@ -48,6 +48,7 @@ import { defineComponent, PropType } from "vue";
 import FileFlag from "@/components/FileTag.vue";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
+import { FileData } from "@/domain/directory";
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
@@ -63,24 +64,15 @@ export interface Size {
   unit: string;
 }
 
-interface KeyEvent {
-  type: string;
-  key?: string;
-}
-
 export default defineComponent({
   name: "DirListRow",
   events: [OPEN_EVENT_NAME, RENAME_EVENT_NAME],
   components: { FileFlag },
   props: {
-    name: String,
-    isDir: Boolean,
-    tags: Object as PropType<Array<string>>,
-    size: Object as PropType<Size>,
-    updatedAt: Date,
-    isTarget: Boolean,
-    editable: Boolean,
-    validate: Function as PropType<utils.ValidateFn>,
+    file: {
+      type: Object as PropType<FileData>,
+      required: true,
+    },
   },
 
   watch: {
@@ -111,15 +103,14 @@ export default defineComponent({
   },
 
   computed: {
-    isParentDir(): boolean {
-      return this.name == constants.PARENT_DIRECTORY;
+    contentSize(): string {
+      const size = parseInt(this.file.size() ?? "0");
+      return `${size} ${size > 1 ? "items" : "item"}`;
     },
-  },
 
-  methods: {
-    printElapsedTimeSince(from: Date): string {
+    elapsedTime(): string {
       const now = new Date().getTime();
-      const seconds = (now - from.getTime()) / 1000;
+      const seconds = (now - this.file.updatedAt().getTime()) / 1000;
 
       if (seconds < 20) {
         return "just now";
@@ -156,31 +147,38 @@ export default defineComponent({
       const total = scaleTime(SECONDS_PER_YEAR);
       return `${total} year${total > 1 ? "s" : ""} ago`;
     },
+  },
 
-    getTagProps(tag: string): constants.TagProps {
-      if (tag in constants.TAG_PROPS) {
-        return constants.TAG_PROPS[tag];
-      }
+  methods: {
+    // getTagProps(tag: string): constants.TagProps {
+    //   if (tag in constants.TAG_PROPS) {
+    //     return constants.TAG_PROPS[tag];
+    //   }
 
-      return {
-        tag: tag,
-      };
-    },
+    //   return {
+    //     tag: tag,
+    //   };
+    // },
 
     onClick() {
       this.$emit(OPEN_EVENT_NAME);
     },
 
-    onBlur(event: KeyEvent) {
-      if (event.type == "blur" || event.key == "Escape") {
-        this.edit.filename = this.name ?? "";
-      }
+    cancelRename() {
+      this.edit.filename = this.name ?? "";
+      this.finishRename();
+    },
 
+    applyRename() {
       this.$emit(
         RENAME_EVENT_NAME,
         utils.spacesToUnderscores(this.edit.filename)
       );
 
+      this.finishRename();
+    },
+
+    finishRename() {
       this.edit.filename = "";
       this.error = "";
     },

@@ -27,8 +27,8 @@
 </template>
 
 <script lang="ts">
+import { FileData } from "@/domain/directory";
 import { defineComponent, PropType } from "vue";
-import { File } from "./DirList.vue";
 import * as utils from "../utils";
 
 export const SUBMIT_EVENT_NAME = "submit";
@@ -39,7 +39,7 @@ export default defineComponent({
   events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
   props: {
     path: String,
-    context: Object as PropType<File>,
+    subject: Object as PropType<FileData>,
     active: Boolean,
   },
 
@@ -56,11 +56,11 @@ export default defineComponent({
     },
 
     description(): string {
-      if (!this.context) return "";
+      if (!this.subject) return "";
 
       let description = "";
-      if (this.context.isDir) {
-        description = `You are about to delete a folder and the ${this.context.size?.value} ${this.context.size?.unit} inside of it.`;
+      if (this.subject?.isDirectory()) {
+        description = `You are about to delete a folder and the ${this.subject.size()} items inside of it.`;
       } else {
         description = "You are about to delete a file.";
       }
