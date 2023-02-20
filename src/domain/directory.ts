@@ -13,47 +13,47 @@ enum MetadataKey {
 }
 
 class Permissions {
-  read: boolean = false;
-  write: boolean = false;
-  owner: boolean = false;
+  read = false;
+  write = false;
+  owner = false;
 }
 
 class FileData {
   id: string;
   name: string;
   metadata: Map<string, string> = new Map();
-  permissions: Map<Number, Permissions> = new Map();
-  flags: number = 0;
+  permissions: Map<number, Permissions> = new Map();
+  flags = 0;
 
   constructor(id: string, name: string) {
     this.id = id;
     this.name = name;
   }
 
-  filename(): string {
+  filename = (): string => {
     return utils.underscoresToSpaces(this.name);
-  }
+  };
 
-  size(): string | undefined {
+  size = (): string | undefined => {
     return this.metadata.get(MetadataKey.Size);
-  }
+  };
 
-  url(): string | undefined {
+  url = (): string | undefined => {
     return "";
-  }
+  };
 
-  updatedAt(): Date {
-    let unix = this.metadata.get(MetadataKey.UpdatedAt) ?? "0";
+  updatedAt = (): Date => {
+    const unix = this.metadata.get(MetadataKey.UpdatedAt) ?? "0";
     return new Date(parseInt(unix, 16) * 1000);
-  }
+  };
 
-  isDirectory(): boolean {
+  isDirectory = (): boolean => {
     return (this.flags & Flags.Directory) != 0;
-  }
+  };
 
-  isParentDirectory(): boolean {
+  isParentDirectory = (): boolean => {
     return this.name == constants.PARENT_DIRECTORY;
-  }
+  };
 }
 
 class Directory {
@@ -64,9 +64,9 @@ class Directory {
     this.id = id;
   }
 
-  getFileByName(name: string): FileData | undefined {
+  getFileByName = (name: string): FileData | undefined => {
     return this.files.find((file) => file.name === name);
-  }
+  };
 }
 
 export { Directory, FileData };

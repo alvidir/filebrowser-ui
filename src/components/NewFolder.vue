@@ -46,7 +46,7 @@ export default defineComponent({
   events: [SUBMIT_EVENT_NAME],
   props: {
     path: { type: String, required: true },
-    validate: Function as PropType<utils.ValidateFn>,
+    validate: Function,
   },
 
   setup() {

@@ -21,19 +21,19 @@
           </td>
         </tr>
         <dir-list-row
-          v-for="file in files"
-          :key="file.name"
-          :class="{ new: file.new }"
-          :draggable="isDraggable(file)"
-          :file="file"
-          @open="onOpenClick(file)"
-          @rename="onFilenameChange(file, $event)"
-          @dragstart="onDragStart(file)"
-          @dragenter="onDragEnter(file)"
-          @dragexit="onDragExit(file, $event)"
-          @mouseup.right="onRightClick(file)"
+          v-bind="item"
+          v-for="item in files"
+          :file="item"
+          :key="item.name"
+          :class="{ new: item.new }"
+          :draggable="isDraggable(item)"
+          @open="onOpenFile(item)"
+          @rename="onFilenameChange(item, $event)"
+          @dragstart="onDragStart(item)"
+          @dragenter="onDragEnter(item)"
+          @dragexit="onDragExit(item, $event)"
+          @mouseup.right="onRightClick(item)"
           @contextmenu.prevent
-          v-bind="file"
         />
       </table>
     </div>
@@ -55,17 +55,18 @@ import * as utils from "@/utils";
 import { FileData } from "@/domain/directory";
 import DirectoryController from "@/controllers/directory";
 
-export class ExtendedFileData extends FileData {
-  rename: boolean = false;
-  source: boolean = false;
-  target: boolean = false;
-  new: boolean = false;
+interface DirListItem extends FileData {
+  rename?: boolean;
+  source?: boolean;
+  target?: boolean;
+  new?: boolean;
 }
 
 const NOTHING_TO_DISPLAY = "Nothing to display";
 const CHANGEDIR_EVENT_NAME = "changedir";
 const OPENFILE_EVENT_NAME = "openfile";
 const RELOCATE_EVENT_NAME = "relocate";
+const RENAME_EVENT_NAME = "rename";
 const DELETE_EVENT_NAME = "delete";
 
 export default defineComponent({
@@ -74,12 +75,13 @@ export default defineComponent({
     CHANGEDIR_EVENT_NAME,
     OPENFILE_EVENT_NAME,
     RELOCATE_EVENT_NAME,
+    RENAME_EVENT_NAME,
     DELETE_EVENT_NAME,
   ],
   components: { DirListRow },
   props: {
     files: {
-      type: Object as PropType<Array<ExtendedFileData>>,
+      type: Object as PropType<Array<DirListItem>>,
       required: true,
     },
     path: {
@@ -107,7 +109,7 @@ export default defineComponent({
   data() {
     return {
       menu: {
-        context: undefined as ExtendedFileData | undefined,
+        context: undefined as DirListItem | undefined,
       },
     };
   },
@@ -135,84 +137,68 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return ["root"].concat(this.paths).slice(-this.maxDirs);
+      return ["root"]
+        .concat(this.paths)
+        .slice(-this.maxDirs)
+        .filter((dir) => dir.length);
     },
 
     parentDirectory(): string {
-      return this.paths.slice(0, -1).join(constants.PATH_SEPARATOR);
+      return this.paths
+        .slice(0, -1)
+        .filter((dir) => dir.length)
+        .join(constants.PATH_SEPARATOR);
     },
   },
 
   methods: {
-    onDragStart(file: ExtendedFileData) {
-      this.files.forEach((file) => (file.target = false));
-      file.source = true;
+    onDragStart(item: DirListItem) {
+      this.files.forEach((item) => (item.target = false));
+      item.source = true;
     },
 
-    onDragExit(file: ExtendedFileData, event: DragEvent) {
-      if (event.buttons && !file.source) {
-        file.target = false;
+    onDragExit(item: DirListItem, event: DragEvent) {
+      if (event.buttons && !item.source) {
+        item.target = false;
       }
     },
 
-    onDragEnter(file: ExtendedFileData) {
-      if (file.source || !file.isDirectory()) return;
-      file.target = true;
+    onDragEnter(item: DirListItem) {
+      if (!item.source && item.isDirectory()) {
+        item.target = true;
+      }
     },
 
     onDragEnd() {
       // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.source);
-      const targetFile = this.files?.find((file) => file.target);
+      const source = this.files?.find((item) => item.source);
+      const target = this.files?.find((item) => item.target);
 
-      this.files?.map((file) => {
-        file.source = false;
-        file.target = false;
+      this.files?.map((item) => {
+        item.source = false;
+        item.target = false;
       });
 
-      if (!sourceFile || !targetFile) return;
-
-      const source = [this.path, sourceFile.name].join(
-        constants.PATH_SEPARATOR
-      );
-
-      if (targetFile.isParentDirectory()) {
-        this.$emit(RELOCATE_EVENT_NAME, source, this.parentDirectory);
-        return;
-      }
-
-      const target = [this.path, targetFile.name].join(
-        constants.PATH_SEPARATOR
-      );
-
+      if (!source || !target) return;
       this.$emit(RELOCATE_EVENT_NAME, source, target);
     },
 
-    onOpenClick(file: ExtendedFileData) {
-      if (!file.isDirectory()) {
-        this.$emit(OPENFILE_EVENT_NAME, file);
+    onOpenFile(item: DirListItem) {
+      if (item.isParentDirectory()) {
+        this.$emit(CHANGEDIR_EVENT_NAME, -1);
         return;
       }
 
-      let target = [this.path, file.name].join(constants.PATH_SEPARATOR);
-      if (file.isParentDirectory()) {
-        target = this.parentDirectory;
-      }
-
-      this.$emit(CHANGEDIR_EVENT_NAME, target);
+      this.$emit(OPENFILE_EVENT_NAME, item);
     },
 
     onMenuOptionClick(action: string) {
-      let target = [this.path, this.menu.context?.name].join(
-        constants.PATH_SEPARATOR
-      );
-
       const actions: { [key: string]: () => void } = {
-        delete: () => this.$emit(DELETE_EVENT_NAME, target, this.menu.context),
+        delete: () => this.$emit(DELETE_EVENT_NAME, this.menu.context),
         rename: () => {
           if (this.menu.context) this.menu.context.rename = true;
         },
-        open: () => this.menu.context && this.onOpenClick(this.menu.context),
+        open: () => this.menu.context && this.onOpenFile(this.menu.context),
       };
 
       actions[action]();
@@ -220,25 +206,18 @@ export default defineComponent({
     },
 
     onDirectoryClick(index: number) {
-      let hidden = 0;
-      if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
-        hidden = this.directories.length - this.maxDirs + 1;
-      }
-
-      this.$emit(
-        CHANGEDIR_EVENT_NAME,
-        this.paths.slice(1, index + hidden + 1).join(constants.PATH_SEPARATOR)
-      );
+      const delta = this.directories.length - 1 - index;
+      if (delta) this.$emit(CHANGEDIR_EVENT_NAME, delta);
     },
 
-    isDraggable(file: ExtendedFileData): boolean {
-      return !file.metadata.get("tags")?.includes("virtual");
+    isDraggable(item: DirListItem): boolean {
+      return !item.metadata.get("tags")?.includes("virtual");
     },
 
-    onRightClick(file: ExtendedFileData) {
-      if (file.isParentDirectory()) return;
+    onRightClick(item: DirListItem) {
+      if (item.isParentDirectory()) return;
 
-      this.menu.context = file;
+      this.menu.context = item;
       this.menu.context.target = true;
     },
 
@@ -247,18 +226,12 @@ export default defineComponent({
       this.menu.context = undefined;
     },
 
-    onFilenameChange(file: ExtendedFileData, filename: string) {
+    onFilenameChange(file: DirListItem, filename: string) {
       file.rename = false;
 
-      if (!filename || this.directoryCtrl?.checkFilename(filename)) {
-        // the filename contains errors
-        return;
+      if (!this.directoryCtrl?.getFilenameError(filename)) {
+        this.$emit(RENAME_EVENT_NAME, file, filename);
       }
-
-      const source = [this.path, file.name].join(constants.PATH_SEPARATOR);
-      const target = [this.path, filename].join(constants.PATH_SEPARATOR);
-
-      this.$emit(RELOCATE_EVENT_NAME, source, target);
     },
   },
 });

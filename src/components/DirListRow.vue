@@ -4,7 +4,7 @@
       target: target || rename,
       'parent-dir': file.isParentDirectory(),
     }"
-    @click="onClick()"
+    @click="open()"
   >
     <td class="filename" :class="{ error: error }">
       <i v-if="file.isParentDirectory()" class="bx bx-arrow-back"></i>
@@ -45,8 +45,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType, inject } from "vue";
-import FileFlag from "@/components/FileTag.vue";
-import * as utils from "@/utils";
+// import FileFlag from "@/components/FileTag.vue";
 import { FileData } from "@/domain/directory";
 
 const SECONDS_PER_MINUTE = 60;
@@ -65,7 +64,9 @@ interface DirectoryController {
 export default defineComponent({
   name: "DirListRow",
   events: [OPEN_EVENT_NAME, RENAME_EVENT_NAME],
-  components: { FileFlag },
+  //   components: {
+  //     FileFlag,
+  //   },
   props: {
     file: {
       type: Object as PropType<FileData>,
@@ -157,8 +158,8 @@ export default defineComponent({
     //   };
     // },
 
-    onClick() {
-      if (this.file.isParentDirectory()) this.$emit(OPEN_EVENT_NAME);
+    open() {
+      this.$emit(OPEN_EVENT_NAME);
     },
 
     validateRenameValue() {
@@ -171,10 +172,9 @@ export default defineComponent({
     },
 
     applyRename() {
-      this.$emit(
-        RENAME_EVENT_NAME,
-        utils.spacesToUnderscores(this.renameValue)
-      );
+      if (this.renameValue && !this.error) {
+        this.$emit(RENAME_EVENT_NAME, this.renameValue);
+      }
 
       this.finishRename();
     },

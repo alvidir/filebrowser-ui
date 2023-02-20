@@ -4,7 +4,7 @@
     <div class="narrowed">
       <notice-card
         v-for="(warning, index) in warningCtrl.getWarnings()"
-        v-key="index"
+        :key="index"
         v-bind="warning"
         @close="warningCtrl.removeWarning(warning)"
       />
@@ -42,10 +42,11 @@
       <dir-list
         :files="files"
         :path="directoryCtrl.getPath()"
-        @openfile="directoryCtrl.onOpenfile"
-        @changedir="directoryCtrl.onChangeDirectory"
-        @relocate="directoryCtrl.onRelocate"
-        @delete="directoryCtrl.onDelete"
+        @openfile="directoryCtrl.openfile"
+        @changedir="directoryCtrl.changeDirectory"
+        @relocate="directoryCtrl.relocateFile"
+        @rename="directoryCtrl.renameFile"
+        @delete="directoryCtrl.deleteFile"
       />
     </div>
     <!-- <action-dialog
@@ -62,78 +63,79 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, provide } from "vue";
+import { defineComponent, provide, reactive } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
-import DirList, { ExtendedFileData } from "@/components/DirList.vue";
-import NewProject from "@/components/NewProject.vue";
-import NewFolder from "@/components/NewFolder.vue";
-import ActionDialog from "@/components/DeletionDialog.vue";
+import DirList from "@/components/DirList.vue";
+// import NewProject from "@/components/NewProject.vue";
+// import NewFolder from "@/components/NewFolder.vue";
+// import ActionDialog from "@/components/DeletionDialog.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import DirectoryController from "@/controllers/directory";
 import WarningController from "@/controllers/warning";
+import FilterController from "./controllers/filter";
 import * as constants from "@/constants";
+import * as utils from "@/utils";
 import config from "@/config.json";
+import { FileData } from "./domain/directory";
 
-const ROOT_PATH = constants.PATH_SEPARATOR;
+const context = new Context(config.ALVIDIR_BASE_URI);
+const filebrowserService = new Filebrowser(
+  config.FILEBROWSER_SERVER_URI,
+  utils.baseHeaders()
+);
 
-const filebrowserService = new Filebrowser(config.FILEBROWSER_SERVER_URI);
 const warningCtrl = new WarningController();
+const filterCtrl = new FilterController();
 const directoryCtrl = new DirectoryController(filebrowserService, warningCtrl);
 
 export default defineComponent({
   name: "App",
   components: {
     DirList,
-    NewProject,
-    NewFolder,
-    ActionDialog,
+    // NewProject,
+    // NewFolder,
+    // ActionDialog,
     SidenavMenu,
   },
 
   setup() {
-    const context = new Context(config.ALVIDIR_BASE_URI);
-
     provide("context", context);
-    provide("warningCtrl", warningCtrl);
     provide("directoryCtrl", directoryCtrl);
 
     return {
       context,
       warningCtrl,
       directoryCtrl,
+      filterCtrl,
       constants,
     };
   },
 
   data() {
     return {
-      path: window.location.pathname ?? ROOT_PATH,
+      files: [] as Array<FileData>,
+      path: constants.PATH_SEPARATOR,
     };
   },
 
-  watch: {
-    path(path: string) {
-      const current = window.location.pathname;
-      if (path != current) {
-        window.history.pushState("", "", path);
-      }
-    },
-  },
-
-  computed: {
-    files(): Array<ExtendedFileData> {
-      return (
-        this.directoryCtrl.getDirectory()?.files.map((item) => {
-          return item as ExtendedFileData;
-        }) ?? []
+  methods: {
+    update() {
+      this.path = this.directoryCtrl.getPath();
+      this.files = this.filterCtrl.filter(
+        this.directoryCtrl.getDirectory()?.files ?? []
       );
     },
   },
 
   mounted() {
+    this.directoryCtrl.setListener(this);
+    this.directoryCtrl.setPath(
+      window.location.pathname ?? constants.PATH_SEPARATOR
+    );
+
     window.onpopstate = () => {
-      this.path = window.location.pathname ?? ROOT_PATH;
+      this.directoryCtrl.setPath(window.location.pathname);
     };
   },
 });
