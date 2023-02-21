@@ -1,15 +1,16 @@
 import * as constants from "@/constants";
 import * as utils from "@/utils";
-import { Directory, FileData } from "@/domain/directory";
-import { Warning } from "@/domain/warning";
+import Directory from "@/domain/directory";
+import FileData from "@/domain/file";
+import Warning from "@/domain/warning";
 
-const PATH_SEPARATOR = "/";
-const PATH_REPLACE_REGEX = new RegExp(PATH_SEPARATOR + "{1,}", "g");
-const MAX_FILENAME_LEN = 36;
-const FILENAME_REGEX = /^[a-zA-Z0-9-_]*$/;
+const PathCleanRegex = new RegExp(constants.pathSeparator + "{1,}", "g");
+const FilenameRegex = /^[a-zA-Z0-9-_]*$/;
+const MaxFilenameLen = 36;
 
 interface FilebrowserClient {
   getDirectoryByPath(path: string): Promise<Directory>;
+  rename(file: FileData, filename: string): Promise<void>;
 }
 
 interface WarningController {
@@ -25,12 +26,24 @@ class DirectoryController {
   private warningController: WarningController;
   private dirs: Map<string, Directory> = new Map();
   private listeners: Array<Listener> = [];
-  private path: string = PATH_SEPARATOR;
+  private path: string = constants.pathSeparator;
 
   constructor(fbClient: FilebrowserClient, warnCtrl: WarningController) {
     this.filebrowserClient = fbClient;
     this.warningController = warnCtrl;
   }
+
+  static cleanPath = (path: string): string => {
+    path = utils.spacesToUnderscores(
+      path.replace(PathCleanRegex, constants.pathSeparator).trim()
+    );
+
+    if (path[0] != constants.pathSeparator) {
+      path = constants.pathSeparator.concat(path);
+    }
+
+    return path;
+  };
 
   private broadcast = () => {
     this.listeners.forEach((listener) => listener.update());
@@ -43,9 +56,9 @@ class DirectoryController {
         this.dirs.set(path, dir);
         this.broadcast();
       })
-      .catch((error) =>
-        this.warningController.pushWarning(constants.WARNINGS[error])
-      );
+      .catch((error: Warning) => {
+        this.warningController.pushWarning(error);
+      });
   };
 
   setListener = (listener: Listener) => {
@@ -59,16 +72,8 @@ class DirectoryController {
   };
 
   setPath = (path: string) => {
-    path = utils.spacesToUnderscores(
-      path.replace(PATH_REPLACE_REGEX, PATH_SEPARATOR).trim()
-    );
-
-    if (path[0] != PATH_SEPARATOR) {
-      path = PATH_SEPARATOR.concat(path);
-    }
-
-    this.path = path;
-    window.history.pushState("", "", path);
+    this.path = DirectoryController.cleanPath(path);
+    window.history.pushState("", "", this.path);
     this.broadcast();
   };
 
@@ -87,12 +92,12 @@ class DirectoryController {
       return "Filename cannot be empty";
     }
 
-    if (!name.match(FILENAME_REGEX)) {
+    if (!name.match(FilenameRegex)) {
       return "A name cannot contains special characters.";
     }
 
-    if (name.length > MAX_FILENAME_LEN) {
-      return `A name cannot exceed ${MAX_FILENAME_LEN} characters long.`;
+    if (name.length > MaxFilenameLen) {
+      return `A name cannot exceed ${MaxFilenameLen} characters long.`;
     }
 
     if (this.getDirectory()?.files.some((file) => file.name == name)) {
@@ -101,27 +106,47 @@ class DirectoryController {
   };
 
   openfile = (file: FileData) => {
-    console.log("open file");
+    if (file.isParentDirectory()) {
+      this.setPath(
+        this.path
+          .split(constants.pathSeparator)
+          .filter((dir) => dir.length)
+          .slice(0, -1)
+          .join(constants.pathSeparator)
+      );
+    } else if (file.isDirectory()) {
+      this.setPath(`${this.path}/${file.name}`);
+    } else if (file.url()) {
+      window.open(file.url(), "_blank")?.focus();
+    }
   };
 
   changeDirectory = (delta: number) => {
     const path = this.path
-      .split(constants.PATH_SEPARATOR)
+      .split(constants.pathSeparator)
       .slice(0, -delta)
-      .join(constants.PATH_SEPARATOR);
+      .join(constants.pathSeparator);
 
     this.setPath(path);
   };
 
-  relocateFile = (source: FileData, target: FileData) => {
+  rename = (file: FileData, filename: string) => {
+    this.filebrowserClient
+      .rename(file, filename)
+      .then(() => {
+        file.name = filename;
+        this.broadcast();
+      })
+      .catch((error: Warning) => {
+        this.warningController.pushWarning(error);
+      });
+  };
+
+  relocate = (source: FileData, target: FileData) => {
     console.log("relocate file");
   };
 
-  renameFile = (file: FileData, filename: string) => {
-    console.log("rename file");
-  };
-
-  deleteFile = (file: FileData) => {
+  delete = (file: FileData) => {
     console.log("delete file");
   };
 }

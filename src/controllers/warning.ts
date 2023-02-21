@@ -1,4 +1,4 @@
-import { Warning } from "@/domain/warning";
+import Warning from "@/domain/warning";
 
 class WarningController {
   private warnings: Array<Warning> = [];

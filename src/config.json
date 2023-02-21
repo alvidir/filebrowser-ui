@@ -4,5 +4,11 @@
   "AGORA_BASE_URI": "https://agora.alvidir.com",
   "ALVIDIR_LOGO_URI": "https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg",
   "ALVIDIR_BASE_URI": "alvidir.com",
-  "ALVIDIR_VERSION": "alpha"
+  "ALVIDIR_VERSION": "alpha",
+
+  "METADATA_UPDATED_AT": "updated_at",
+  "METADATA_SIZE": "size",
+  "METADATA_TOOL": "app_id",
+  "METADATA_REF": "ref",
+  "METADATA_TAGS": "tags"
 }

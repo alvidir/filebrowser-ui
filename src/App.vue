@@ -44,9 +44,9 @@
         :path="directoryCtrl.getPath()"
         @openfile="directoryCtrl.openfile"
         @changedir="directoryCtrl.changeDirectory"
-        @relocate="directoryCtrl.relocateFile"
-        @rename="directoryCtrl.renameFile"
-        @delete="directoryCtrl.deleteFile"
+        @relocate="directoryCtrl.relocate"
+        @rename="directoryCtrl.rename"
+        @delete="directoryCtrl.delete"
       />
     </div>
     <!-- <action-dialog
@@ -63,10 +63,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, provide, reactive } from "vue";
+import { defineComponent, provide } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
 import DirList from "@/components/DirList.vue";
+import FileData from "@/domain/file";
 // import NewProject from "@/components/NewProject.vue";
 // import NewFolder from "@/components/NewFolder.vue";
 // import ActionDialog from "@/components/DeletionDialog.vue";
@@ -77,7 +78,6 @@ import FilterController from "./controllers/filter";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
 import config from "@/config.json";
-import { FileData } from "./domain/directory";
 
 const context = new Context(config.ALVIDIR_BASE_URI);
 const filebrowserService = new Filebrowser(
@@ -115,7 +115,7 @@ export default defineComponent({
   data() {
     return {
       files: [] as Array<FileData>,
-      path: constants.PATH_SEPARATOR,
+      path: constants.pathSeparator,
     };
   },
 
@@ -131,7 +131,7 @@ export default defineComponent({
   mounted() {
     this.directoryCtrl.setListener(this);
     this.directoryCtrl.setPath(
-      window.location.pathname ?? constants.PATH_SEPARATOR
+      window.location.pathname ?? constants.pathSeparator
     );
 
     window.onpopstate = () => {

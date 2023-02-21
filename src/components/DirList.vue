@@ -52,8 +52,9 @@ import { defineComponent, inject, PropType } from "vue";
 import DirListRow from "@/components/DirListRow.vue";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
-import { FileData } from "@/domain/directory";
+import FileData from "@/domain/file";
 import DirectoryController from "@/controllers/directory";
+import Tag, { Tags } from "@/domain/tag";
 
 interface DirListItem extends FileData {
   rename?: boolean;
@@ -116,7 +117,7 @@ export default defineComponent({
 
   computed: {
     paths(): string[] {
-      return this.path.split(constants.PATH_SEPARATOR);
+      return this.path.split(constants.pathSeparator);
     },
 
     maxDirs(): number {
@@ -141,13 +142,6 @@ export default defineComponent({
         .concat(this.paths)
         .slice(-this.maxDirs)
         .filter((dir) => dir.length);
-    },
-
-    parentDirectory(): string {
-      return this.paths
-        .slice(0, -1)
-        .filter((dir) => dir.length)
-        .join(constants.PATH_SEPARATOR);
     },
   },
 
@@ -211,7 +205,10 @@ export default defineComponent({
     },
 
     isDraggable(item: DirListItem): boolean {
-      return !item.metadata.get("tags")?.includes("virtual");
+      return (
+        !item.isParentDirectory() &&
+        !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)
+      );
     },
 
     onRightClick(item: DirListItem) {
@@ -226,10 +223,10 @@ export default defineComponent({
       this.menu.context = undefined;
     },
 
-    onFilenameChange(file: DirListItem, filename: string) {
+    onFilenameChange(file: DirListItem, filename: string | undefined) {
       file.rename = false;
 
-      if (!this.directoryCtrl?.getFilenameError(filename)) {
+      if (filename && !this.directoryCtrl?.getFilenameError(filename)) {
         this.$emit(RENAME_EVENT_NAME, file, filename);
       }
     },

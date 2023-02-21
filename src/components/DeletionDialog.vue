@@ -27,7 +27,7 @@
 </template>
 
 <script lang="ts">
-import { FileData } from "@/domain/directory";
+import FileData from "@/domain/file";
 import { defineComponent, PropType } from "vue";
 import * as utils from "../utils";
 

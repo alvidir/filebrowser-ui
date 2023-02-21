@@ -1,12 +1,13 @@
 <template>
   <div class="file-tag" :class="{ 'custom-color': !!color }" @click.stop>
     <label class="round-corners fib-5">
-      {{ tag }}
+      {{ name }}
     </label>
-    <regular-card v-if="active">
+    <regular-card v-if="title">
       <div class="tag-info">
         <span>
           <i v-if="iconClass" :class="iconClass"></i>
+          <img v-if="iconSrc" :src="iconSrc" />
           &nbsp; {{ title }}
         </span>
         <small> {{ description }} </small>
@@ -20,14 +21,13 @@ import { defineComponent } from "vue";
 
 export default defineComponent({
   name: "FileTag",
-  events: [],
   props: {
-    tag: String,
+    name: String,
     title: String,
     description: String,
     iconClass: String,
+    iconSrc: String,
     color: String,
-    active: Boolean,
   },
 });
 </script>
@@ -44,9 +44,10 @@ $text-color: v-bind(color);
 
 .file-tag {
   width: fit-content;
-  transition-delay: 10s;
 
-  &:hover .regular-card {
+  &:hover .regular-card:not(:hover) {
+    transition-delay: $fib-9 * 0.01s;
+    transition-property: visibility;
     visibility: visible;
   }
 
@@ -86,10 +87,6 @@ $text-color: v-bind(color);
     width: $fib-13 * 1px;
     visibility: hidden;
 
-    &:not(:mousedrag):hover {
-      visibility: visible;
-    }
-
     a {
       &:not(:hover) {
         color: var(--color-text-secondary);
@@ -101,12 +98,19 @@ $text-color: v-bind(color);
       font-size: large;
     }
 
+    img {
+      max-height: $fib-7 * 1px;
+      margin-right: $fib-5 * 1px;
+    }
+
     .tag-info {
       display: flex;
       flex-direction: column;
     }
 
     span {
+      display: flex;
+      align-items: center;
       font-weight: 600;
     }
 

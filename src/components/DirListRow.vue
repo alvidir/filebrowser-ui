@@ -4,13 +4,13 @@
       target: target || rename,
       'parent-dir': file.isParentDirectory(),
     }"
-    @click="open()"
+    @click="file.isParentDirectory() && open()"
   >
     <td class="filename" :class="{ error: error }">
       <i v-if="file.isParentDirectory()" class="bx bx-arrow-back"></i>
       <i v-else-if="file.isDirectory()" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="!rename && !file.isParentDirectory()" :href="file.url()">
+      <a v-if="!rename && !file.isParentDirectory()" href="#" @click="open()">
         {{ file.filename() }}
       </a>
       <input
@@ -26,13 +26,13 @@
 
       <div class="cause" v-if="error">{{ error }}</div>
     </td>
-    <!-- <td>
+    <td>
       <div class="tags-list">
-        <file-flag v-for="tag in tags" :key="tag" v-bind="getTagProps(tag)">
+        <file-tag v-for="tag in file.tags()" :key="tag.name" v-bind="tag">
           {{ tag }}
-        </file-flag>
+        </file-tag>
       </div>
-    </td> -->
+    </td>
     <td class="file-size">
       <span v-if="file.size()"> {{ contentSize }} </span>
       <span v-else>&nbsp;</span>
@@ -45,8 +45,8 @@
 
 <script lang="ts">
 import { defineComponent, PropType, inject } from "vue";
-// import FileFlag from "@/components/FileTag.vue";
-import { FileData } from "@/domain/directory";
+import FileTag from "@/components/FileTag.vue";
+import FileData from "@/domain/file";
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
@@ -58,15 +58,15 @@ const OPEN_EVENT_NAME = "open";
 const RENAME_EVENT_NAME = "rename";
 
 interface DirectoryController {
-  checkFilename(name: string): string | undefined;
+  getFilenameError(name: string): string | undefined;
 }
 
 export default defineComponent({
   name: "DirListRow",
   events: [OPEN_EVENT_NAME, RENAME_EVENT_NAME],
-  //   components: {
-  //     FileFlag,
-  //   },
+  components: {
+    FileTag,
+  },
   props: {
     file: {
       type: Object as PropType<FileData>,
@@ -77,7 +77,7 @@ export default defineComponent({
   },
 
   watch: {
-    editable(value: boolean) {
+    rename(value: boolean) {
       if (value)
         this.$nextTick(() => (this.$refs.rename as HTMLInputElement)?.focus());
     },
@@ -102,7 +102,7 @@ export default defineComponent({
 
   computed: {
     contentSize(): string {
-      const size = parseInt(this.file.size() ?? "0");
+      const size = this.file.size() ?? 0;
       return `${size} ${size > 1 ? "items" : "item"}`;
     },
 
@@ -148,26 +148,22 @@ export default defineComponent({
   },
 
   methods: {
-    // getTagProps(tag: string): constants.TagProps {
-    //   if (tag in constants.TAG_PROPS) {
-    //     return constants.TAG_PROPS[tag];
-    //   }
-
-    //   return {
-    //     tag: tag,
-    //   };
-    // },
-
     open() {
       this.$emit(OPEN_EVENT_NAME);
     },
 
     validateRenameValue() {
-      this.error = this.directoryCtrl?.checkFilename(this.renameValue);
+      if (!this.renameValue) {
+        this.error = undefined;
+        return;
+      }
+
+      this.error = this.directoryCtrl?.getFilenameError(this.renameValue);
     },
 
     cancelRename() {
       this.renameValue = this.file.name;
+      this.$emit(RENAME_EVENT_NAME);
       this.finishRename();
     },
 

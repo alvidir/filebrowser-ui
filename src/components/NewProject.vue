@@ -32,7 +32,7 @@
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
 import * as utils from "@/utils";
-import { Tool } from "@/domain/tool";
+import Tool from "@/domain/tool";
 
 export const SUBMIT_EVENT_NAME = "submit";
 

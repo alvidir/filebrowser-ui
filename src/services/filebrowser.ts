@@ -1,14 +1,17 @@
 import * as grpcWeb from "grpc-web";
-import { Directory, FileData } from "@/domain/directory";
-import { DirectoryClient } from "../proto/DirectoryServiceClientPb";
-import { DirectoryLocator, DirectoryDescriptor } from "../proto/directory_pb";
-import { FileClient } from "../proto/FileServiceClientPb";
-import { FileDescriptor, FileLocator } from "../proto/file_pb";
+import * as constants from "@/constants";
+import Directory from "@/domain/directory";
+import FileData from "@/domain/file";
+import Warning from "@/domain/warning";
+import { DirectoryClient } from "@/proto/DirectoryServiceClientPb";
+import { DirectoryLocator, DirectoryDescriptor } from "@/proto/directory_pb";
+import { FileClient } from "@/proto/FileServiceClientPb";
+import { FileDescriptor, FileLocator } from "@/proto/file_pb";
 
 type Headers = { [key: string]: string };
 
-function newFile(data: FileDescriptor): FileData {
-  const file = new FileData(data.getId(), data.getName());
+function newFile(data: FileDescriptor, path: string): FileData {
+  const file = new FileData(data.getId(), data.getName(), path);
   data.getMetadataList().forEach((f) => {
     file.metadata.set(f.getKey(), f.getValue());
   });
@@ -27,10 +30,10 @@ function newFile(data: FileDescriptor): FileData {
   return file;
 }
 
-function newDirectory(data: DirectoryDescriptor): Directory {
+function newDirectory(data: DirectoryDescriptor, path: string): Directory {
   const dir = new Directory(data.getId());
   data.getFilesList().forEach((file) => {
-    dir.files.push(newFile(file));
+    dir.files.push(newFile(file, path));
   });
 
   return dir;
@@ -47,11 +50,25 @@ class FilebrowserClient {
     this.headers = headers;
   }
 
-  getDirectoryByPath(path: string): Promise<Directory> {
+  static buildRelocateFilter(source: string[]): string {
+    return `^${source.slice(0, -1).join(constants.pathSeparator)}/(${source.at(
+      -1
+    )}(/.*)?)$`;
+  }
+
+  static buildRenameDirFilter = (dir: FileData): string => {
+    return `^${dir.path}/${dir.name}(/.*)?$`;
+  };
+
+  static buildRenameFileFilter = (file: FileData): string => {
+    return `^(${file.path}/${file.name}(/.*)?)$`;
+  };
+
+  getDirectoryByPath = (path: string): Promise<Directory> => {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
-        reject: (reason?: string) => void
+        reject: (reason: Warning) => void
       ) => {
         const request = new DirectoryLocator().setPath(path);
 
@@ -60,40 +77,46 @@ class FilebrowserClient {
           this.headers,
           (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
-              reject(err.message);
+              reject(Warning.find(err.message));
               return;
             }
 
-            resolve(newDirectory(data));
+            resolve(newDirectory(data, path));
           }
         );
       }
     );
-  }
+  };
 
-  //   relocate(path: string, filter: string, headers: Headers): Promise<void> {
-  //     return new Promise(
-  //       (
-  //         resolve: (value: void | PromiseLike<void>) => void,
-  //         reject: (reason?: Error) => void
-  //       ) => {
-  //         const request = new DirectoryLocator().setFilter(filter).setPath(path);
+  rename = (file: FileData, name: string): Promise<void> => {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason: Warning) => void
+      ) => {
+        const filter = file.isDirectory()
+          ? FilebrowserClient.buildRenameDirFilter(file)
+          : FilebrowserClient.buildRenameFileFilter(file);
 
-  //         this.directoryClient.relocate(
-  //           request,
-  //           headers,
-  //           (err: grpcWeb.RpcError) => {
-  //             if (err && err.code !== grpcWeb.StatusCode.OK) {
-  //               reject(err.message as Error);
-  //               return;
-  //             }
+        const dest = `${file.path}/${name}`;
+        console.log(">>>>>>>>>>>> ", filter, " >>>>>>>>>>>>>>> ", dest);
+        const request = new DirectoryLocator().setFilter(filter).setPath(dest);
 
-  //             resolve();
-  //           }
-  //         );
-  //       }
-  //     );
-  //   }
+        this.directoryClient.relocate(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
+
+            resolve();
+          }
+        );
+      }
+    );
+  };
 
   //   removeFile(fileId: string, headers: Headers): Promise<void> {
   //     return new Promise(
