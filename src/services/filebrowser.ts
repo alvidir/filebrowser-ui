@@ -7,6 +7,7 @@ import { DirectoryClient } from "@/proto/DirectoryServiceClientPb";
 import { DirectoryLocator, DirectoryDescriptor } from "@/proto/directory_pb";
 import { FileClient } from "@/proto/FileServiceClientPb";
 import { FileDescriptor, FileLocator } from "@/proto/file_pb";
+import join from "url-join";
 
 type Headers = { [key: string]: string };
 
@@ -57,11 +58,11 @@ class FilebrowserClient {
   }
 
   static buildRenameDirFilter = (dir: FileData): string => {
-    return `^${dir.path}/${dir.name}(/.*)?$`;
+    return `^${join(dir.directory, dir.name)}(/.*)?$`;
   };
 
   static buildRenameFileFilter = (file: FileData): string => {
-    return `^(${file.path}/${file.name}(/.*)?)$`;
+    return `^(${join(file.directory, file.name)}(/.*)?)$`;
   };
 
   getDirectoryByPath = (path: string): Promise<Directory> => {
@@ -98,8 +99,7 @@ class FilebrowserClient {
           ? FilebrowserClient.buildRenameDirFilter(file)
           : FilebrowserClient.buildRenameFileFilter(file);
 
-        const dest = `${file.path}/${name}`;
-        console.log(">>>>>>>>>>>> ", filter, " >>>>>>>>>>>>>>> ", dest);
+        const dest = join(file.directory, name);
         const request = new DirectoryLocator().setFilter(filter).setPath(dest);
 
         this.directoryClient.relocate(

@@ -17,7 +17,7 @@ class Permissions {
 class FileData {
   id: string;
   name: string;
-  path: string;
+  directory: string;
   metadata: Map<string, string> = new Map();
   permissions: Map<number, Permissions> = new Map();
   flags = 0;
@@ -25,7 +25,7 @@ class FileData {
   constructor(id: string, name: string, path: string) {
     this.id = id;
     this.name = name;
-    this.path = path;
+    this.directory = path;
   }
 
   tags = (): Array<Tag> => {
