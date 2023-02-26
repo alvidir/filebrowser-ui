@@ -13,9 +13,14 @@ class Directory {
   };
 
   removeFile = (file: FileData) => {
-    const index = this.files.indexOf(file);
+    const index = this.files.findIndex(
+      file.id
+        ? (item) => item.id === file.id
+        : (item) => item.name === file.name
+    );
+
     if (index > -1) {
-      this.files = this.files.splice(index, 1);
+      this.files.splice(index, 1);
     }
   };
 

@@ -65,7 +65,6 @@ import * as utils from "@/utils";
 import FileData from "@/domain/file";
 import DirectoryController from "@/controllers/directory";
 import Tag, { Tags } from "@/domain/tag";
-import join from "url-join";
 
 interface DirListItem extends FileData {
   rename?: boolean;
@@ -80,6 +79,7 @@ const OPENFILE_EVENT_NAME = "openfile";
 const RELOCATE_EVENT_NAME = "relocate";
 const RENAME_EVENT_NAME = "rename";
 const DELETE_EVENT_NAME = "delete";
+const ROOT_DIR_NAME = "root";
 
 export default defineComponent({
   name: "DirList",
@@ -106,6 +106,12 @@ export default defineComponent({
     },
   },
 
+  watch: {
+    path() {
+      this.parentDir.directory = this.parentPath();
+    },
+  },
+
   setup() {
     let directoryCtrl = inject("directoryCtrl") as
       | DirectoryController
@@ -120,7 +126,7 @@ export default defineComponent({
 
   data() {
     return {
-      parentDir: new FileData("", constants.parentDirectory, ""),
+      parentDir: new FileData("", constants.parentDirectory, this.parentPath()),
       menuCtx: undefined as DirListItem | undefined,
     };
   },
@@ -135,7 +141,7 @@ export default defineComponent({
     },
 
     maxDirs(): number {
-      let allDirs = ["root"].concat(this.paths);
+      let allDirs = [ROOT_DIR_NAME].concat(this.paths);
       let totalLength = 0;
       let howMany = 1;
 
@@ -152,7 +158,7 @@ export default defineComponent({
     },
 
     directories(): string[] {
-      return ["root"]
+      return [ROOT_DIR_NAME]
         .concat(this.paths)
         .slice(-this.maxDirs)
         .filter((dir) => dir.length);
@@ -168,6 +174,19 @@ export default defineComponent({
   },
 
   methods: {
+    parentPath(): string {
+      if (this.path == constants.pathSeparator) {
+        return this.path;
+      }
+
+      const index = this.path.indexOf(constants.pathSeparator);
+      if (index < 1) {
+        return constants.pathSeparator;
+      }
+
+      return this.path.substring(0, index);
+    },
+
     onDragStart(item: DirListItem) {
       this.allFiles.forEach((item) => (item.target = false));
       item.source = true;
@@ -188,13 +207,6 @@ export default defineComponent({
     onDragEnd() {
       const source = this.allFiles?.find((item) => item.source);
       const target = this.allFiles?.find((item) => item.target);
-
-      if (target?.isParentDirectory()) {
-        target.directory = join(
-          constants.pathSeparator,
-          this.path.substring(0, this.path.lastIndexOf(constants.pathSeparator))
-        );
-      }
 
       this.allFiles?.map((item) => {
         item.source = false;
@@ -263,7 +275,6 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
-// @import "@/style.css";
 
 .dir-list {
   display: flex;

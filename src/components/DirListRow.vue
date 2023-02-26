@@ -38,7 +38,7 @@
       <span v-else>&nbsp;</span>
     </td>
     <td class="elapsed-time">
-      <span>{{ elapsedTime }}</span>
+      <span v-if="file.updatedAt()">{{ elapsedTime }}</span>
     </td>
   </tr>
 </template>
@@ -107,9 +107,12 @@ export default defineComponent({
       return `${size} ${size > 1 ? "items" : "item"}`;
     },
 
-    elapsedTime(): string {
+    elapsedTime(): string | undefined {
+      const updatedAt = this.file.updatedAt()?.getTime();
+      if (!updatedAt) return;
+
       const now = new Date().getTime();
-      const seconds = (now - this.file.updatedAt().getTime()) / 1000;
+      const seconds = (now - updatedAt) / 1000;
 
       if (seconds < 20) {
         return "just now";

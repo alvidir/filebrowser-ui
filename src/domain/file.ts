@@ -77,9 +77,9 @@ class FileData {
     return "#";
   };
 
-  updatedAt = (): Date => {
-    const unix = this.metadata.get(METADATA_UPDATED_AT_KEY) ?? "0";
-    return new Date(parseInt(unix, 16) * 1000);
+  updatedAt = (): Date | undefined => {
+    const unix = this.metadata.get(METADATA_UPDATED_AT_KEY);
+    if (unix) return new Date(parseInt(unix, 16) * 1000);
   };
 
   isDirectory = (): boolean => {

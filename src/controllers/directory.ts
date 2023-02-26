@@ -125,7 +125,7 @@ class DirectoryController {
 
   changeDirectory = (delta: number) => {
     const path = join(
-      this.url.pathname.split(constants.pathSeparator).slice(0, -delta)
+      this.url.pathname.split(constants.pathSeparator).slice(0, delta)
     );
 
     this.setPath(path);
