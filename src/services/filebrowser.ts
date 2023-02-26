@@ -51,10 +51,8 @@ class FilebrowserClient {
     this.headers = headers;
   }
 
-  static buildRelocateFilter(source: string[]): string {
-    return `^${source.slice(0, -1).join(constants.pathSeparator)}/(${source.at(
-      -1
-    )}(/.*)?)$`;
+  static buildRelocateFilter(source: FileData): string {
+    return `^${join(source.directory, `(${source.name}`)}(/.*)?)$`;
   }
 
   static buildRenameDirFilter = (dir: FileData): string => {
@@ -101,6 +99,32 @@ class FilebrowserClient {
 
         const dest = join(file.directory, name);
         const request = new DirectoryLocator().setFilter(filter).setPath(dest);
+
+        this.directoryClient.relocate(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
+
+            resolve();
+          }
+        );
+      }
+    );
+  };
+
+  relocate = (source: FileData, dest: string): Promise<void> => {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason: Warning) => void
+      ) => {
+        const request = new DirectoryLocator()
+          .setFilter(FilebrowserClient.buildRelocateFilter(source))
+          .setPath(dest);
 
         this.directoryClient.relocate(
           request,

@@ -14,15 +14,25 @@
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
-        <tr v-if="!files.length">
+        <tr v-if="isRoot && !files.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>{{ NOTHING_TO_DISPLAY }}</strong>
           </td>
         </tr>
         <dir-list-row
-          v-bind="item"
+          v-if="!isRoot"
+          v-bind="parentDir"
+          :file="parentDir"
+          draggable="false"
+          @open="onOpenFile(parentDir)"
+          @dragenter="onDragEnter(parentDir)"
+          @dragexit="onDragExit(parentDir, $event)"
+          @contextmenu.prevent
+        />
+        <dir-list-row
           v-for="item in files"
+          v-bind="item"
           :file="item"
           :key="item.name"
           :class="{ new: item.new }"
@@ -37,7 +47,7 @@
         />
       </table>
     </div>
-    <context-menu :active="!!menu.context" @close="onMenuClose">
+    <context-menu :active="!!menuCtx" @close="onMenuClose">
       <button @click="onMenuOptionClick('open')">Open</button>
       <button @click="onMenuOptionClick('rename')">Rename</button>
       <button class="danger" @click="onMenuOptionClick('delete')">
@@ -55,6 +65,7 @@ import * as utils from "@/utils";
 import FileData from "@/domain/file";
 import DirectoryController from "@/controllers/directory";
 import Tag, { Tags } from "@/domain/tag";
+import join from "url-join";
 
 interface DirListItem extends FileData {
   rename?: boolean;
@@ -109,13 +120,16 @@ export default defineComponent({
 
   data() {
     return {
-      menu: {
-        context: undefined as DirListItem | undefined,
-      },
+      parentDir: new FileData("", constants.parentDirectory, ""),
+      menuCtx: undefined as DirListItem | undefined,
     };
   },
 
   computed: {
+    isRoot(): boolean {
+      return this.path === constants.pathSeparator;
+    },
+
     paths(): string[] {
       return this.path.split(constants.pathSeparator);
     },
@@ -143,11 +157,19 @@ export default defineComponent({
         .slice(-this.maxDirs)
         .filter((dir) => dir.length);
     },
+
+    allFiles(): Array<DirListItem> {
+      if (this.isRoot) {
+        return this.files;
+      }
+
+      return [this.parentDir].concat(this.files);
+    },
   },
 
   methods: {
     onDragStart(item: DirListItem) {
-      this.files.forEach((item) => (item.target = false));
+      this.allFiles.forEach((item) => (item.target = false));
       item.source = true;
     },
 
@@ -164,11 +186,17 @@ export default defineComponent({
     },
 
     onDragEnd() {
-      // TODO: all three iterations can be simplified in a single one
-      const source = this.files?.find((item) => item.source);
-      const target = this.files?.find((item) => item.target);
+      const source = this.allFiles?.find((item) => item.source);
+      const target = this.allFiles?.find((item) => item.target);
 
-      this.files?.map((item) => {
+      if (target?.isParentDirectory()) {
+        target.directory = join(
+          constants.pathSeparator,
+          this.path.substring(0, this.path.lastIndexOf(constants.pathSeparator))
+        );
+      }
+
+      this.allFiles?.map((item) => {
         item.source = false;
         item.target = false;
       });
@@ -188,11 +216,11 @@ export default defineComponent({
 
     onMenuOptionClick(action: string) {
       const actions: { [key: string]: () => void } = {
-        delete: () => this.$emit(DELETE_EVENT_NAME, this.menu.context),
+        delete: () => this.$emit(DELETE_EVENT_NAME, this.menuCtx),
         rename: () => {
-          if (this.menu.context) this.menu.context.rename = true;
+          if (this.menuCtx) this.menuCtx.rename = true;
         },
-        open: () => this.menu.context && this.onOpenFile(this.menu.context),
+        open: () => this.menuCtx && this.onOpenFile(this.menuCtx),
       };
 
       actions[action]();
@@ -205,28 +233,26 @@ export default defineComponent({
     },
 
     isDraggable(item: DirListItem): boolean {
-      return (
-        !item.isParentDirectory() &&
-        !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)
-      );
+      return !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual);
     },
 
     onRightClick(item: DirListItem) {
-      if (item.isParentDirectory()) return;
-
-      this.menu.context = item;
-      this.menu.context.target = true;
+      this.menuCtx = item;
+      this.menuCtx.target = true;
     },
 
     onMenuClose() {
-      if (this.menu.context) this.menu.context.target = false;
-      this.menu.context = undefined;
+      if (this.menuCtx) this.menuCtx.target = false;
+      this.menuCtx = undefined;
     },
 
     onFilenameChange(file: DirListItem, filename: string | undefined) {
       file.rename = false;
 
-      if (filename && !this.directoryCtrl?.getFilenameError(filename)) {
+      if (!filename) return;
+
+      filename = utils.spacesToUnderscores(filename);
+      if (!this.directoryCtrl?.getFilenameError(filename)) {
         this.$emit(RENAME_EVENT_NAME, file, filename);
       }
     },
@@ -237,7 +263,7 @@ export default defineComponent({
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
-@import url(@/styles.css);
+// @import "@/style.css";
 
 .dir-list {
   display: flex;

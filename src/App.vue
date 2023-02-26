@@ -78,6 +78,7 @@ import FilterController from "./controllers/filter";
 import * as constants from "@/constants";
 import * as utils from "@/utils";
 import config from "@/config.json";
+import join from "url-join";
 
 const context = new Context(config.ALVIDIR_BASE_URI);
 const filebrowserService = new Filebrowser(
@@ -114,14 +115,14 @@ export default defineComponent({
 
   data() {
     return {
+      updatedAt: new Date(),
       files: [] as Array<FileData>,
-      path: constants.pathSeparator,
     };
   },
 
   methods: {
     update() {
-      this.path = this.directoryCtrl.getPath();
+      this.updatedAt = new Date();
       this.files = this.filterCtrl.filter(
         this.directoryCtrl.getDirectory()?.files ?? []
       );

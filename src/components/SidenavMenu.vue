@@ -6,11 +6,10 @@
         src="https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg"
         alt=""
       />
-      <label>This tooltip is never shown</label>
     </button>
     <button @click="onClick">
-      <i class="bx bxs-pyramid"></i>
-      <label>Tools</label>
+      <i class="icon-greek-pillar-outline"></i>
+      <label>Agora</label>
     </button>
     <button class="flex">
       <i class="bx bx-cog"></i>
@@ -47,7 +46,7 @@ export default defineComponent({
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style lang="scss">
+<style scoped lang="scss">
 @import "fibonacci-styles";
 
 .column {
@@ -63,5 +62,10 @@ export default defineComponent({
 
 .regular-menu.tooltip {
   padding: 0px !important;
+}
+
+.icon {
+  box-sizing: border-box;
+  padding: 4px;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <tr
     :class="{
-      target: target || rename,
+      target: target || source || rename,
       'parent-dir': file.isParentDirectory(),
     }"
     @click="file.isParentDirectory() && open()"
@@ -74,6 +74,7 @@ export default defineComponent({
     },
     rename: Boolean,
     target: Boolean,
+    source: Boolean,
   },
 
   watch: {

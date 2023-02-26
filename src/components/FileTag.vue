@@ -6,8 +6,7 @@
     <regular-card v-if="title">
       <div class="tag-info">
         <span>
-          <i v-if="iconClass" :class="iconClass"></i>
-          <img v-if="iconSrc" :src="iconSrc" />
+          <i v-if="icon" :class="icon"></i>
           &nbsp; {{ title }}
         </span>
         <small> {{ description }} </small>
@@ -25,8 +24,7 @@ export default defineComponent({
     name: String,
     title: String,
     description: String,
-    iconClass: String,
-    iconSrc: String,
+    icon: String,
     color: String,
   },
 });
@@ -94,13 +92,15 @@ $text-color: v-bind(color);
     }
 
     i {
-      color: var(--color-text-secondary);
+      color: $text-color;
       font-size: large;
     }
 
     img {
       max-height: $fib-7 * 1px;
       margin-right: $fib-5 * 1px;
+      filter: invert(56%) sepia(13%) saturate(1160%) hue-rotate(292deg)
+        brightness(90%) contrast(100%);
     }
 
     .tag-info {
