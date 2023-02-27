@@ -6,39 +6,40 @@
         v-for="(warning, index) in warningCtrl.getWarnings()"
         :key="index"
         v-bind="warning"
-        @close="warningCtrl.removeWarning(warning)"
+        @close="warningCtrl.removeWarningAt(index)"
+        closable
       />
-      <!-- <div id="actions-container">
+      <div id="actions-container">
         <search-field
           id="search-field"
           :placeholder="'Search'"
-          :items="search"
-          :debounce="SEARCH_DEBOUNCE"
-          @input="onSearchInput"
+          :items="searchCtrl.getItems()"
+          :debounce="searchCtrl.getDebounce()"
+          @input="searchCtrl.search"
           v-slot="props"
           large
         >
-          <div class="search-item">
-            <i class="bx bx-file-blank"></i>
-            <label>{{ props.item.name }}</label>
-          </div>
+          <search-item
+            :file="props.item"
+            @openfile="directoryCtrl.openfile"
+          ></search-item>
         </search-field>
         <span id="action-buttons">
           <new-project
             class="action"
-            :path="path"
+            :path="directoryCtrl.getPath()"
             :tools="apps"
             @submit="onNewProject"
           >
           </new-project>
           <new-folder
             class="action"
-            :path="path"
-            :validate="getNameError"
+            :path="directoryCtrl.getPath()"
+            :href="directoryCtrl.getDirectory()?.path"
             @submit="createNewFolder"
           ></new-folder>
         </span>
-      </div> -->
+      </div>
       <dir-list
         :files="files"
         :path="directoryCtrl.getPath()"
@@ -46,19 +47,15 @@
         @changedir="directoryCtrl.changeDirectory"
         @relocate="directoryCtrl.relocate"
         @rename="directoryCtrl.rename"
-        @delete="directoryCtrl.delete"
+        @delete="onDelete"
       />
     </div>
-    <!-- <action-dialog
-      v-if="dialog"
-      :path="dialog.path"
-      :action="dialog.action"
-      :context="dialog.context"
-      :active="!!dialog.context"
-      @submit="onCloseDialog(true)"
-      @cancel="onCloseDialog(false)"
+    <confirm-deletion
+      :context="subject"
+      @submit="applyDelete"
+      @cancel="closeDelete"
     >
-    </action-dialog> -->
+    </confirm-deletion>
   </div>
 </template>
 
@@ -67,37 +64,50 @@ import { defineComponent, provide } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
 import DirList from "@/components/DirList.vue";
+import SearchItem from "@/components/SearchItem.vue";
 import FileData from "@/domain/file";
-// import NewProject from "@/components/NewProject.vue";
-// import NewFolder from "@/components/NewFolder.vue";
-// import ActionDialog from "@/components/DeletionDialog.vue";
+import NewProject from "@/components/NewProject.vue";
+import NewFolder from "@/components/NewFolder.vue";
+import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import DirectoryController from "@/controllers/directory";
 import WarningController from "@/controllers/warning";
-import FilterController from "./controllers/filter";
+import FilterController from "@/controllers/filter";
+import SearchController from "@/controllers/search";
 import * as constants from "@/constants";
-import * as utils from "@/utils";
 import config from "@/config.json";
-import join from "url-join";
+import Warning from "@/domain/warning";
+
+// baseHeaders returns a dictionary with some default values depending on the environment
+function baseHeaders(): { [key: string]: string } {
+  const headers: { [key: string]: string } = {};
+  if (process.env.NODE_ENV === "development") {
+    headers["X-Uid"] = "1";
+  }
+
+  return headers;
+}
 
 const context = new Context(config.ALVIDIR_BASE_URI);
 const filebrowserService = new Filebrowser(
   config.FILEBROWSER_SERVER_URI,
-  utils.baseHeaders()
+  baseHeaders()
 );
 
 const warningCtrl = new WarningController();
 const filterCtrl = new FilterController();
 const directoryCtrl = new DirectoryController(filebrowserService, warningCtrl);
+const searchCtrl = new SearchController(filebrowserService, warningCtrl);
 
 export default defineComponent({
   name: "App",
   components: {
     DirList,
-    // NewProject,
-    // NewFolder,
-    // ActionDialog,
+    NewProject,
+    NewFolder,
+    ConfirmDeletion,
     SidenavMenu,
+    SearchItem,
   },
 
   setup() {
@@ -106,6 +116,7 @@ export default defineComponent({
 
     return {
       context,
+      searchCtrl,
       warningCtrl,
       directoryCtrl,
       filterCtrl,
@@ -117,6 +128,7 @@ export default defineComponent({
     return {
       updatedAt: new Date(),
       files: [] as Array<FileData>,
+      subject: undefined as FileData | undefined,
     };
   },
 
@@ -127,10 +139,30 @@ export default defineComponent({
         this.directoryCtrl.getDirectory()?.files ?? []
       );
     },
+
+    onDelete(file: FileData) {
+      this.subject = file;
+    },
+
+    applyDelete() {
+      const file = this.subject;
+      this.closeDelete();
+
+      if (file) {
+        directoryCtrl.delete(file);
+      }
+    },
+
+    closeDelete() {
+      this.subject = undefined;
+    },
   },
 
   mounted() {
-    this.directoryCtrl.setListener(this);
+    this.searchCtrl.addObserver(this);
+    this.warningCtrl.addObserver(this);
+    this.directoryCtrl.addObserver(this);
+
     this.directoryCtrl.setPath(
       window.location.pathname ?? constants.pathSeparator
     );
@@ -155,16 +187,6 @@ body {
   background: var(--color-bg-secondary);
 }
 
-// .search-item {
-//   font-size: medium;
-//   margin-left: $fib-5 * 1px;
-//   color: var(--color-text-primary);
-
-//   i {
-//     margin-right: $fib-6 * 1px;
-//   }
-// }
-
 #main-container {
   display: flex;
   flex-direction: column;
@@ -179,6 +201,10 @@ body {
     padding: 0 $fib-10 * 1px;
     margin-bottom: $fib-9 * 1px;
     margin-top: $fib-7 * 1px;
+  }
+
+  .notice-card:not(:first-child) {
+    margin-top: $fib-5 * 1px;
   }
 }
 

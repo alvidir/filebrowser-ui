@@ -2,10 +2,12 @@ import FileData from "@/domain/file";
 
 class Directory {
   id: string;
+  path: string;
   files: Array<FileData> = [];
 
-  constructor(id: string) {
+  constructor(id: string, path: string) {
     this.id = id;
+    this.path = path;
   }
 
   getFileByName = (name: string): FileData | undefined => {

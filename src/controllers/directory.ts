@@ -4,6 +4,7 @@ import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
 import join from "url-join";
+import { Subject } from "@/controllers/observer";
 
 const pathCleanRegex = new RegExp(constants.pathSeparator + "{1,}", "g");
 const filenameRegex = /^[a-zA-Z0-9-_]*$/;
@@ -13,6 +14,7 @@ interface FilebrowserClient {
   getDirectoryByPath(path: string): Promise<Directory>;
   rename(file: FileData, filename: string): Promise<void>;
   relocate(source: FileData, dest: string): Promise<void>;
+  delete(file: FileData): Promise<void>;
 }
 
 interface WarningController {
@@ -23,14 +25,15 @@ interface Listener {
   update(): void;
 }
 
-class DirectoryController {
+class DirectoryController extends Subject {
   private filebrowserClient: FilebrowserClient;
   private warningController: WarningController;
   private dirs: Map<string, Directory> = new Map();
-  private listeners: Array<Listener> = [];
   private url: URL = new URL(window.location.href);
 
   constructor(fbClient: FilebrowserClient, warnCtrl: WarningController) {
+    super();
+
     this.filebrowserClient = fbClient;
     this.warningController = warnCtrl;
   }
@@ -47,10 +50,6 @@ class DirectoryController {
     return path;
   };
 
-  private broadcast = () => {
-    this.listeners.forEach((listener) => listener.update());
-  };
-
   private getDirectoryByPath = (path: string) => {
     this.filebrowserClient
       .getDirectoryByPath(path)
@@ -61,12 +60,6 @@ class DirectoryController {
       .catch((error: Warning) => {
         this.warningController.pushWarning(error);
       });
-  };
-
-  setListener = (listener: Listener) => {
-    if (!this.listeners.includes(listener)) {
-      this.listeners.push(listener);
-    }
   };
 
   getPath = (): string => {
@@ -163,7 +156,15 @@ class DirectoryController {
   };
 
   delete = (file: FileData) => {
-    console.log("delete file");
+    this.filebrowserClient
+      .delete(file)
+      .then(() => {
+        this.dirs.get(file.directory)?.removeFile(file);
+        this.broadcast();
+      })
+      .catch((error: Warning) => {
+        this.warningController.pushWarning(error);
+      });
   };
 }
 

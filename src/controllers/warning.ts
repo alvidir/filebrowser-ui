@@ -1,14 +1,22 @@
 import Warning from "@/domain/warning";
+import { Subject } from "./observer";
 
-class WarningController {
+class WarningController extends Subject {
+  private max = 3;
   private warnings: Array<Warning> = [];
 
   pushWarning(warning: Warning): void {
-    this.warnings.push(warning);
+    if (this.warnings.length >= this.max) {
+      this.warnings.pop();
+    }
+
+    this.warnings.unshift(warning);
+    this.broadcast();
   }
 
-  removeWarning(warning: Warning): void {
-    this.warnings.splice(this.warnings.indexOf(warning), 1);
+  removeWarningAt(index: number): void {
+    this.warnings.splice(0, 1);
+    this.broadcast();
   }
 
   getWarnings(): Array<Warning> {

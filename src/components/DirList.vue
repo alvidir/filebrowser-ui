@@ -241,7 +241,7 @@ export default defineComponent({
 
     onDirectoryClick(index: number) {
       const delta = this.directories.length - 1 - index;
-      if (delta) this.$emit(CHANGEDIR_EVENT_NAME, delta);
+      if (delta) this.$emit(CHANGEDIR_EVENT_NAME, -delta);
     },
 
     isDraggable(item: DirListItem): boolean {

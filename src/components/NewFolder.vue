@@ -13,7 +13,7 @@
         <span><i class="bx bxs-folder-plus"></i>&nbsp; Add a new folder</span>
         <small>
           It will be created at
-          <a href="#">{{ directory(path) }}</a>
+          <a :href="href" target="_blank">{{ path }}</a>
         </small>
       </template>
       <regular-field
@@ -32,9 +32,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, inject } from "vue";
 import * as utils from "@/utils";
 import { FieldController } from "vue-fields/src/main";
+import DirectoryController from "@/controllers/directory";
 
 export const SUBMIT_EVENT_NAME = "submit";
 export const FIELD_FOLDERNAME = "foldername";
@@ -45,17 +46,22 @@ export default defineComponent({
   name: "NewFolder",
   events: [SUBMIT_EVENT_NAME],
   props: {
-    path: { type: String, required: true },
-    validate: Function,
+    path: {
+      type: String,
+      required: true,
+    },
+    href: String,
   },
 
   setup() {
-    const directory = utils.directory;
+    let directoryCtrl = inject("directoryCtrl") as
+      | DirectoryController
+      | undefined;
 
     return {
       NEW_FOLDER,
       FIELD_FOLDERNAME,
-      directory,
+      directoryCtrl,
     };
   },
 
@@ -63,14 +69,14 @@ export default defineComponent({
     return {
       active: false,
       field: undefined as FieldController | undefined,
-      error: "",
+      error: undefined as string | undefined,
     };
   },
 
   computed: {
     isValid(): boolean {
       return (
-        !!this.field && this.field.value().length > 0 && this.error.length == 0
+        !!this.field && this.field.value().length > 0 && this.error?.length == 0
       );
     },
   },
@@ -83,8 +89,8 @@ export default defineComponent({
 
     onFolderNameInput(ctrl: FieldController) {
       const name = utils.spacesToUnderscores(ctrl.value());
-      if (this.validate) {
-        this.error = this.validate(name);
+      if (this.directoryCtrl) {
+        this.error = this.directoryCtrl.getFilenameError(name);
       }
     },
 
@@ -131,12 +137,6 @@ export default defineComponent({
 
     &.active {
       visibility: visible;
-    }
-
-    a {
-      &:not(:hover) {
-        color: var(--color-text-secondary);
-      }
     }
 
     i {

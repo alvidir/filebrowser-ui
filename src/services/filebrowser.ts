@@ -32,7 +32,7 @@ function newFile(data: FileDescriptor, path: string): FileData {
 }
 
 function newDirectory(data: DirectoryDescriptor, path: string): Directory {
-  const dir = new Directory(data.getId());
+  const dir = new Directory(data.getId(), path);
   data.getFilesList().forEach((file) => {
     dir.files.push(newFile(file, path));
   });
@@ -81,6 +81,32 @@ class FilebrowserClient {
             }
 
             resolve(newDirectory(data, path));
+          }
+        );
+      }
+    );
+  };
+
+  searchDirectoryFile = (search: string): Promise<Array<FileData>> => {
+    return new Promise(
+      (
+        resolve: (
+          value: Array<FileData> | PromiseLike<Array<FileData>>
+        ) => void,
+        reject: (reason: Warning) => void
+      ) => {
+        const request = new DirectoryLocator().setFilter(search);
+
+        this.directoryClient.retrieve(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
+
+            resolve(newDirectory(data, "").files);
           }
         );
       }
@@ -142,49 +168,58 @@ class FilebrowserClient {
     );
   };
 
-  //   removeFile(fileId: string, headers: Headers): Promise<void> {
-  //     return new Promise(
-  //       (
-  //         resolve: (value: void | PromiseLike<void>) => void,
-  //         reject: (reason?: Error) => void
-  //       ) => {
-  //         const request = new FileLocator().setTarget(fileId);
+  delete = (file: FileData): Promise<void> => {
+    if (file.isDirectory()) return this.removeDirectory(file);
+    else return this.removeFile(file);
+  };
 
-  //         this.fileClient.delete(request, headers, (err: grpcWeb.RpcError) => {
-  //           if (err && err.code !== grpcWeb.StatusCode.OK) {
-  //             reject(err.message as Error);
-  //             return;
-  //           }
+  private removeFile = (file: FileData): Promise<void> => {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Warning) => void
+      ) => {
+        const request = new FileLocator().setTarget(file.id);
 
-  //           resolve();
-  //         });
-  //       }
-  //     );
-  //   }
+        this.fileClient.delete(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
 
-  //   removeDirectory(target: string, headers: Headers): Promise<void> {
-  //     return new Promise(
-  //       (
-  //         resolve: (value: void | PromiseLike<void>) => void,
-  //         reject: (reason?: Error) => void
-  //       ) => {
-  //         const request = new DirectoryLocator().setPath(target);
+            resolve();
+          }
+        );
+      }
+    );
+  };
 
-  //         this.directoryClient.removeFiles(
-  //           request,
-  //           headers,
-  //           (err: grpcWeb.RpcError) => {
-  //             if (err && err.code !== grpcWeb.StatusCode.OK) {
-  //               reject(err.message as Error);
-  //               return;
-  //             }
+  private removeDirectory = (file: FileData): Promise<void> => {
+    return new Promise(
+      (
+        resolve: (value: void | PromiseLike<void>) => void,
+        reject: (reason?: Warning) => void
+      ) => {
+        const request = new DirectoryLocator().setPath(file.path());
 
-  //             resolve();
-  //           }
-  //         );
-  //       }
-  //     );
-  //   }
+        this.directoryClient.removeFiles(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
+
+            resolve();
+          }
+        );
+      }
+    );
+  };
 }
 
 export default FilebrowserClient;

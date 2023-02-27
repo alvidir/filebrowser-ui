@@ -1,7 +1,7 @@
 <template>
   <dialog-card
     class="action-dialog"
-    :active="active"
+    :active="!!context"
     :class="{ 'custom-color': !!color }"
     @close="onCancelClick"
   >
@@ -12,7 +12,7 @@
       </span>
       <small>
         Delete action on
-        <a href="#">{{ underscoresToSpaces(path ?? "") }}</a>
+        <a :href="context?.url()" target="_blank">{{ context?.filename() }}</a>
       </small>
       <small></small>
     </template>
@@ -29,25 +29,15 @@
 <script lang="ts">
 import FileData from "@/domain/file";
 import { defineComponent, PropType } from "vue";
-import * as utils from "../utils";
 
-export const SUBMIT_EVENT_NAME = "submit";
-export const CANCEL_EVENT_NAME = "cancel";
+const SUBMIT_EVENT_NAME = "submit";
+const CANCEL_EVENT_NAME = "cancel";
 
 export default defineComponent({
-  name: "DeletionDialog",
+  name: "ConfirmDeletion",
   events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
   props: {
-    path: String,
-    subject: Object as PropType<FileData>,
-    active: Boolean,
-  },
-
-  setup() {
-    const underscoresToSpaces = utils.underscoresToSpaces;
-    return {
-      underscoresToSpaces,
-    };
+    context: Object as PropType<FileData>,
   },
 
   computed: {
@@ -56,11 +46,11 @@ export default defineComponent({
     },
 
     description(): string {
-      if (!this.subject) return "";
+      if (!this.context) return "";
 
       let description = "";
-      if (this.subject?.isDirectory()) {
-        description = `You are about to delete a folder and the ${this.subject.size()} items inside of it.`;
+      if (this.context?.isDirectory()) {
+        description = `You are about to delete a folder and the ${this.context.size()} items inside of it.`;
       } else {
         description = "You are about to delete a file.";
       }

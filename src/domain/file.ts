@@ -54,6 +54,10 @@ class FileData {
     return utils.underscoresToSpaces(this.name);
   };
 
+  path = (): string => {
+    return join(this.directory, this.name);
+  };
+
   size = (): number | undefined => {
     const size = this.metadata.get(METADATA_SIZE_KEY);
     if (size !== undefined) {

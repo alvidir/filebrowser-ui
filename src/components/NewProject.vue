@@ -143,12 +143,6 @@ export default defineComponent({
       visibility: visible;
     }
 
-    a {
-      &:not(:hover) {
-        color: var(--color-text-secondary);
-      }
-    }
-
     i {
       color: var(--color-text-secondary);
     }
