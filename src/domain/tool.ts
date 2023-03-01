@@ -2,8 +2,8 @@ import details from "@/domain/details";
 
 class Tool {
   name: string;
-  icon? = "";
-  uri? = "";
+  icon = "";
+  uri = "";
 
   constructor(id: string) {
     this.name = id;

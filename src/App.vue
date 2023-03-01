@@ -3,80 +3,38 @@
   <div id="main-container">
     <div class="narrowed">
       <notice-card
-        v-for="(warning, index) in warningCtrl.getWarnings()"
+        v-for="(warning, index) in warningCtrl.all()"
         :key="index"
         v-bind="warning"
-        @close="warningCtrl.removeWarningAt(index)"
+        @close="warningCtrl.remove(index)"
         closable
       />
       <div id="actions-container">
-        <search-field
-          id="search-field"
-          :placeholder="'Search'"
-          :items="searchCtrl.getItems()"
-          :debounce="searchCtrl.getDebounce()"
-          @input="searchCtrl.search"
-          v-slot="props"
-          large
-        >
-          <search-item
-            :file="props.item"
-            @openfile="directoryCtrl.openfile"
-          ></search-item>
-        </search-field>
+        <file-search />
         <span id="action-buttons">
-          <new-project
-            class="action"
-            :path="directoryCtrl.getPath()"
-            :tools="apps"
-            @submit="onNewProject"
-          >
-          </new-project>
-          <new-folder
-            class="action"
-            :path="directoryCtrl.getPath()"
-            :href="directoryCtrl.getDirectory()?.path"
-            @submit="createNewFolder"
-          ></new-folder>
+          <!-- <new-project class="action"> </new-project> -->
+          <new-folder class="action"></new-folder>
         </span>
       </div>
-      <dir-list
-        :files="files"
-        :path="directoryCtrl.getPath()"
-        @openfile="directoryCtrl.openfile"
-        @changedir="directoryCtrl.changeDirectory"
-        @relocate="directoryCtrl.relocate"
-        @rename="directoryCtrl.rename"
-        @delete="onDelete"
-      />
+      <dir-list />
     </div>
-    <confirm-deletion
-      :context="subject"
-      @submit="applyDelete"
-      @cancel="closeDelete"
-    >
-    </confirm-deletion>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, provide } from "vue";
+import { defineComponent, reactive, provide } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
 import DirList from "@/components/DirList.vue";
-import SearchItem from "@/components/SearchItem.vue";
-import FileData from "@/domain/file";
+import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
-import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import DirectoryController from "@/controllers/directory";
 import WarningController from "@/controllers/warning";
 import FilterController from "@/controllers/filter";
 import SearchController from "@/controllers/search";
-import * as constants from "@/constants";
 import config from "@/config.json";
-import Warning from "@/domain/warning";
 
 // baseHeaders returns a dictionary with some default values depending on the environment
 function baseHeaders(): { [key: string]: string } {
@@ -103,72 +61,21 @@ export default defineComponent({
   name: "App",
   components: {
     DirList,
-    NewProject,
+    // NewProject,
     NewFolder,
-    ConfirmDeletion,
     SidenavMenu,
-    SearchItem,
+    FileSearch,
   },
 
   setup() {
-    provide("context", context);
+    provide("searchCtrl", searchCtrl);
     provide("directoryCtrl", directoryCtrl);
+    provide("filterCtrl", filterCtrl);
 
     return {
-      context,
-      searchCtrl,
       warningCtrl,
       directoryCtrl,
-      filterCtrl,
-      constants,
-    };
-  },
-
-  data() {
-    return {
-      updatedAt: new Date(),
-      files: [] as Array<FileData>,
-      subject: undefined as FileData | undefined,
-    };
-  },
-
-  methods: {
-    update() {
-      this.updatedAt = new Date();
-      this.files = this.filterCtrl.filter(
-        this.directoryCtrl.getDirectory()?.files ?? []
-      );
-    },
-
-    onDelete(file: FileData) {
-      this.subject = file;
-    },
-
-    applyDelete() {
-      const file = this.subject;
-      this.closeDelete();
-
-      if (file) {
-        directoryCtrl.delete(file);
-      }
-    },
-
-    closeDelete() {
-      this.subject = undefined;
-    },
-  },
-
-  mounted() {
-    this.searchCtrl.addObserver(this);
-    this.warningCtrl.addObserver(this);
-    this.directoryCtrl.addObserver(this);
-
-    this.directoryCtrl.setPath(
-      window.location.pathname ?? constants.pathSeparator
-    );
-
-    window.onpopstate = () => {
-      this.directoryCtrl.setPath(window.location.pathname);
+      context,
     };
   },
 });
@@ -215,11 +122,6 @@ body {
   justify-content: center;
   padding: $fib-11 * 1px 0;
   min-width: fit-content;
-}
-
-#search-field {
-  width: $fib-14 * 1px;
-  z-index: 1;
 }
 
 #action-buttons {

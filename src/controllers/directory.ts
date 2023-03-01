@@ -1,35 +1,26 @@
-import * as constants from "@/constants";
-import * as utils from "@/utils";
 import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
-import join from "url-join";
-import { Subject } from "@/controllers/observer";
-
-const pathCleanRegex = new RegExp(constants.pathSeparator + "{1,}", "g");
-const filenameRegex = /^[a-zA-Z0-9-_]*$/;
-const maxFilenameLen = 36;
+import Subject from "@/controllers/observer";
+import urlJoin from "url-join";
+import Path, { pathSeparator } from "@/domain/path";
 
 interface FilebrowserClient {
-  getDirectoryByPath(path: string): Promise<Directory>;
+  retrieve(path: string): Promise<Directory>;
   rename(file: FileData, filename: string): Promise<void>;
   relocate(source: FileData, dest: string): Promise<void>;
   delete(file: FileData): Promise<void>;
 }
 
 interface WarningController {
-  pushWarning(warning: Warning): void;
-}
-
-interface Listener {
-  update(): void;
+  push(warning: Warning): void;
 }
 
 class DirectoryController extends Subject {
   private filebrowserClient: FilebrowserClient;
   private warningController: WarningController;
   private dirs: Map<string, Directory> = new Map();
-  private url: URL = new URL(window.location.href);
+  private path = window.location.pathname;
 
   constructor(fbClient: FilebrowserClient, warnCtrl: WarningController) {
     super();
@@ -38,93 +29,50 @@ class DirectoryController extends Subject {
     this.warningController = warnCtrl;
   }
 
-  static sanatizePath = (path: string): string => {
-    path = utils.spacesToUnderscores(
-      path.replace(pathCleanRegex, constants.pathSeparator).trim()
-    );
-
-    if (path[0] != constants.pathSeparator) {
-      path = constants.pathSeparator.concat(path);
-    }
-
-    return path;
-  };
-
-  private getDirectoryByPath = (path: string) => {
+  private fetchDirectory = (path: string) => {
     this.filebrowserClient
-      .getDirectoryByPath(path)
+      .retrieve(path)
       .then((dir) => {
         this.dirs.set(path, dir);
         this.broadcast();
       })
       .catch((error: Warning) => {
-        this.warningController.pushWarning(error);
+        this.warningController.push(error);
       });
   };
 
-  getPath = (): string => {
-    return utils.underscoresToSpaces(this.url.pathname);
-  };
-
-  setPath = (path: string) => {
-    path = DirectoryController.sanatizePath(path);
-    window.history.pushState("", "", path);
-    this.url = new URL(window.location.href);
+  private setPath = (path: string) => {
+    window.history.pushState("", "", Path.sanatize(path));
+    this.path = window.location.pathname;
     this.broadcast();
   };
 
   getDirectory = (): Directory | undefined => {
-    const target = this.url.pathname;
-    if (this.dirs.get(target) === undefined) {
-      this.getDirectoryByPath(target);
+    const directory = this.dirs.get(this.path);
+    if (!directory) {
+      this.fetchDirectory(this.path);
     }
 
-    return this.dirs.get(target);
-  };
-
-  getFilenameError = (name: string): string | undefined => {
-    name = utils.spacesToUnderscores(name);
-    if (!name) {
-      return "Filename cannot be empty";
-    }
-
-    if (!name.match(filenameRegex)) {
-      return "A name cannot contains special characters.";
-    }
-
-    if (name.length > maxFilenameLen) {
-      return `A name cannot exceed ${maxFilenameLen} characters long.`;
-    }
-
-    if (this.getDirectory()?.files.some((file) => file.name == name)) {
-      return "Name already exists";
-    }
+    return directory;
   };
 
   openfile = (file: FileData) => {
     if (file.isParentDirectory()) {
-      this.setPath(
-        file.directory.slice(
-          0,
-          file.directory.lastIndexOf(constants.pathSeparator)
-        )
-      );
+      this.changeDirectory(-1);
     } else if (file.isDirectory()) {
-      this.setPath(join(file.directory, file.name));
-    } else if (file.url()) {
-      window.open(file.url(), "_blank")?.focus();
+      this.setPath(Path.sanatize(urlJoin(file.directory.path, file.name)));
     }
   };
 
   changeDirectory = (delta: number) => {
-    const path = join(
-      this.url.pathname.split(constants.pathSeparator).slice(0, delta)
-    );
+    const path = urlJoin(this.path.split(pathSeparator).slice(0, delta));
 
     this.setPath(path);
   };
 
   rename = (file: FileData, filename: string) => {
+    if (file.checkName(filename)) return;
+
     this.filebrowserClient
       .rename(file, filename)
       .then(() => {
@@ -132,26 +80,33 @@ class DirectoryController extends Subject {
         this.broadcast();
       })
       .catch((error: Warning) => {
-        this.warningController.pushWarning(error);
+        this.warningController.push(error);
       });
   };
 
   relocate = (source: FileData, target: FileData) => {
-    const dest = target.isParentDirectory()
-      ? target.directory
-      : join(target.directory, target.name);
+    const dest = Path.sanatize(
+      target.isParentDirectory()
+        ? target.directory.path
+        : urlJoin(target.directory.path, target.name)
+    );
 
     this.filebrowserClient
       .relocate(source, dest)
       .then(() => {
-        this.dirs.get(source.directory)?.removeFile(source);
-        source.directory = dest;
+        const path = Path.sanatize(source.directory.path);
+        this.dirs.get(path)?.removeFile(source);
 
-        this.dirs.get(dest)?.addFile(source);
+        const directory = this.dirs.get(dest);
+        if (directory) {
+          source.directory = directory;
+          directory.addFile(source);
+        }
+
         this.broadcast();
       })
       .catch((error: Warning) => {
-        this.warningController.pushWarning(error);
+        this.warningController.push(error);
       });
   };
 
@@ -159,14 +114,20 @@ class DirectoryController extends Subject {
     this.filebrowserClient
       .delete(file)
       .then(() => {
-        this.dirs.get(file.directory)?.removeFile(file);
+        const path = Path.sanatize(file.directory.path);
+        this.dirs.get(path)?.removeFile(file);
         this.broadcast();
       })
       .catch((error: Warning) => {
-        this.warningController.pushWarning(error);
+        this.warningController.push(error);
       });
+  };
+
+  addFile = (file: FileData) => {
+    const path = Path.sanatize(file.directory.path);
+    this.dirs.get(path)?.files.push(file);
+    this.broadcast();
   };
 }
 
 export default DirectoryController;
-export { Listener };

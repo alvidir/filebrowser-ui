@@ -1,5 +1,4 @@
 import * as grpcWeb from "grpc-web";
-import * as constants from "@/constants";
 import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
@@ -8,37 +7,9 @@ import { DirectoryLocator, DirectoryDescriptor } from "@/proto/directory_pb";
 import { FileClient } from "@/proto/FileServiceClientPb";
 import { FileDescriptor, FileLocator } from "@/proto/file_pb";
 import join from "url-join";
+import Path from "@/domain/path";
 
 type Headers = { [key: string]: string };
-
-function newFile(data: FileDescriptor, path: string): FileData {
-  const file = new FileData(data.getId(), data.getName(), path);
-  data.getMetadataList().forEach((f) => {
-    file.metadata.set(f.getKey(), f.getValue());
-  });
-
-  data.getPermissionsList().forEach((p) => {
-    const permissions = p.getPermissions();
-    if (permissions)
-      file.permissions.set(p.getUid(), {
-        read: permissions.getRead(),
-        write: permissions.getWrite(),
-        owner: permissions.getOwner(),
-      });
-  });
-
-  file.flags = data.getFlags();
-  return file;
-}
-
-function newDirectory(data: DirectoryDescriptor, path: string): Directory {
-  const dir = new Directory(data.getId(), path);
-  data.getFilesList().forEach((file) => {
-    dir.files.push(newFile(file, path));
-  });
-
-  return dir;
-}
 
 class FilebrowserClient {
   directoryClient: DirectoryClient;
@@ -51,25 +22,66 @@ class FilebrowserClient {
     this.headers = headers;
   }
 
+  static underscoresToSpaces(p: string): string {
+    return p.trim().replace(/_/g, " ");
+  }
+
   static buildRelocateFilter(source: FileData): string {
-    return `^${join(source.directory, `(${source.name}`)}(/.*)?)$`;
+    const directory = Path.sanatize(source.directory.path);
+    const filename = Path.spacesToUnderscores(source.name);
+    return `^${join(directory, `(${filename}`)}(/.*)?)$`;
   }
 
   static buildRenameDirFilter = (dir: FileData): string => {
-    return `^${join(dir.directory, dir.name)}(/.*)?$`;
+    const path = Path.sanatize(dir.path());
+    return `^${path}(/.*)?$`;
   };
 
   static buildRenameFileFilter = (file: FileData): string => {
-    return `^(${join(file.directory, file.name)}(/.*)?)$`;
+    const path = Path.sanatize(file.path());
+    return `^(${path}(/.*)?)$`;
   };
 
-  getDirectoryByPath = (path: string): Promise<Directory> => {
+  static buildFile(dir: Directory, data: FileDescriptor): FileData {
+    const filename = FilebrowserClient.underscoresToSpaces(data.getName());
+    const file = new FileData(data.getId(), filename, dir);
+
+    data.getMetadataList().forEach((f) => {
+      file.metadata.set(f.getKey(), f.getValue());
+    });
+
+    data.getPermissionsList().forEach((p) => {
+      const permissions = p.getPermissions();
+      if (permissions)
+        file.permissions.set(p.getUid(), {
+          read: permissions.getRead(),
+          write: permissions.getWrite(),
+          owner: permissions.getOwner(),
+        });
+    });
+
+    file.flags = data.getFlags();
+    return file;
+  }
+
+  static buildDirectory(data: DirectoryDescriptor, path: string): Directory {
+    path = FilebrowserClient.underscoresToSpaces(path);
+    const dir = new Directory(data.getId(), path);
+
+    data.getFilesList().forEach((file) => {
+      dir.files.push(FilebrowserClient.buildFile(dir, file));
+    });
+
+    return dir;
+  }
+
+  retrieve = (path: string): Promise<Directory> => {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason: Warning) => void
       ) => {
-        const request = new DirectoryLocator().setPath(path);
+        const request = new DirectoryLocator().setPath(Path.sanatize(path));
 
         this.directoryClient.retrieve(
           request,
@@ -80,14 +92,14 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(newDirectory(data, path));
+            resolve(FilebrowserClient.buildDirectory(data, path));
           }
         );
       }
     );
   };
 
-  searchDirectoryFile = (search: string): Promise<Array<FileData>> => {
+  search = (search: string): Promise<Array<FileData>> => {
     return new Promise(
       (
         resolve: (
@@ -95,6 +107,7 @@ class FilebrowserClient {
         ) => void,
         reject: (reason: Warning) => void
       ) => {
+        search = Path.spacesToUnderscores(search);
         const request = new DirectoryLocator().setFilter(search);
 
         this.directoryClient.retrieve(
@@ -106,7 +119,7 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(newDirectory(data, "").files);
+            resolve(FilebrowserClient.buildDirectory(data, "").files);
           }
         );
       }
@@ -123,7 +136,7 @@ class FilebrowserClient {
           ? FilebrowserClient.buildRenameDirFilter(file)
           : FilebrowserClient.buildRenameFileFilter(file);
 
-        const dest = join(file.directory, name);
+        const dest = Path.sanatize(join(file.directory.path, name));
         const request = new DirectoryLocator().setFilter(filter).setPath(dest);
 
         this.directoryClient.relocate(
@@ -150,7 +163,7 @@ class FilebrowserClient {
       ) => {
         const request = new DirectoryLocator()
           .setFilter(FilebrowserClient.buildRelocateFilter(source))
-          .setPath(dest);
+          .setPath(Path.sanatize(dest));
 
         this.directoryClient.relocate(
           request,
@@ -203,7 +216,9 @@ class FilebrowserClient {
         resolve: (value: void | PromiseLike<void>) => void,
         reject: (reason?: Warning) => void
       ) => {
-        const request = new DirectoryLocator().setPath(file.path());
+        const request = new DirectoryLocator().setPath(
+          Path.sanatize(file.path())
+        );
 
         this.directoryClient.removeFiles(
           request,

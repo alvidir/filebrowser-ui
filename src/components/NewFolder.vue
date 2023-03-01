@@ -6,24 +6,25 @@
   >
     <regular-button :active="active" @click="open">
       <i class="bx bxs-folder-plus"></i>
-      {{ NEW_FOLDER }}
+      New folder
     </regular-button>
     <regular-card :class="{ active: active }" @close="close" closable>
       <template #header>
         <span><i class="bx bxs-folder-plus"></i>&nbsp; Add a new folder</span>
         <small>
           It will be created at
-          <a :href="href" target="_blank">{{ path }}</a>
+          <a :href="href" target="_blank">{{ pathname }}</a>
         </small>
       </template>
       <regular-field
+        ref="foldername"
         placeholder="folder name"
-        :ref="FIELD_FOLDERNAME"
         :error="error"
-        @input="onFolderNameInput"
+        @input="onInput"
+        large
       ></regular-field>
       <template #footer>
-        <submit-button :disabled="!isValid" @submit="submit">
+        <submit-button :disabled="!valid" @submit="submit">
           Create
         </submit-button>
       </template>
@@ -32,90 +33,92 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, inject } from "vue";
-import * as utils from "@/utils";
+import { defineComponent, inject, nextTick } from "vue";
 import { FieldController } from "vue-fields/src/main";
-import DirectoryController from "@/controllers/directory";
+import Directory from "@/domain/directory";
+import FileData, { Flag } from "@/domain/file";
+import Path from "@/domain/path";
 
-export const SUBMIT_EVENT_NAME = "submit";
-export const FIELD_FOLDERNAME = "foldername";
-
-const NEW_FOLDER = "New folder";
+interface DirectoryCtrl {
+  getDirectory: () => Directory | undefined;
+  addFile: (file: FileData) => void;
+}
 
 export default defineComponent({
   name: "NewFolder",
-  events: [SUBMIT_EVENT_NAME],
-  props: {
-    path: {
-      type: String,
-      required: true,
-    },
-    href: String,
-  },
 
   setup() {
-    let directoryCtrl = inject("directoryCtrl") as
-      | DirectoryController
-      | undefined;
-
     return {
-      NEW_FOLDER,
-      FIELD_FOLDERNAME,
-      directoryCtrl,
+      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
     };
   },
 
   data() {
     return {
       active: false,
-      field: undefined as FieldController | undefined,
-      error: undefined as string | undefined,
+      valid: false,
+      error: "",
     };
   },
 
   computed: {
-    isValid(): boolean {
-      return (
-        !!this.field && this.field.value().length > 0 && this.error?.length == 0
-      );
+    href(): string {
+      const directory = this.directoryCtrl?.getDirectory();
+      return Path.sanatize(directory?.path ?? "");
+    },
+
+    pathname(): string {
+      const directory = this.directoryCtrl?.getDirectory();
+      return directory?.path ?? "";
     },
   },
 
   methods: {
-    open() {
-      this.active = true;
-      setTimeout(() => this.field?.focus(), 89); //$fib-10
+    currentDirectory(): Directory | undefined {
+      return this.directoryCtrl?.getDirectory();
     },
 
-    onFolderNameInput(ctrl: FieldController) {
-      const name = utils.spacesToUnderscores(ctrl.value());
-      if (this.directoryCtrl) {
-        this.error = this.directoryCtrl.getFilenameError(name);
-      }
+    open() {
+      this.active = true;
+      this.$nextTick(() => {
+        const field = this.$refs.foldername as FieldController;
+        field?.focus();
+      });
+    },
+
+    onInput(ctrl: FieldController) {
+      const foldername = ctrl.value();
+      const directory = this.directoryCtrl?.getDirectory();
+
+      if (!directory) return;
+
+      this.error = FileData.checkName(directory, foldername) ?? "";
+      this.valid = !this.error;
     },
 
     close() {
-      if (!this.active) return;
+      const field = this.$refs.foldername as FieldController;
+      field?.clear();
+      field?.blur();
 
       this.active = false;
-      this.field?.clear();
-      this.field?.blur();
+      this.valid = false;
       this.error = "";
     },
 
     submit() {
-      if (!this.field || !this.isValid) return;
-
-      this.$emit(
-        SUBMIT_EVENT_NAME,
-        utils.spacesToUnderscores(this.field.value())
-      );
+      const field = this.$refs.foldername as FieldController;
+      const foldername = field.value();
       this.close();
-    },
-  },
 
-  mounted() {
-    this.field = this.$refs[FIELD_FOLDERNAME] as FieldController;
+      const directory = this.directoryCtrl?.getDirectory();
+      if (!directory) return;
+
+      const file = new FileData("", foldername, directory);
+      file.flags |= Flag.Directory;
+
+      this.directoryCtrl?.addFile(file);
+    },
   },
 });
 </script>

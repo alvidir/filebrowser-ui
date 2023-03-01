@@ -1,7 +1,7 @@
 <template>
   <dialog-card
     class="action-dialog"
-    :active="!!context"
+    :active="active"
     :class="{ 'custom-color': !!color }"
     @close="onCancelClick"
   >
@@ -12,7 +12,7 @@
       </span>
       <small>
         Delete action on
-        <a :href="context?.url()" target="_blank">{{ context?.filename() }}</a>
+        <a :href="context?.url()" target="_blank">{{ context.name }}</a>
       </small>
       <small></small>
     </template>
@@ -37,7 +37,11 @@ export default defineComponent({
   name: "ConfirmDeletion",
   events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
   props: {
-    context: Object as PropType<FileData>,
+    active: Boolean,
+    context: {
+      type: Object as PropType<FileData>,
+      required: true,
+    },
   },
 
   computed: {
@@ -46,10 +50,8 @@ export default defineComponent({
     },
 
     description(): string {
-      if (!this.context) return "";
-
       let description = "";
-      if (this.context?.isDirectory()) {
+      if (this.context.isDirectory()) {
         description = `You are about to delete a folder and the ${this.context.size()} items inside of it.`;
       } else {
         description = "You are about to delete a file.";

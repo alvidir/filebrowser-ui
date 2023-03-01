@@ -2,7 +2,7 @@
   <div class="new-project-dialog" v-click-outside="close">
     <submit-button color="var(--color-accent)" @click="open">
       <i class="bx bxs-bulb"></i>
-      {{ NEW_PROJECT }}
+      New project
     </submit-button>
     <regular-card :class="{ active: active }" @close="close" closable>
       <template #header>
@@ -11,10 +11,10 @@
         </span>
         <small>
           It will be created at
-          <a href="#">{{ directory(path) }}</a>
+          <!-- <a href="#">{{ directory(path) }}</a> -->
         </small>
       </template>
-      <div class="apps">
+      <!-- <div class="apps">
         <regular-button
           v-for="tool in tools"
           :key="tool.id"
@@ -24,19 +24,20 @@
           <img :src="tool.iconUri" :alt="tool.name" />
           <small>{{ tool.name }}</small>
         </regular-button>
-      </div>
+      </div> -->
     </regular-card>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import * as utils from "@/utils";
 import Tool from "@/domain/tool";
 
 export const SUBMIT_EVENT_NAME = "submit";
 
-const NEW_PROJECT = "New project";
+// :path="directoryCtrl.getPath()"
+//             :tools="apps"
+//             @submit="onNewProject"
 
 export default defineComponent({
   name: "NewFolder",
@@ -50,15 +51,6 @@ export default defineComponent({
       type: Object as PropType<Array<Tool>>,
       required: true,
     },
-  },
-
-  setup() {
-    const directory = utils.directory;
-
-    return {
-      NEW_PROJECT,
-      directory,
-    };
   },
 
   data() {

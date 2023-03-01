@@ -1,18 +1,17 @@
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
-import { Subject } from "@/controllers/observer";
+import Subject from "@/controllers/observer";
 import { FieldController } from "vue-fields/src/main";
 
 interface FilebrowserClient {
-  searchDirectoryFile(search: string): Promise<Array<FileData>>;
+  search(search: string): Promise<Array<FileData>>;
 }
 
 interface WarningController {
-  pushWarning(warning: Warning): void;
+  push(warning: Warning): void;
 }
 
 class SearchController extends Subject {
-  private debounce = 300;
   private filebrowserClient: FilebrowserClient;
   private warningController: WarningController;
   private items = new Array<FileData>();
@@ -24,30 +23,26 @@ class SearchController extends Subject {
     this.warningController = warnCtrl;
   }
 
-  search = (ctrl: FieldController) => {
-    if (!ctrl.value()) {
+  search = (search: string) => {
+    if (!search) {
       this.items = [];
       this.broadcast();
       return;
     }
 
     this.filebrowserClient
-      .searchDirectoryFile(ctrl.value())
+      .search(search)
       .then((items) => {
         this.items = items;
         this.broadcast();
       })
       .catch((error: Warning) => {
-        this.warningController.pushWarning(error);
+        this.warningController.push(error);
       });
   };
 
   getItems = (): Array<FileData> => {
     return this.items;
-  };
-
-  getDebounce = (): number => {
-    return this.debounce;
   };
 }
 

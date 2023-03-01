@@ -1,30 +1,38 @@
 <template>
   <tr
     :class="{
-      target: target || source || rename,
+      highlight: highlight || rename.active,
       'parent-dir': file.isParentDirectory(),
+      'no-hover': noHover,
     }"
     @click="file.isParentDirectory() && open()"
+    @mouseup.right="onOpenContextMenu()"
+    @contextmenu.prevent
   >
-    <td class="filename" :class="{ error: error }">
+    <td class="filename" :class="{ error: rename.error }">
       <i v-if="file.isParentDirectory()" class="bx bx-arrow-back"></i>
       <i v-else-if="file.isDirectory()" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a v-if="!rename && !file.isParentDirectory()" href="#" @click="open()">
-        {{ file.filename() }}
+      <a
+        v-if="!rename.active && !file.isParentDirectory()"
+        :href="href"
+        :target="target"
+        @click="open()"
+      >
+        {{ file.name }}
       </a>
       <input
-        v-show="!file.isParentDirectory() && rename"
         ref="rename"
-        v-model="renameValue"
-        :placeholder="file.filename()"
-        @keydown.enter="applyRename"
-        @keydown.esc="cancelRename"
-        @input="validateRenameValue"
-        @blur="cancelRename"
+        v-show="!file.isParentDirectory() && rename.active"
+        v-model="rename.value"
+        :placeholder="file.name"
+        @keydown.enter="onSubmitRename"
+        @keydown.esc="resetRename"
+        @input="checkRenameValue"
+        @blur="resetRename"
       />
 
-      <div class="cause" v-if="error">{{ error }}</div>
+      <div class="error-message" v-if="rename.error">{{ rename.error }}</div>
     </td>
     <td>
       <div class="tags-list">
@@ -34,12 +42,25 @@
       </div>
     </td>
     <td class="file-size">
-      <span v-if="file.size()"> {{ contentSize }} </span>
+      <span v-if="file.size() !== undefined"> {{ contentSize }} </span>
       <span v-else>&nbsp;</span>
     </td>
     <td class="elapsed-time">
       <span v-if="file.updatedAt()">{{ elapsedTime }}</span>
     </td>
+    <context-menu :active="showCtxMenu" @close="onCloseContextMenu">
+      <button @click="onClickContextMenu('open')">Open</button>
+      <button @click="onClickContextMenu('rename')">Rename</button>
+      <button class="danger" @click="onClickContextMenu('delete')">
+        Remove
+      </button>
+    </context-menu>
+    <confirm-deletion
+      :context="file"
+      :active="showDialog"
+      @submit="onSubmitDeletion"
+      @cancel="onCancelDeletion"
+    />
   </tr>
 </template>
 
@@ -47,6 +68,8 @@
 import { defineComponent, PropType, inject } from "vue";
 import FileTag from "@/components/FileTag.vue";
 import FileData from "@/domain/file";
+import { ISubject } from "@/controllers/observer";
+import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
@@ -54,62 +77,72 @@ const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
 const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
 const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
 
-const OPEN_EVENT_NAME = "open";
-const RENAME_EVENT_NAME = "rename";
-
-interface DirectoryController {
-  getFilenameError(name: string): string | undefined;
+interface DirectoryCtrl extends ISubject {
+  openfile: (file: FileData) => void;
+  relocate: (source: FileData, target: FileData) => void;
+  rename: (file: FileData, filename: string) => void;
+  delete: (file: FileData) => void;
 }
 
 export default defineComponent({
-  name: "DirListRow",
-  events: [OPEN_EVENT_NAME, RENAME_EVENT_NAME],
+  name: "FileRow",
+
   components: {
     FileTag,
+    ConfirmDeletion,
   },
+
   props: {
     file: {
       type: Object as PropType<FileData>,
       required: true,
     },
-    rename: Boolean,
-    target: Boolean,
-    source: Boolean,
-  },
-
-  watch: {
-    rename(value: boolean) {
-      if (value)
-        this.$nextTick(() => (this.$refs.rename as HTMLInputElement)?.focus());
-    },
+    highlight: Boolean,
+    reveal: Boolean,
+    noHover: Boolean,
   },
 
   setup() {
-    let directoryCtrl = inject("directoryCtrl") as
-      | DirectoryController
-      | undefined;
-
     return {
-      directoryCtrl,
+      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
     };
   },
 
   data() {
     return {
-      renameValue: "",
-      error: "" as string | undefined,
+      showCtxMenu: false,
+      showDialog: false,
+      rename: {
+        active: false,
+        value: "",
+        error: "",
+      },
     };
   },
 
   computed: {
-    contentSize(): string {
+    href(): string {
+      if (this.file.isDirectory()) return "#";
+      return this.file.url()?.toString() ?? "#";
+    },
+
+    target(): string | undefined {
+      if (this.file.isDirectory()) return;
+      return "_blank";
+    },
+
+    contentSize(): string | undefined {
+      if (this.file.isParentDirectory()) return;
+
       const size = this.file.size() ?? 0;
-      return `${size} ${size > 1 ? "items" : "item"}`;
+      return `${size} ${size > 1 || !size ? "items" : "item"}`;
     },
 
     elapsedTime(): string | undefined {
+      if (this.file.isParentDirectory()) return;
+
       const updatedAt = this.file.updatedAt()?.getTime();
-      if (!updatedAt) return;
+      if (updatedAt === undefined) return;
 
       const now = new Date().getTime();
       const seconds = (now - updatedAt) / 1000;
@@ -153,35 +186,66 @@ export default defineComponent({
 
   methods: {
     open() {
-      this.$emit(OPEN_EVENT_NAME);
+      if (!this.file.isDirectory()) return;
+      this.directoryCtrl?.openfile(this.file);
     },
 
-    validateRenameValue() {
-      if (!this.renameValue) {
-        this.error = undefined;
-        return;
+    checkRenameValue() {
+      this.rename.error = this.file.checkName(this.rename.value) ?? "";
+    },
+
+    onStartRename() {
+      this.rename.active = true;
+      this.$nextTick(() => (this.$refs.rename as HTMLInputElement)?.focus());
+    },
+
+    onSubmitRename() {
+      if (this.rename.value && !this.rename.error) {
+        this.directoryCtrl?.rename(this.file, this.rename.value);
       }
 
-      this.error = this.directoryCtrl?.getFilenameError(this.renameValue);
+      this.resetRename();
     },
 
-    cancelRename() {
-      this.renameValue = this.file.name;
-      this.$emit(RENAME_EVENT_NAME);
-      this.finishRename();
+    resetRename() {
+      this.rename = {
+        active: false,
+        value: "",
+        error: "",
+      };
     },
 
-    applyRename() {
-      if (this.renameValue && !this.error) {
-        this.$emit(RENAME_EVENT_NAME, this.renameValue);
-      }
-
-      this.finishRename();
+    onOpenContextMenu() {
+      if (this.file.isParentDirectory()) return;
+      this.showCtxMenu = true;
     },
 
-    finishRename() {
-      this.renameValue = "";
-      this.error = "";
+    onCloseContextMenu() {
+      this.showCtxMenu = false;
+    },
+
+    onClickContextMenu(action: string) {
+      const actions: { [key: string]: () => void } = {
+        delete: () => (this.showDialog = true),
+        rename: () => this.onStartRename(),
+        open: () => this.open(),
+      };
+
+      actions[action]();
+      this.onCloseContextMenu();
+    },
+
+    onRightClick() {
+      this.showCtxMenu = true;
+    },
+
+    onSubmitDeletion() {
+      this.directoryCtrl?.delete(this.file);
+      this.onCancelDeletion();
+    },
+
+    onCancelDeletion() {
+      this.showDialog = false;
     },
   },
 });
@@ -202,10 +266,10 @@ export default defineComponent({
   }
 }
 
-.target {
+.highlight {
   @extend .shadow-box;
-  background: var(--color-button) !important;
-  z-index: 1 !important;
+  background: var(--color-button);
+  z-index: 1;
 }
 
 .filename {
@@ -221,9 +285,10 @@ export default defineComponent({
       color: var(--color-red);
     }
 
-    .cause {
+    .error-message {
       font-size: small;
-      margin-left: $fib-8 * 1px;
+      margin-top: $fib-3 * 1px;
+      margin-left: ($fib-8 - $fib-3) * 1px;
     }
   }
 
@@ -274,13 +339,13 @@ tr {
     z-index: 1;
   }
 
-  &.new {
+  &.reveal {
     animation-name: ephemeral-highlight;
     animation-duration: $fib-1 * 1s;
     animation-timing-function: ease-in;
   }
 
-  &:not(.focused):hover td:not(.empty) {
+  &:not(.no-hover):hover {
     background: var(--color-button);
   }
 }
