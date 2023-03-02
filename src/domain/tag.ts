@@ -1,4 +1,4 @@
-import details from "@/domain/details";
+import { tags } from "@/domain/details";
 
 enum Tags {
   Virtual = "virtual",
@@ -17,7 +17,7 @@ class Tag {
   }
 
   static find = (tag: string): Tag => {
-    return details[tag] ?? new Tag(tag);
+    return tags[tag] ?? new Tag(tag);
   };
 }
 

@@ -6,10 +6,11 @@ import urlJoin from "url-join";
 import Path, { pathSeparator } from "@/domain/path";
 
 interface FilebrowserClient {
-  retrieve(path: string): Promise<Directory>;
-  rename(file: FileData, filename: string): Promise<void>;
-  relocate(source: FileData, dest: string): Promise<void>;
-  delete(file: FileData): Promise<void>;
+  retrieve: (path: string) => Promise<Directory>;
+  rename: (file: FileData, filename: string) => Promise<void>;
+  relocate: (source: FileData, dest: string) => Promise<void>;
+  delete: (file: FileData) => Promise<void>;
+  create: (file: FileData) => Promise<FileData>;
 }
 
 interface WarningController {
@@ -127,6 +128,17 @@ class DirectoryController extends Subject {
     const path = Path.sanatize(file.directory.path);
     this.dirs.get(path)?.files.push(file);
     this.broadcast();
+  };
+
+  create = (file: FileData) => {
+    this.filebrowserClient
+      .create(file)
+      .then((file) => {
+        this.addFile(file);
+      })
+      .catch((error: Warning) => {
+        this.warningController.push(error);
+      });
   };
 }
 

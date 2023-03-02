@@ -1,4 +1,4 @@
-import details from "@/domain/details";
+import { tools } from "@/domain/details";
 
 class Tool {
   name: string;
@@ -10,7 +10,11 @@ class Tool {
   }
 
   static find = (id: string): Tool => {
-    return details[id] ?? new Tool(id);
+    return tools[id] ?? new Tool(id);
+  };
+
+  static all = (): Array<Tool> => {
+    return Object.values(tools);
   };
 }
 

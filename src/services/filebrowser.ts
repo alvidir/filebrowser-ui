@@ -5,7 +5,12 @@ import Warning from "@/domain/warning";
 import { DirectoryClient } from "@/proto/DirectoryServiceClientPb";
 import { DirectoryLocator, DirectoryDescriptor } from "@/proto/directory_pb";
 import { FileClient } from "@/proto/FileServiceClientPb";
-import { FileDescriptor, FileLocator } from "@/proto/file_pb";
+import {
+  FileConstructor,
+  FileDescriptor,
+  FileLocator,
+  FileMetadata,
+} from "@/proto/file_pb";
 import join from "url-join";
 import Path from "@/domain/path";
 
@@ -45,6 +50,18 @@ class FilebrowserClient {
   static buildFile(dir: Directory, data: FileDescriptor): FileData {
     const filename = FilebrowserClient.underscoresToSpaces(data.getName());
     const file = new FileData(data.getId(), filename, dir);
+
+    return FilebrowserClient.buildFileInto(file, dir, data);
+  }
+
+  private static buildFileInto(
+    file: FileData,
+    dir: Directory,
+    data: FileDescriptor
+  ): FileData {
+    file.id = data.getId();
+    file.name = FilebrowserClient.underscoresToSpaces(data.getName());
+    file.directory = dir;
 
     data.getMetadataList().forEach((f) => {
       file.metadata.set(f.getKey(), f.getValue());
@@ -93,6 +110,40 @@ class FilebrowserClient {
             }
 
             resolve(FilebrowserClient.buildDirectory(data, path));
+          }
+        );
+      }
+    );
+  };
+
+  create = (file: FileData): Promise<FileData> => {
+    return new Promise(
+      (
+        resolve: (value: FileData | PromiseLike<FileData>) => void,
+        reject: (reason: Warning) => void
+      ) => {
+        const request = new FileConstructor()
+          .setPath(Path.sanatize(file.path()))
+          .setMetadataList(
+            Object.keys(file.metadata).map((key) => {
+              return new FileMetadata()
+                .setKey(key)
+                .setValue(file.metadata.get(key) ?? "");
+            })
+          );
+
+        this.fileClient.create(
+          request,
+          this.headers,
+          (err: grpcWeb.RpcError, data: FileDescriptor) => {
+            if (err && err.code !== grpcWeb.StatusCode.OK) {
+              reject(Warning.find(err.message));
+              return;
+            }
+
+            resolve(
+              FilebrowserClient.buildFileInto(file, file.directory, data)
+            );
           }
         );
       }

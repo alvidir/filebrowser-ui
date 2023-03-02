@@ -71,11 +71,11 @@ import FileData from "@/domain/file";
 import { ISubject } from "@/controllers/observer";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 
-const SECONDS_PER_MINUTE = 60;
-const SECONDS_PER_HOUR = 60 * SECONDS_PER_MINUTE;
-const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
-const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
-const SECONDS_PER_YEAR = 365 * SECONDS_PER_DAY;
+const secondsPerMinute = 60;
+const secondsPerHour = 60 * secondsPerMinute;
+const secondsPerDay = 24 * secondsPerHour;
+const secondsPerMonth = 30 * secondsPerDay;
+const secondsPerYear = 365 * secondsPerDay;
 
 interface DirectoryCtrl extends ISubject {
   openfile: (file: FileData) => void;
@@ -135,7 +135,8 @@ export default defineComponent({
       if (this.file.isParentDirectory()) return;
 
       const size = this.file.size() ?? 0;
-      return `${size} ${size > 1 || !size ? "items" : "item"}`;
+      if (size) return `${size} ${size > 1 ? "items" : "item"}`;
+      else return "empty";
     },
 
     elapsedTime(): string | undefined {
@@ -151,7 +152,7 @@ export default defineComponent({
         return "just now";
       }
 
-      if (seconds < SECONDS_PER_MINUTE) {
+      if (seconds < secondsPerMinute) {
         return "few seconds ago";
       }
 
@@ -159,27 +160,27 @@ export default defineComponent({
         return Math.floor(seconds / scale);
       };
 
-      if (seconds < SECONDS_PER_HOUR) {
-        const total = scaleTime(SECONDS_PER_MINUTE);
+      if (seconds < secondsPerHour) {
+        const total = scaleTime(secondsPerMinute);
         return `${total} minute${total > 1 ? "s" : ""} ago`;
       }
 
-      if (seconds < SECONDS_PER_DAY) {
-        const total = scaleTime(SECONDS_PER_HOUR);
+      if (seconds < secondsPerDay) {
+        const total = scaleTime(secondsPerHour);
         return `${total} hour${total > 1 ? "s" : ""} ago`;
       }
 
-      if (seconds < SECONDS_PER_MONTH) {
-        const total = scaleTime(SECONDS_PER_DAY);
+      if (seconds < secondsPerMonth) {
+        const total = scaleTime(secondsPerDay);
         return `${total} day${total > 1 ? "s" : ""} ago`;
       }
 
-      if (seconds < SECONDS_PER_YEAR) {
-        const total = scaleTime(SECONDS_PER_MONTH);
+      if (seconds < secondsPerYear) {
+        const total = scaleTime(secondsPerMonth);
         return `${total} month${total > 1 ? "s" : ""} ago`;
       }
 
-      const total = scaleTime(SECONDS_PER_YEAR);
+      const total = scaleTime(secondsPerYear);
       return `${total} year${total > 1 ? "s" : ""} ago`;
     },
   },

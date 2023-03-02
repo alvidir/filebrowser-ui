@@ -44,7 +44,7 @@ import Tag, { Tags } from "@/domain/tag";
 import Directory from "@/domain/directory";
 import { ISubject } from "@/controllers/observer";
 
-const ROOT_DIR_NAME = "root";
+export const rootDirName = "root";
 
 interface DirectoryCtrl extends ISubject {
   getDirectory: () => Directory | undefined;
@@ -89,7 +89,7 @@ export default defineComponent({
 
   computed: {
     directories(): Array<string> {
-      let allDirs = [ROOT_DIR_NAME].concat(
+      let allDirs = [rootDirName].concat(
         this.directory?.pathComponents() ?? []
       );
 
@@ -104,7 +104,7 @@ export default defineComponent({
         maxDirs++;
       }
 
-      return [ROOT_DIR_NAME]
+      return [rootDirName]
         .concat(this.directory?.pathComponents() ?? [])
         .slice(-maxDirs);
     },
@@ -159,12 +159,8 @@ export default defineComponent({
     },
 
     buildParentDirFile(): FileData {
-      class DirectoryMock {
-        path = "";
-        exists = (): boolean => true;
-      }
-
-      return new FileData("", parentDirName, new DirectoryMock());
+      const dir = new Directory("", "");
+      return new FileData("", parentDirName, dir);
     },
 
     filteredFiles(): Array<FileData> {

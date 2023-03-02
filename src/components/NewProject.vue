@@ -11,63 +11,134 @@
         </span>
         <small>
           It will be created at
-          <!-- <a href="#">{{ directory(path) }}</a> -->
+          <a :href="href()" target="_blank">{{ pathname() }}</a>
         </small>
       </template>
-      <!-- <div class="apps">
-        <regular-button
+      <div class="apps">
+        <button
           v-for="tool in tools"
-          :key="tool.id"
+          :key="tool.name"
+          :disabled="isPending(tool)"
           class="app"
-          color="var(--color-button)"
+          @click="onClick(tool)"
         >
-          <img :src="tool.iconUri" :alt="tool.name" />
-          <small>{{ tool.name }}</small>
-        </regular-button>
-      </div> -->
+          <i v-if="!isPending(tool)" :class="tool.icon" :alt="tool.name"></i>
+          <pulse-loader
+            v-if="isPending(tool)"
+            class="loader"
+            color="var(--color-border-active)"
+            :size="'8px'"
+            :radius="'5px'"
+          ></pulse-loader>
+          <span>{{ capitalize(tool.name) }}</span>
+        </button>
+      </div>
     </regular-card>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent, PropType, inject } from "vue";
+import PulseLoader from "vue-spinner/src/PulseLoader.vue";
 import Tool from "@/domain/tool";
+import Directory from "@/domain/directory";
+import FileData from "@/domain/file";
+import Path from "@/domain/path";
+import { rootDirName } from "@/components/DirList.vue";
+import Subject from "@/controllers/observer";
 
-export const SUBMIT_EVENT_NAME = "submit";
+const DefaultFilename = "Untitled project";
 
-// :path="directoryCtrl.getPath()"
-//             :tools="apps"
-//             @submit="onNewProject"
+interface DirectoryCtrl extends Subject {
+  getDirectory: () => Directory | undefined;
+  create: (file: FileData) => void;
+}
 
 export default defineComponent({
   name: "NewFolder",
-  events: [SUBMIT_EVENT_NAME],
+  components: {
+    PulseLoader,
+  },
   props: {
-    path: {
-      type: String,
-      required: true,
-    },
     tools: {
-      type: Object as PropType<Array<Tool>>,
-      required: true,
+      type: Array as PropType<Array<Tool>>,
+      default: Tool.all(),
     },
+  },
+
+  setup() {
+    return {
+      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
+    };
   },
 
   data() {
     return {
       active: false,
+      pending: new Array<FileData>(),
     };
   },
 
   methods: {
+    href(): string {
+      const directory = this.directoryCtrl?.getDirectory();
+      return Path.sanatize(directory?.path ?? "");
+    },
+
+    pathname(): string {
+      const directory = this.directoryCtrl?.getDirectory();
+      if (directory?.isRoot()) return rootDirName;
+      else return directory?.path ?? "";
+    },
+
+    capitalize(word: string) {
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    },
+
+    isPending(tool: Tool) {
+      return this.pending.some((file) => file.tool() == tool);
+    },
+
+    onClick(tool: Tool) {
+      const directory = this.directoryCtrl?.getDirectory();
+      if (!directory) return;
+
+      const file = new FileData("", DefaultFilename, directory);
+      file.setTool(tool);
+
+      this.pending.push(file);
+      this.directoryCtrl?.create(file);
+    },
+
     open() {
       this.active = true;
     },
 
     close() {
-      if (!this.active) return;
       this.active = false;
     },
+
+    update() {
+      if (!this.pending.length) return;
+
+      this.pending.forEach((file) => {
+        if (!file.id || !file.directory.files.includes(file)) return;
+
+        const url = file.url();
+        if (url) window.open(url, "_blank")?.focus();
+
+        const index = this.pending.indexOf(file);
+        this.pending.splice(index, 1);
+      });
+    },
+  },
+
+  mounted() {
+    this.directoryCtrl?.addObserver(this);
+  },
+
+  unmounted() {
+    this.directoryCtrl?.removeObserver(this);
   },
 });
 </script>
@@ -90,33 +161,41 @@ export default defineComponent({
     grid-gap: $fib-6 * 1px;
   }
 
-  button.regular.app {
+  button.app {
+    @extend .round-corners;
+
     display: flex;
     flex-direction: column;
+    justify-content: center;
     color: var(--color-text-primary);
-    position: relative;
-    aspect-ratio: 1/1;
-    width: 100%;
-    height: auto;
-
-    &:hover {
-      background: transparent !important;
-    }
+    aspect-ratio: 1;
+    background: transparent;
 
     &:not(:hover) {
-      border-color: transparent !important;
+      border: none;
+    }
+
+    &:hover {
+      border: 1px solid var(--color-border);
     }
 
     &:focus,
     &.off {
-      border: 1px solid var(--color-border-active) !important;
+      border: 1px solid var(--color-border-active);
     }
 
-    img {
+    & > .loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       height: $fib-8 * 1px;
     }
 
-    small {
+    i {
+      font-size: $fib-8 * 1px;
+    }
+
+    span {
       margin-top: $fib-6 * 1px;
     }
   }
@@ -128,7 +207,6 @@ export default defineComponent({
     margin-top: $fib-5 * 1px;
     min-width: $fib-13 * 1px;
     visibility: hidden;
-
     border-color: var(--color-accent);
 
     &.active {

@@ -12,7 +12,7 @@
       <div id="actions-container">
         <file-search />
         <span id="action-buttons">
-          <!-- <new-project class="action"> </new-project> -->
+          <new-project class="action"> </new-project>
           <new-folder class="action"></new-folder>
         </span>
       </div>
@@ -61,7 +61,7 @@ export default defineComponent({
   name: "App",
   components: {
     DirList,
-    // NewProject,
+    NewProject,
     NewFolder,
     SidenavMenu,
     FileSearch,

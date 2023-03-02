@@ -1,15 +1,6 @@
 import config from "@/config.json";
 
-const details: { [key: string]: Details } = {
-  virtual: {
-    name: "virtual",
-    color: "var(--color-yellow)",
-    title: "Is it alive or dead?",
-    description:
-      "A virtual folder only exists in you browser as long as you do not refresh the page. To persist the folder, add a file on it.",
-    icon: "bx bxs-cat",
-    uri: "#",
-  },
+const tools: { [key: string]: Details } = {
   agora: {
     name: "agora",
     color: "#BF7389",
@@ -21,6 +12,18 @@ const details: { [key: string]: Details } = {
   },
 };
 
+const tags: { [key: string]: Details } = Object.assign({}, tools, {
+  virtual: {
+    name: "virtual",
+    color: "var(--color-yellow)",
+    title: "Is it alive or dead?",
+    description:
+      "A virtual folder only exists in you browser as long as you do not refresh the page. To persist the folder, add a file on it.",
+    icon: "bx bxs-cat",
+    uri: "#",
+  },
+});
+
 interface Details {
   name: string;
   color: string;
@@ -30,4 +33,4 @@ interface Details {
   uri: string;
 }
 
-export default details;
+export { tools, tags };

@@ -13,7 +13,7 @@
         <span><i class="bx bxs-folder-plus"></i>&nbsp; Add a new folder</span>
         <small>
           It will be created at
-          <a :href="href" target="_blank">{{ pathname }}</a>
+          <a :href="href()" target="_blank">{{ pathname() }}</a>
         </small>
       </template>
       <regular-field
@@ -33,11 +33,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, inject, nextTick } from "vue";
+import { defineComponent, inject } from "vue";
 import { FieldController } from "vue-fields/src/main";
 import Directory from "@/domain/directory";
 import FileData, { Flag } from "@/domain/file";
 import Path from "@/domain/path";
+import { rootDirName } from "./DirList.vue";
 
 interface DirectoryCtrl {
   getDirectory: () => Directory | undefined;
@@ -61,7 +62,7 @@ export default defineComponent({
     };
   },
 
-  computed: {
+  methods: {
     href(): string {
       const directory = this.directoryCtrl?.getDirectory();
       return Path.sanatize(directory?.path ?? "");
@@ -69,11 +70,10 @@ export default defineComponent({
 
     pathname(): string {
       const directory = this.directoryCtrl?.getDirectory();
-      return directory?.path ?? "";
+      if (directory?.isRoot()) return rootDirName;
+      else return directory?.path ?? "";
     },
-  },
 
-  methods: {
     currentDirectory(): Directory | undefined {
       return this.directoryCtrl?.getDirectory();
     },
@@ -92,7 +92,7 @@ export default defineComponent({
 
       if (!directory) return;
 
-      this.error = FileData.checkName(directory, foldername) ?? "";
+      this.error = FileData.checkName(foldername, directory) ?? "";
       this.valid = !this.error;
     },
 
@@ -114,6 +114,7 @@ export default defineComponent({
       const directory = this.directoryCtrl?.getDirectory();
       if (!directory) return;
 
+      if (FileData.checkName(foldername, directory)) return;
       const file = new FileData("", foldername, directory);
       file.flags |= Flag.Directory;
 

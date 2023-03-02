@@ -1,6 +1,7 @@
 import Tag, { Tags } from "@/domain/tag";
 import Tool from "@/domain/tool";
 import urlJoin from "url-join";
+import Directory from "@/domain/directory";
 
 const METADATA_UPDATED_AT_KEY = "updated_at";
 const METADATA_SIZE_KEY = "size";
@@ -23,11 +24,6 @@ class Permissions {
   owner = false;
 }
 
-interface Directory {
-  path: string;
-  exists: (name: string) => boolean;
-}
-
 class FileData {
   id: string;
   name: string;
@@ -42,7 +38,7 @@ class FileData {
     this.directory = dir;
   }
 
-  static checkName(directory: Directory, name: string): string | undefined {
+  static checkName(name: string, directory: Directory): string | undefined {
     if (!name) {
       return "Filename cannot be empty";
     }
@@ -106,6 +102,15 @@ class FileData {
   };
 
   /**
+   * Updates the tool metadata field of the file.
+   *
+   * @param tool - The tool to be set.
+   */
+  setTool = (tool: Tool): void => {
+    this.metadata.set(METADATA_TOOL_KEY, tool.name);
+  };
+
+  /**
    * Concatenates the directory and name fields of the file into a single absolute path.
    *
    * @returns The full path of the file.
@@ -166,7 +171,7 @@ class FileData {
    * @returns The error in the filename, if any.
    */
   checkName = (name: string): string | undefined => {
-    return FileData.checkName(this.directory, name);
+    return FileData.checkName(name, this.directory);
   };
 }
 
