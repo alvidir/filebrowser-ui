@@ -10,11 +10,13 @@
     </regular-button>
     <regular-card :class="{ active: active }" @close="close" closable>
       <template #header>
-        <span><i class="bx bxs-folder-plus"></i>&nbsp; Add a new folder</span>
-        <small>
-          It will be created at
-          <a :href="href()" target="_blank">{{ pathname() }}</a>
-        </small>
+        <action-header
+          title="Add a new folder"
+          subtitle="It will be created at"
+          :path="pathname"
+          :href="href"
+          icon="bx bxs-folder-plus"
+        ></action-header>
       </template>
       <regular-field
         ref="foldername"
@@ -38,7 +40,8 @@ import { FieldController } from "vue-fields/src/main";
 import Directory from "@/domain/directory";
 import FileData, { Flag } from "@/domain/file";
 import Path from "@/domain/path";
-import { rootDirName } from "./DirList.vue";
+import { rootDirName } from "@/components/DirList.vue";
+import ActionHeader from "@/components/ActionHeader.vue";
 
 interface DirectoryCtrl {
   getDirectory: () => Directory | undefined;
@@ -47,6 +50,9 @@ interface DirectoryCtrl {
 
 export default defineComponent({
   name: "NewFolder",
+  components: {
+    ActionHeader,
+  },
 
   setup() {
     return {
@@ -56,30 +62,28 @@ export default defineComponent({
 
   data() {
     return {
+      directory: undefined as Directory | undefined,
       active: false,
       valid: false,
       error: "",
     };
   },
 
-  methods: {
+  computed: {
     href(): string {
-      const directory = this.directoryCtrl?.getDirectory();
-      return Path.sanatize(directory?.path ?? "");
+      return Path.sanatize(this.directory?.path ?? "");
     },
 
     pathname(): string {
-      const directory = this.directoryCtrl?.getDirectory();
-      if (directory?.isRoot()) return rootDirName;
-      else return directory?.path ?? "";
+      if (this.directory?.isRoot()) return rootDirName;
+      else return this.directory?.path ?? "";
     },
+  },
 
-    currentDirectory(): Directory | undefined {
-      return this.directoryCtrl?.getDirectory();
-    },
-
+  methods: {
     open() {
       this.active = true;
+      this.directory = this.directoryCtrl?.getDirectory();
       this.$nextTick(() => {
         const field = this.$refs.foldername as FieldController;
         field?.focus();
@@ -88,11 +92,9 @@ export default defineComponent({
 
     onInput(ctrl: FieldController) {
       const foldername = ctrl.value();
-      const directory = this.directoryCtrl?.getDirectory();
+      if (!this.directory) return;
 
-      if (!directory) return;
-
-      this.error = FileData.checkName(foldername, directory) ?? "";
+      this.error = FileData.checkName(foldername, this.directory) ?? "";
       this.valid = !this.error;
     },
 
@@ -111,11 +113,10 @@ export default defineComponent({
       const foldername = field.value();
       this.close();
 
-      const directory = this.directoryCtrl?.getDirectory();
-      if (!directory) return;
+      if (!this.directory) return;
 
-      if (FileData.checkName(foldername, directory)) return;
-      const file = new FileData("", foldername, directory);
+      if (FileData.checkName(foldername, this.directory)) return;
+      const file = new FileData("", foldername, this.directory);
       file.flags |= Flag.Directory;
 
       this.directoryCtrl?.addFile(file);

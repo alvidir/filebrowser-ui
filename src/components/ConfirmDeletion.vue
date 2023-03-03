@@ -1,24 +1,18 @@
 <template>
-  <dialog-card
-    class="action-dialog"
-    :active="active"
-    :class="{ 'custom-color': !!color }"
-    @close="onCancelClick"
-  >
+  <dialog-card class="action-dialog" :active="active" @close="onCancelClick">
     <template #header>
-      <span>
-        <i class="bx bxs-castle"></i>
-        &nbsp; Needs confirmation
-      </span>
-      <small>
-        Delete action on
-        <a :href="context?.url()" target="_blank">{{ context.name }}</a>
-      </small>
-      <small></small>
+      <action-header
+        title="Needs confirmation"
+        title-color="var(--color-red)"
+        subtitle="Delete action on"
+        :path="context.path()"
+        :href="href"
+        icon="bx bxs-castle"
+      ></action-header>
     </template>
     {{ description }}
     <template #footer>
-      <submit-button :color="color" @submit="onSubmitClick">
+      <submit-button color="var(--color-red)" @submit="onSubmitClick">
         Delete
       </submit-button>
       <regular-button @click="onCancelClick">Cancel</regular-button>
@@ -27,8 +21,10 @@
 </template>
 
 <script lang="ts">
-import FileData from "@/domain/file";
 import { defineComponent, PropType } from "vue";
+import ActionHeader from "@/components/ActionHeader.vue";
+import FileData from "@/domain/file";
+import Path from "@/domain/path";
 
 const SUBMIT_EVENT_NAME = "submit";
 const CANCEL_EVENT_NAME = "cancel";
@@ -36,6 +32,9 @@ const CANCEL_EVENT_NAME = "cancel";
 export default defineComponent({
   name: "ConfirmDeletion",
   events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
+  components: {
+    ActionHeader,
+  },
   props: {
     active: Boolean,
     context: {
@@ -45,14 +44,24 @@ export default defineComponent({
   },
 
   computed: {
-    color(): string {
-      return "var(--color-red)";
+    href(): string | undefined {
+      if (this.context.isDirectory()) {
+        return Path.sanatize(this.context.path());
+      }
+
+      return this.context.url();
+    },
+
+    contentSize(): string | undefined {
+      const size = this.context.size() ?? 0;
+      if (size) return `${size} ${size > 1 ? "items" : "item"}`;
+      else return "empty";
     },
 
     description(): string {
       let description = "";
       if (this.context.isDirectory()) {
-        description = `You are about to delete a folder and the ${this.context.size()} items inside of it.`;
+        description = `You are about to delete a folder and the ${this.contentSize} inside of it.`;
       } else {
         description = "You are about to delete a file.";
       }
@@ -76,7 +85,7 @@ export default defineComponent({
 <style lang="scss">
 @import "fibonacci-styles";
 
-$text-color: v-bind(color);
+$text-color: var(--color-red);
 
 .action-dialog {
   button.submit {
@@ -88,18 +97,12 @@ $text-color: v-bind(color);
     font-size: large;
   }
 
-  &.custom-color {
-    label {
-      color: $text-color;
-    }
+  label {
+    color: $text-color;
+  }
 
-    .regular-card {
-      border-color: $text-color;
-
-      span {
-        color: $text-color;
-      }
-    }
+  .regular-card {
+    border-color: $text-color;
   }
 
   .regular-field {

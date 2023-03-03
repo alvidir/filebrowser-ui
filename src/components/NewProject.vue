@@ -6,13 +6,14 @@
     </submit-button>
     <regular-card :class="{ active: active }" @close="close" closable>
       <template #header>
-        <span class="card-title">
-          <i class="bx bxs-bulb"></i>&nbsp; Start building your new project
-        </span>
-        <small>
-          It will be created at
-          <a :href="href()" target="_blank">{{ pathname() }}</a>
-        </small>
+        <action-header
+          title="Start building your new project"
+          title-color="var(--color-accent)"
+          subtitle="It will be created at"
+          :path="pathname"
+          :href="href"
+          icon="bx bxs-bulb"
+        ></action-header>
       </template>
       <div class="apps">
         <button
@@ -45,6 +46,7 @@ import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Path from "@/domain/path";
 import { rootDirName } from "@/components/DirList.vue";
+import ActionHeader from "@/components/ActionHeader.vue";
 import Subject from "@/controllers/observer";
 
 const DefaultFilename = "Untitled project";
@@ -57,6 +59,7 @@ interface DirectoryCtrl extends Subject {
 export default defineComponent({
   name: "NewFolder",
   components: {
+    ActionHeader,
     PulseLoader,
   },
   props: {
@@ -75,22 +78,23 @@ export default defineComponent({
   data() {
     return {
       active: false,
+      directory: undefined as Directory | undefined,
       pending: new Array<FileData>(),
     };
   },
 
-  methods: {
+  computed: {
     href(): string {
-      const directory = this.directoryCtrl?.getDirectory();
-      return Path.sanatize(directory?.path ?? "");
+      return Path.sanatize(this.directory?.path ?? "");
     },
 
     pathname(): string {
-      const directory = this.directoryCtrl?.getDirectory();
-      if (directory?.isRoot()) return rootDirName;
-      else return directory?.path ?? "";
+      if (this.directory?.isRoot()) return rootDirName;
+      else return this.directory?.path ?? "";
     },
+  },
 
+  methods: {
     capitalize(word: string) {
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     },
@@ -100,10 +104,9 @@ export default defineComponent({
     },
 
     onClick(tool: Tool) {
-      const directory = this.directoryCtrl?.getDirectory();
-      if (!directory) return;
+      if (!this.directory) return;
 
-      const file = new FileData("", DefaultFilename, directory);
+      const file = new FileData("", DefaultFilename, this.directory);
       file.setTool(tool);
 
       this.pending.push(file);
@@ -111,6 +114,7 @@ export default defineComponent({
     },
 
     open() {
+      this.directory = this.directoryCtrl?.getDirectory();
       this.active = true;
     },
 
@@ -149,10 +153,6 @@ export default defineComponent({
 
 .new-project-dialog {
   position: relative;
-
-  .card-title {
-    color: var(--color-accent);
-  }
 
   .apps {
     display: grid;
@@ -211,10 +211,6 @@ export default defineComponent({
 
     &.active {
       visibility: visible;
-    }
-
-    i {
-      color: var(--color-text-secondary);
     }
   }
 }

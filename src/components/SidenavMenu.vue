@@ -7,7 +7,7 @@
         alt=""
       />
     </button>
-    <button @click="onClick">
+    <button v-for="tool in tools" :key="tool.name" @click="onClick(tool)">
       <i class="icon-greek-pillar-outline"></i>
       <label>Agora</label>
     </button>
@@ -31,15 +31,21 @@
 </template>
 
 <script scoped lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent } from "vue";
+import Tool from "@/domain/tool";
 
 export default defineComponent({
   name: "SidenavMenu",
-  events: [],
-  props: {
-    onClick: {
-      type: Function as PropType<(payload: MouseEvent) => void>,
-      required: true,
+
+  computed: {
+    tools(): Array<Tool> {
+      return Tool.all();
+    },
+  },
+
+  methods: {
+    onClick(tool: Tool) {
+      console.log(tool.name);
     },
   },
 });

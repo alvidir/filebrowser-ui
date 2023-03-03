@@ -12,7 +12,7 @@ const METADATA_TAGS_KEY = "tags";
 const parentDirName = "..";
 const tagSeparator = ";";
 const filenameRegex = /^[a-zA-Z0-9 ]*$/;
-const maxFilenameLen = 36;
+const maxFilenameLen = 34;
 
 enum Flag {
   Directory = 0x04,
@@ -176,4 +176,4 @@ class FileData {
 }
 
 export default FileData;
-export { parentDirName, Flag };
+export { parentDirName, maxFilenameLen, Flag };

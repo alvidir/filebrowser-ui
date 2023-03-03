@@ -123,7 +123,7 @@ export default defineComponent({
   computed: {
     href(): string {
       if (this.file.isDirectory()) return "#";
-      return this.file.url()?.toString() ?? "#";
+      return this.file.url() ?? "#";
     },
 
     target(): string | undefined {

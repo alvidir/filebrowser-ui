@@ -61,13 +61,14 @@ class DirectoryController extends Subject {
     if (file.isParentDirectory()) {
       this.changeDirectory(-1);
     } else if (file.isDirectory()) {
-      this.setPath(Path.sanatize(urlJoin(file.directory.path, file.name)));
+      this.setPath(Path.sanatize(file.path()));
+    } else {
+      window.location.assign(file.url() ?? "#");
     }
   };
 
   changeDirectory = (delta: number) => {
     const path = urlJoin(this.path.split(pathSeparator).slice(0, delta));
-
     this.setPath(path);
   };
 

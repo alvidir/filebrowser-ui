@@ -1,5 +1,5 @@
 <template>
-  <sidenav-menu :on-click="() => context.switchTheme()"></sidenav-menu>
+  <sidenav-menu></sidenav-menu>
   <div id="main-container">
     <div class="narrowed">
       <notice-card
