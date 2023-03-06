@@ -2,10 +2,10 @@ import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
 import Subject from "@/controllers/observer";
 import { FieldController } from "vue-fields/src/main";
-import SearchItem from "@/domain/search";
+import SearchMatch from "@/domain/search";
 
 interface FilebrowserClient {
-  searchFile(search: string): Promise<Array<SearchItem>>;
+  searchFile(search: string): Promise<Array<SearchMatch>>;
 }
 
 interface WarningController {
@@ -15,7 +15,7 @@ interface WarningController {
 class SearchController extends Subject {
   private filebrowserClient: FilebrowserClient;
   private warningController: WarningController;
-  private items = new Array<SearchItem>();
+  private items = new Array<SearchMatch>();
 
   constructor(fbClient: FilebrowserClient, warnCtrl: WarningController) {
     super();
@@ -42,7 +42,7 @@ class SearchController extends Subject {
       });
   };
 
-  getItems = (): Array<SearchItem> => {
+  getItems = (): Array<SearchMatch> => {
     return this.items;
   };
 }

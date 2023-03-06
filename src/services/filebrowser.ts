@@ -14,7 +14,7 @@ import { FileServiceClient } from "@/proto/FileServiceClientPb";
 import { File as ProtoFile, Metadata as ProtoMetadata } from "@/proto/file_pb";
 import join from "url-join";
 import Path, { pathSeparator } from "@/domain/path";
-import SearchItem from "@/domain/search";
+import SearchMatch from "@/domain/search";
 
 type Headers = { [key: string]: string };
 
@@ -33,8 +33,8 @@ class FilebrowserClient {
     return p.trim().replace(/_/g, " ");
   }
 
-  static buildSearchItems(data: SearchResponse): Array<SearchItem> {
-    const items = new Array<SearchItem>();
+  static buildSearchMatches(data: SearchResponse): Array<SearchMatch> {
+    const items = new Array<SearchMatch>();
     data.getMatchesList().forEach((item) => {
       const protoFile = item.getFile();
       if (!protoFile) return;
@@ -44,7 +44,8 @@ class FilebrowserClient {
         protoFile.getName(),
         protoFile.getDirectory()
       );
-      new SearchItem(file, item.getMatchstart(), item.getMatchend());
+
+      new SearchMatch(file, item.getMatchstart(), item.getMatchend());
     });
 
     return items;
@@ -141,11 +142,11 @@ class FilebrowserClient {
     );
   };
 
-  searchFile = (search: string): Promise<Array<SearchItem>> => {
+  searchFile = (search: string): Promise<Array<SearchMatch>> => {
     return new Promise(
       (
         resolve: (
-          value: Array<SearchItem> | PromiseLike<Array<SearchItem>>
+          value: Array<SearchMatch> | PromiseLike<Array<SearchMatch>>
         ) => void,
         reject: (reason: Warning) => void
       ) => {
@@ -161,7 +162,7 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(FilebrowserClient.buildSearchItems(data));
+            resolve(FilebrowserClient.buildSearchMatches(data));
           }
         );
       }

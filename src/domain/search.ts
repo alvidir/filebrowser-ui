@@ -1,15 +1,15 @@
 import FileData from "@/domain/file";
 
-class SearchItem {
+class SearchMatch {
   file: FileData;
-  matchStart: number;
-  matchEnd: number;
+  start: number;
+  end: number;
 
   constructor(file: FileData, start: number, end: number) {
     this.file = file;
-    this.matchStart = start;
-    this.matchEnd = end;
+    this.start = start;
+    this.end = end;
   }
 }
 
-export default SearchItem;
+export default SearchMatch;
