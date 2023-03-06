@@ -71,7 +71,7 @@ export default defineComponent({
 
   computed: {
     href(): string {
-      return Path.sanatize(this.directory?.path ?? "");
+      return new Path(this.directory?.path ?? "").absolute;
     },
 
     pathname(): string {
@@ -92,10 +92,16 @@ export default defineComponent({
 
     onInput(ctrl: FieldController) {
       const foldername = ctrl.value();
-      if (!this.directory) return;
+      this.valid = this.isValidFilename(foldername);
+    },
 
-      this.error = FileData.checkName(foldername, this.directory) ?? "";
-      this.valid = !this.error;
+    isValidFilename(name: string): boolean {
+      this.error = FileData.checkName(name) ?? "";
+      if (!this.error && this.directory?.exists(name)) {
+        this.error = "This filename already exists";
+      }
+
+      return !this.error;
     },
 
     close() {
@@ -113,10 +119,8 @@ export default defineComponent({
       const foldername = field.value();
       this.close();
 
-      if (!this.directory) return;
-
-      if (FileData.checkName(foldername, this.directory)) return;
-      const file = new FileData("", foldername, this.directory);
+      if (!this.directory || !this.isValidFilename(foldername)) return;
+      const file = new FileData("", foldername, this.directory.path);
       file.flags |= Flag.Directory;
 
       this.directoryCtrl?.addFile(file);

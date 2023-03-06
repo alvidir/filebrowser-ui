@@ -2,28 +2,30 @@ import * as grpcWeb from "grpc-web";
 import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
-import { DirectoryClient } from "@/proto/DirectoryServiceClientPb";
-import { DirectoryLocator, DirectoryDescriptor } from "@/proto/directory_pb";
-import { FileClient } from "@/proto/FileServiceClientPb";
+import { DirectoryServiceClient } from "@/proto/DirectoryServiceClientPb";
 import {
-  FileConstructor,
-  FileDescriptor,
-  FileLocator,
-  FileMetadata,
-} from "@/proto/file_pb";
+  Path as ProtoPath,
+  Directory as ProtoDirectory,
+  SearchRequest,
+  SearchResponse,
+  MoveRequest,
+} from "@/proto/directory_pb";
+import { FileServiceClient } from "@/proto/FileServiceClientPb";
+import { File as ProtoFile, Metadata as ProtoMetadata } from "@/proto/file_pb";
 import join from "url-join";
-import Path from "@/domain/path";
+import Path, { pathSeparator } from "@/domain/path";
+import SearchItem from "@/domain/search";
 
 type Headers = { [key: string]: string };
 
 class FilebrowserClient {
-  directoryClient: DirectoryClient;
-  fileClient: FileClient;
+  directoryClient: DirectoryServiceClient;
+  fileClient: FileServiceClient;
   headers: Headers;
 
   constructor(url: string, headers: Headers) {
-    this.directoryClient = new DirectoryClient(url, null, null);
-    this.fileClient = new FileClient(url, null, null);
+    this.directoryClient = new DirectoryServiceClient(url, null, null);
+    this.fileClient = new FileServiceClient(url, null, null);
     this.headers = headers;
   }
 
@@ -31,208 +33,182 @@ class FilebrowserClient {
     return p.trim().replace(/_/g, " ");
   }
 
-  static buildRelocateFilter(source: FileData): string {
-    const directory = Path.sanatize(source.directory.path);
-    const filename = Path.spacesToUnderscores(source.name);
-    return `^${join(directory, `(${filename}`)}(/.*)?)$`;
+  static buildSearchItems(data: SearchResponse): Array<SearchItem> {
+    const items = new Array<SearchItem>();
+    data.getMatchesList().forEach((item) => {
+      const protoFile = item.getFile();
+      if (!protoFile) return;
+
+      const file = new FileData(
+        protoFile.getId(),
+        protoFile.getName(),
+        protoFile.getDirectory()
+      );
+      new SearchItem(file, item.getMatchstart(), item.getMatchend());
+    });
+
+    return items;
   }
 
-  static buildRenameDirFilter = (dir: FileData): string => {
-    const path = Path.sanatize(dir.path());
-    return `^${path}(/.*)?$`;
-  };
+  private static buildDirectory(data: ProtoDirectory): Directory {
+    const absolute = data.getPath()?.getAbsolute() ?? pathSeparator;
+    const path = FilebrowserClient.underscoresToSpaces(absolute);
+    const dir = new Directory(data.getId(), path);
 
-  static buildRenameFileFilter = (file: FileData): string => {
-    const path = Path.sanatize(file.path());
-    return `^(${path}(/.*)?)$`;
-  };
+    data.getFilesList().forEach((data) => {
+      const file = new FileData("", "", "");
+      dir.files.push(FilebrowserClient.initFile(file, data));
+    });
 
-  static buildFile(dir: Directory, data: FileDescriptor): FileData {
-    const filename = FilebrowserClient.underscoresToSpaces(data.getName());
-    const file = new FileData(data.getId(), filename, dir);
-
-    return FilebrowserClient.buildFileInto(file, dir, data);
+    return dir;
   }
 
-  private static buildFileInto(
-    file: FileData,
-    dir: Directory,
-    data: FileDescriptor
-  ): FileData {
+  private static initFile(file: FileData, data: ProtoFile): FileData {
     file.id = data.getId();
     file.name = FilebrowserClient.underscoresToSpaces(data.getName());
-    file.directory = dir;
+    file.directory = FilebrowserClient.underscoresToSpaces(data.getDirectory());
 
     data.getMetadataList().forEach((f) => {
       file.metadata.set(f.getKey(), f.getValue());
     });
 
     data.getPermissionsList().forEach((p) => {
-      const permissions = p.getPermissions();
-      if (permissions)
-        file.permissions.set(p.getUid(), {
-          read: permissions.getRead(),
-          write: permissions.getWrite(),
-          owner: permissions.getOwner(),
-        });
+      file.permissions.set(p.getUserId(), {
+        read: p.getRead(),
+        write: p.getWrite(),
+        owner: p.getOwner(),
+      });
     });
 
     file.flags = data.getFlags();
     return file;
   }
 
-  static buildDirectory(data: DirectoryDescriptor, path: string): Directory {
-    path = FilebrowserClient.underscoresToSpaces(path);
-    const dir = new Directory(data.getId(), path);
-
-    data.getFilesList().forEach((file) => {
-      dir.files.push(FilebrowserClient.buildFile(dir, file));
-    });
-
-    return dir;
-  }
-
-  retrieve = (path: string): Promise<Directory> => {
+  getDirectory = (path: string): Promise<Directory> => {
     return new Promise(
       (
         resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason: Warning) => void
       ) => {
-        const request = new DirectoryLocator().setPath(Path.sanatize(path));
+        const absolute = new Path(path).asDirectory();
+        const request = new ProtoPath().setAbsolute(absolute);
 
-        this.directoryClient.retrieve(
+        this.directoryClient.get(
           request,
           this.headers,
-          (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
+          (err: grpcWeb.RpcError, data: ProtoDirectory) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(Warning.find(err.message));
               return;
             }
 
-            resolve(FilebrowserClient.buildDirectory(data, path));
+            resolve(FilebrowserClient.buildDirectory(data));
           }
         );
       }
     );
   };
 
-  create = (file: FileData): Promise<FileData> => {
+  createFile = (file: FileData): Promise<FileData> => {
     return new Promise(
       (
         resolve: (value: FileData | PromiseLike<FileData>) => void,
         reject: (reason: Warning) => void
       ) => {
-        const request = new FileConstructor()
-          .setPath(Path.sanatize(file.path()))
-          .setMetadataList(
-            Object.keys(file.metadata).map((key) => {
-              return new FileMetadata()
-                .setKey(key)
-                .setValue(file.metadata.get(key) ?? "");
-            })
-          );
+        const metadata = new Array<ProtoMetadata>();
+        file.metadata.forEach((value, key) => {
+          metadata.push(new ProtoMetadata().setKey(key).setValue(value));
+        });
+
+        const request = new ProtoFile()
+          .setName(Path.spacesToUnderscores(file.name))
+          .setDirectory(new Path(file.path()).absolute)
+          .setMetadataList(metadata);
 
         this.fileClient.create(
           request,
           this.headers,
-          (err: grpcWeb.RpcError, data: FileDescriptor) => {
+          (err: grpcWeb.RpcError, data: ProtoFile) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(Warning.find(err.message));
               return;
             }
 
-            resolve(
-              FilebrowserClient.buildFileInto(file, file.directory, data)
-            );
+            resolve(FilebrowserClient.initFile(file, data));
           }
         );
       }
     );
   };
 
-  search = (search: string): Promise<Array<FileData>> => {
+  searchFile = (search: string): Promise<Array<SearchItem>> => {
     return new Promise(
       (
         resolve: (
-          value: Array<FileData> | PromiseLike<Array<FileData>>
+          value: Array<SearchItem> | PromiseLike<Array<SearchItem>>
         ) => void,
         reject: (reason: Warning) => void
       ) => {
         search = Path.spacesToUnderscores(search);
-        const request = new DirectoryLocator().setFilter(search);
+        const request = new SearchRequest().setSearch(search);
 
-        this.directoryClient.retrieve(
+        this.directoryClient.search(
           request,
           this.headers,
-          (err: grpcWeb.RpcError, data: DirectoryDescriptor) => {
+          (err: grpcWeb.RpcError, data: SearchResponse) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(Warning.find(err.message));
               return;
             }
 
-            resolve(FilebrowserClient.buildDirectory(data, "").files);
+            resolve(FilebrowserClient.buildSearchItems(data));
           }
         );
       }
     );
   };
 
-  rename = (file: FileData, name: string): Promise<void> => {
+  renameFile = (file: FileData, name: string): Promise<Directory> => {
+    return this.moveFile(file, join(file.directory, name));
+  };
+
+  moveFile = (source: FileData, destination: string): Promise<Directory> => {
     return new Promise(
       (
-        resolve: (value: void | PromiseLike<void>) => void,
+        resolve: (value: Directory | PromiseLike<Directory>) => void,
         reject: (reason: Warning) => void
       ) => {
-        const filter = file.isDirectory()
-          ? FilebrowserClient.buildRenameDirFilter(file)
-          : FilebrowserClient.buildRenameFileFilter(file);
+        const path = new ProtoPath().setAbsolute(
+          source.isDirectory()
+            ? new Path(source.path()).asDirectory()
+            : new Path(source.path()).absolute
+        );
 
-        const dest = Path.sanatize(join(file.directory.path, name));
-        const request = new DirectoryLocator().setFilter(filter).setPath(dest);
+        const dest = new ProtoPath().setAbsolute(
+          new Path(destination).absolute
+        );
 
-        this.directoryClient.relocate(
+        const request = new MoveRequest()
+          .setPathsList([path])
+          .setDestination(dest);
+
+        this.directoryClient.move(
           request,
           this.headers,
-          (err: grpcWeb.RpcError) => {
+          (err: grpcWeb.RpcError, data: ProtoDirectory) => {
             if (err && err.code !== grpcWeb.StatusCode.OK) {
               reject(Warning.find(err.message));
               return;
             }
 
-            resolve();
+            resolve(FilebrowserClient.buildDirectory(data));
           }
         );
       }
     );
   };
 
-  relocate = (source: FileData, dest: string): Promise<void> => {
-    return new Promise(
-      (
-        resolve: (value: void | PromiseLike<void>) => void,
-        reject: (reason: Warning) => void
-      ) => {
-        const request = new DirectoryLocator()
-          .setFilter(FilebrowserClient.buildRelocateFilter(source))
-          .setPath(Path.sanatize(dest));
-
-        this.directoryClient.relocate(
-          request,
-          this.headers,
-          (err: grpcWeb.RpcError) => {
-            if (err && err.code !== grpcWeb.StatusCode.OK) {
-              reject(Warning.find(err.message));
-              return;
-            }
-
-            resolve();
-          }
-        );
-      }
-    );
-  };
-
-  delete = (file: FileData): Promise<void> => {
+  deleteFile = (file: FileData): Promise<void> => {
     if (file.isDirectory()) return this.removeDirectory(file);
     else return this.removeFile(file);
   };
@@ -243,7 +219,7 @@ class FilebrowserClient {
         resolve: (value: void | PromiseLike<void>) => void,
         reject: (reason?: Warning) => void
       ) => {
-        const request = new FileLocator().setTarget(file.id);
+        const request = new ProtoFile().setId(file.id);
 
         this.fileClient.delete(
           request,
@@ -267,11 +243,11 @@ class FilebrowserClient {
         resolve: (value: void | PromiseLike<void>) => void,
         reject: (reason?: Warning) => void
       ) => {
-        const request = new DirectoryLocator().setPath(
-          Path.sanatize(file.path())
+        const request = new ProtoPath().setAbsolute(
+          new Path(file.path()).asDirectory()
         );
 
-        this.directoryClient.removeFiles(
+        this.directoryClient.delete(
           request,
           this.headers,
           (err: grpcWeb.RpcError) => {

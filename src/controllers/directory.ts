@@ -6,11 +6,11 @@ import urlJoin from "url-join";
 import Path, { pathSeparator } from "@/domain/path";
 
 interface FilebrowserClient {
-  retrieve: (path: string) => Promise<Directory>;
-  rename: (file: FileData, filename: string) => Promise<void>;
-  relocate: (source: FileData, dest: string) => Promise<void>;
-  delete: (file: FileData) => Promise<void>;
-  create: (file: FileData) => Promise<FileData>;
+  getDirectory: (path: string) => Promise<Directory>;
+  renameFile: (file: FileData, filename: string) => Promise<Directory>;
+  moveFile: (source: FileData, dest: string) => Promise<Directory>;
+  deleteFile: (file: FileData) => Promise<void>;
+  createFile: (file: FileData) => Promise<FileData>;
 }
 
 interface WarningController {
@@ -32,7 +32,7 @@ class DirectoryController extends Subject {
 
   private fetchDirectory = (path: string) => {
     this.filebrowserClient
-      .retrieve(path)
+      .getDirectory(path)
       .then((dir) => {
         this.dirs.set(path, dir);
         this.broadcast();
@@ -72,11 +72,11 @@ class DirectoryController extends Subject {
     this.setPath(path);
   };
 
-  rename = (file: FileData, filename: string) => {
+  renameFile = (file: FileData, filename: string) => {
     if (file.checkName(filename)) return;
 
     this.filebrowserClient
-      .rename(file, filename)
+      .renameFile(file, filename)
       .then(() => {
         file.name = filename;
         this.broadcast();
@@ -86,22 +86,23 @@ class DirectoryController extends Subject {
       });
   };
 
-  relocate = (source: FileData, target: FileData) => {
-    const dest = Path.sanatize(
-      target.isParentDirectory()
-        ? target.directory.path
-        : urlJoin(target.directory.path, target.name)
-    );
+  moveFile = (source: FileData, target: FileData) => {
+    const targetDir = source.isDirectory() ? source.name : "";
+    const targetPath = target.isParentDirectory()
+      ? target.directory
+      : urlJoin(target.directory, target.name);
+
+    const dest = new Path(urlJoin(targetPath, targetDir)).asDirectory();
 
     this.filebrowserClient
-      .relocate(source, dest)
+      .moveFile(source, dest)
       .then(() => {
-        const path = Path.sanatize(source.directory.path);
+        const path = Path.sanatize(source.directory);
         this.dirs.get(path)?.removeFile(source);
 
         const directory = this.dirs.get(dest);
         if (directory) {
-          source.directory = directory;
+          source.directory = directory.path;
           directory.addFile(source);
         }
 
@@ -112,11 +113,11 @@ class DirectoryController extends Subject {
       });
   };
 
-  delete = (file: FileData) => {
+  deleteFile = (file: FileData) => {
     this.filebrowserClient
-      .delete(file)
+      .deleteFile(file)
       .then(() => {
-        const path = Path.sanatize(file.directory.path);
+        const path = Path.sanatize(file.directory);
         this.dirs.get(path)?.removeFile(file);
         this.broadcast();
       })
@@ -126,14 +127,14 @@ class DirectoryController extends Subject {
   };
 
   addFile = (file: FileData) => {
-    const path = Path.sanatize(file.directory.path);
+    const path = Path.sanatize(file.directory);
     this.dirs.get(path)?.files.push(file);
     this.broadcast();
   };
 
-  create = (file: FileData) => {
+  createFile = (file: FileData) => {
     this.filebrowserClient
-      .create(file)
+      .createFile(file)
       .then((file) => {
         this.addFile(file);
       })

@@ -48,11 +48,8 @@ export const rootDirName = "root";
 
 interface DirectoryCtrl extends ISubject {
   getDirectory: () => Directory | undefined;
-  openfile: (file: FileData) => void;
   changeDirectory: (delta: number) => void;
-  relocate: (source: FileData, target: FileData) => void;
-  rename: (file: FileData, filename: string) => void;
-  delete: (file: FileData) => void;
+  moveFile: (source: FileData, target: FileData) => void;
 }
 
 interface FilterCtrl extends ISubject {
@@ -142,7 +139,7 @@ export default defineComponent({
 
     onDragEnd() {
       if (this.drag.source && this.drag.target) {
-        this.directoryCtrl?.relocate(this.drag.source, this.drag.target);
+        this.directoryCtrl?.moveFile(this.drag.source, this.drag.target);
       }
 
       this.drag.source = undefined;
@@ -159,8 +156,7 @@ export default defineComponent({
     },
 
     buildParentDirFile(): FileData {
-      const dir = new Directory("", "");
-      return new FileData("", parentDirName, dir);
+      return new FileData("", parentDirName, "");
     },
 
     filteredFiles(): Array<FileData> {

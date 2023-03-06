@@ -53,7 +53,7 @@ const DefaultFilename = "Untitled project";
 
 interface DirectoryCtrl extends Subject {
   getDirectory: () => Directory | undefined;
-  create: (file: FileData) => void;
+  createFile: (file: FileData) => void;
 }
 
 export default defineComponent({
@@ -85,7 +85,7 @@ export default defineComponent({
 
   computed: {
     href(): string {
-      return Path.sanatize(this.directory?.path ?? "");
+      return new Path(this.directory?.path ?? "").absolute;
     },
 
     pathname(): string {
@@ -106,11 +106,11 @@ export default defineComponent({
     onClick(tool: Tool) {
       if (!this.directory) return;
 
-      const file = new FileData("", DefaultFilename, this.directory);
+      const file = new FileData("", DefaultFilename, this.directory.path);
       file.setTool(tool);
 
       this.pending.push(file);
-      this.directoryCtrl?.create(file);
+      this.directoryCtrl?.createFile(file);
     },
 
     open() {
@@ -126,7 +126,7 @@ export default defineComponent({
       if (!this.pending.length) return;
 
       this.pending.forEach((file) => {
-        if (!file.id || !file.directory.files.includes(file)) return;
+        if (!file.id || !this.directory?.files.includes(file)) return;
 
         const url = file.url();
         if (url) window.open(url, "_blank")?.focus();

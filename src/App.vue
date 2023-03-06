@@ -22,7 +22,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive, provide } from "vue";
+import { defineComponent, provide } from "vue";
 import Context from "fibonacci-styles/context";
 import Filebrowser from "@/services/filebrowser";
 import DirList from "@/components/DirList.vue";

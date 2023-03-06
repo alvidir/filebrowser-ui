@@ -46,7 +46,7 @@ export default defineComponent({
   computed: {
     href(): string | undefined {
       if (this.context.isDirectory()) {
-        return Path.sanatize(this.context.path());
+        return new Path(this.context.path()).absolute;
       }
 
       return this.context.url();

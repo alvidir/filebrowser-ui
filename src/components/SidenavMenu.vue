@@ -1,5 +1,5 @@
 <template>
-  <dock-menu>
+  <dock-menu flex>
     <button class="no-hover no-tooltip">
       <img
         class="logo"
@@ -8,13 +8,13 @@
       />
     </button>
     <button v-for="tool in tools" :key="tool.name" @click="onClick(tool)">
-      <i class="icon-greek-pillar-outline"></i>
-      <label>Agora</label>
+      <i :class="tool.icon"></i>
+      <label>{{ capitalize(tool.name) }}</label>
     </button>
-    <button class="flex">
+    <!-- <button>
       <i class="bx bx-cog"></i>
       <label>Settings</label>
-    </button>
+    </button> -->
     <span></span>
     <button>
       <img
@@ -44,8 +44,12 @@ export default defineComponent({
   },
 
   methods: {
+    capitalize(word: string) {
+      return word[0].toUpperCase() + word.substring(1).toLowerCase();
+    },
+
     onClick(tool: Tool) {
-      console.log(tool.name);
+      window.open(tool.uri, "_blank")?.focus();
     },
   },
 });

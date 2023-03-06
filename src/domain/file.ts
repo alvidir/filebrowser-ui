@@ -15,7 +15,7 @@ const filenameRegex = /^[a-zA-Z0-9 ]*$/;
 const maxFilenameLen = 34;
 
 enum Flag {
-  Directory = 0x04,
+  Directory = 0x01,
 }
 
 class Permissions {
@@ -27,18 +27,18 @@ class Permissions {
 class FileData {
   id: string;
   name: string;
-  directory: Directory;
+  directory: string;
   metadata = new Map<string, string>();
   permissions = new Map<number, Permissions>();
   flags = 0;
 
-  constructor(id: string, name: string, dir: Directory) {
+  constructor(id: string, name: string, dir: string) {
     this.id = id;
     this.name = name;
     this.directory = dir;
   }
 
-  static checkName(name: string, directory: Directory): string | undefined {
+  static checkName(name: string): string | undefined {
     if (!name) {
       return "Filename cannot be empty";
     }
@@ -49,10 +49,6 @@ class FileData {
 
     if (name.length > maxFilenameLen) {
       return `A name cannot exceed ${maxFilenameLen} characters long.`;
-    }
-
-    if (directory.exists(name)) {
-      return "This filename already exists";
     }
   }
 
@@ -116,7 +112,7 @@ class FileData {
    * @returns The full path of the file.
    */
   path = (): string => {
-    return urlJoin(this.directory.path, this.name);
+    return urlJoin(this.directory, this.name);
   };
 
   /**
@@ -171,7 +167,7 @@ class FileData {
    * @returns The error in the filename, if any.
    */
   checkName = (name: string): string | undefined => {
-    return FileData.checkName(name, this.directory);
+    return FileData.checkName(name);
   };
 }
 

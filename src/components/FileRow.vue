@@ -70,6 +70,7 @@ import FileTag from "@/components/FileTag.vue";
 import FileData from "@/domain/file";
 import { ISubject } from "@/controllers/observer";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
+import Directory from "@/domain/directory";
 
 const secondsPerMinute = 60;
 const secondsPerHour = 60 * secondsPerMinute;
@@ -78,10 +79,10 @@ const secondsPerMonth = 30 * secondsPerDay;
 const secondsPerYear = 365 * secondsPerDay;
 
 interface DirectoryCtrl extends ISubject {
+  getDirectory: () => Directory | undefined;
   openfile: (file: FileData) => void;
-  relocate: (source: FileData, target: FileData) => void;
-  rename: (file: FileData, filename: string) => void;
-  delete: (file: FileData) => void;
+  renameFile: (file: FileData, filename: string) => void;
+  deleteFile: (file: FileData) => void;
 }
 
 export default defineComponent({
@@ -192,7 +193,7 @@ export default defineComponent({
     },
 
     checkRenameValue() {
-      this.rename.error = this.file.checkName(this.rename.value) ?? "";
+      this.isValidFilename(this.rename.value);
     },
 
     onStartRename() {
@@ -201,11 +202,22 @@ export default defineComponent({
     },
 
     onSubmitRename() {
-      if (this.rename.value && !this.rename.error) {
-        this.directoryCtrl?.rename(this.file, this.rename.value);
+      const renameValue = this.rename.value;
+      if (this.isValidFilename(renameValue)) {
+        this.directoryCtrl?.renameFile(this.file, renameValue);
       }
 
       this.resetRename();
+    },
+
+    isValidFilename(name: string): boolean {
+      this.rename.error = FileData.checkName(name) ?? "";
+      const directory = this.directoryCtrl?.getDirectory();
+      if (!this.rename.error && directory?.exists(name)) {
+        this.rename.error = "This filename already exists";
+      }
+
+      return !this.rename.error;
     },
 
     resetRename() {
@@ -241,7 +253,7 @@ export default defineComponent({
     },
 
     onSubmitDeletion() {
-      this.directoryCtrl?.delete(this.file);
+      this.directoryCtrl?.deleteFile(this.file);
       this.onCancelDeletion();
     },
 
