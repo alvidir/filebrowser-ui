@@ -1,5 +1,11 @@
 <template>
-  <a class="search-item" :href="href" :target="target" @click="open">
+  <a
+    class="search-item"
+    draggable="false"
+    :href="href"
+    :target="target"
+    @click="open"
+  >
     <i v-if="match.file.isDirectory()" class="bx bxs-folder"></i>
     <i v-else class="bx bx-file-blank"></i>
     <div class="details">
