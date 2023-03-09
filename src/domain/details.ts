@@ -1,6 +1,6 @@
 import config from "@/config.json";
 
-const tools: { [key: string]: Details } = {
+const apps: { [key: string]: Details } = {
   agora: {
     name: "agora",
     color: "#BF7389",
@@ -12,7 +12,7 @@ const tools: { [key: string]: Details } = {
   },
 };
 
-const tags: { [key: string]: Details } = Object.assign({}, tools, {
+const tags: { [key: string]: Details } = Object.assign({}, apps, {
   virtual: {
     name: "virtual",
     color: "var(--color-yellow)",
@@ -33,4 +33,4 @@ interface Details {
   uri: string;
 }
 
-export { tools, tags };
+export { apps, tags };

@@ -1,13 +1,12 @@
 import Tag, { Tags } from "@/domain/tag";
-import Tool from "@/domain/tool";
+import App from "@/domain/app";
 import urlJoin from "url-join";
-import Directory from "@/domain/directory";
 
-const METADATA_UPDATED_AT_KEY = "updated_at";
-const METADATA_SIZE_KEY = "size";
-const METADATA_TOOL_KEY = "app_id";
-const METADATA_REF_KEY = "ref";
-const METADATA_TAGS_KEY = "tags";
+const metadataUpdatedAtKey = "updated_at";
+const metadataSizeKey = "size";
+const metadataAppKey = "app";
+const metadataRefKey = "ref";
+const metadataTagsKey = "tags";
 
 const parentDirName = "..";
 const tagSeparator = ";";
@@ -30,6 +29,7 @@ class FileData {
   directory: string;
   metadata = new Map<string, string>();
   permissions = new Map<number, Permissions>();
+  new = false;
   flags = 0;
 
   constructor(id: string, name: string, dir: string) {
@@ -58,7 +58,7 @@ class FileData {
    * @returns The size of the file.
    */
   size = (): number | undefined => {
-    const size = this.metadata.get(METADATA_SIZE_KEY);
+    const size = this.metadata.get(metadataSizeKey);
     if (size !== undefined) {
       return parseInt(size);
     } else if (this.isDirectory()) {
@@ -72,38 +72,37 @@ class FileData {
    * @returns An array of tags.
    */
   tags = (): Array<Tag> => {
-    const tags =
-      this.metadata.get(METADATA_TAGS_KEY)?.split(tagSeparator) ?? [];
+    const tags = this.metadata.get(metadataTagsKey)?.split(tagSeparator) ?? [];
 
     if (this.isDirectory() && !this.isParentDirectory() && !this.size()) {
       tags.unshift(Tags.Virtual);
     }
 
-    const tool = this.tool();
-    if (tool) {
-      tags.unshift(tool.name);
+    const app = this.app();
+    if (app) {
+      tags.unshift(app.name);
     }
 
     return tags.map((tag) => Tag.find(tag));
   };
 
   /**
-   * Returns the tool instance of the file, if defined in its metadata.
+   * Returns the app instance of the file, if defined in its metadata.
    *
-   * @returns The tool the file belongs to.
+   * @returns The app the file belongs to.
    */
-  tool = (): Tool | undefined => {
-    const toolId = this.metadata.get(METADATA_TOOL_KEY);
-    if (toolId) return Tool.find(toolId);
+  app = (): App | undefined => {
+    const toolId = this.metadata.get(metadataAppKey);
+    if (toolId) return App.find(toolId);
   };
 
   /**
-   * Updates the tool metadata field of the file.
+   * Updates the app metadata field of the file.
    *
-   * @param tool - The tool to be set.
+   * @param app - The app to be set.
    */
-  setTool = (tool: Tool): void => {
-    this.metadata.set(METADATA_TOOL_KEY, tool.name);
+  setTool = (app: App): void => {
+    this.metadata.set(metadataAppKey, app.name);
   };
 
   /**
@@ -121,14 +120,13 @@ class FileData {
    * @returns The URL to the file's content.
    */
   url = (): string | undefined => {
-    const ref = this.metadata.get(METADATA_REF_KEY);
-    const base = this.tool()?.uri;
+    const ref = this.metadata.get(metadataRefKey);
+    const base = this.app()?.uri;
 
-    if (ref && base) {
-      return urlJoin(base, ref);
-    }
+    if (!base) return;
+    if (!ref) return urlJoin(base, "ref", this.id);
 
-    return;
+    return urlJoin(base, ref);
   };
 
   /**
@@ -137,7 +135,7 @@ class FileData {
    * @returns The latest date the file has been updated.
    */
   updatedAt = (): Date | undefined => {
-    const unix = this.metadata.get(METADATA_UPDATED_AT_KEY);
+    const unix = this.metadata.get(metadataUpdatedAtKey);
     if (unix) return new Date(parseInt(unix, 16) * 1000);
     else if (this.isDirectory()) return new Date();
   };
@@ -172,4 +170,4 @@ class FileData {
 }
 
 export default FileData;
-export { parentDirName, maxFilenameLen, Flag };
+export { Flag, parentDirName, maxFilenameLen, metadataSizeKey };

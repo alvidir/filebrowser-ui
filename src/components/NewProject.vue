@@ -17,21 +17,21 @@
       </template>
       <div class="apps">
         <button
-          v-for="tool in tools"
-          :key="tool.name"
-          :disabled="isPending(tool)"
+          v-for="app in apps"
+          :key="app.name"
+          :disabled="isPending(app)"
           class="app"
-          @click="onClick(tool)"
+          @click="onClick(app)"
         >
-          <i v-if="!isPending(tool)" :class="tool.icon" :alt="tool.name"></i>
+          <i v-if="!isPending(app)" :class="app.icon" :alt="app.name"></i>
           <pulse-loader
-            v-if="isPending(tool)"
+            v-if="isPending(app)"
             class="loader"
             color="var(--color-border-active)"
             :size="'8px'"
             :radius="'5px'"
           ></pulse-loader>
-          <span>{{ capitalize(tool.name) }}</span>
+          <span>{{ capitalize(app.name) }}</span>
         </button>
       </div>
     </regular-card>
@@ -41,7 +41,7 @@
 <script lang="ts">
 import { defineComponent, PropType, inject } from "vue";
 import PulseLoader from "vue-spinner/src/PulseLoader.vue";
-import Tool from "@/domain/tool";
+import App from "@/domain/app";
 import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Path from "@/domain/path";
@@ -63,9 +63,9 @@ export default defineComponent({
     PulseLoader,
   },
   props: {
-    tools: {
-      type: Array as PropType<Array<Tool>>,
-      default: Tool.all(),
+    apps: {
+      type: Array as PropType<Array<App>>,
+      default: App.all(),
     },
   },
 
@@ -99,15 +99,15 @@ export default defineComponent({
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     },
 
-    isPending(tool: Tool) {
-      return this.pending.some((file) => file.tool() == tool);
+    isPending(app: App) {
+      return this.pending.some((file) => file.app() == app);
     },
 
-    onClick(tool: Tool) {
+    onClick(app: App) {
       if (!this.directory) return;
 
       const file = new FileData("", DefaultFilename, this.directory.path);
-      file.setTool(tool);
+      file.setTool(app);
 
       this.pending.push(file);
       this.directoryCtrl?.createFile(file);

@@ -33,7 +33,19 @@ class Directory {
     if (this.isRoot()) return;
 
     const index = this.path.lastIndexOf(pathSeparator);
-    return this.path.substring(0, -index);
+    return this.path.substring(0, index);
+  };
+
+  /**
+   * Returns the directory's name.
+   *
+   * @returns The parent's name.
+   */
+  name = (): string => {
+    if (this.isRoot()) return "root";
+
+    const index = this.path.lastIndexOf(pathSeparator);
+    return this.path.substring(index + 1);
   };
 
   /**

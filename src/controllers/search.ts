@@ -1,7 +1,5 @@
-import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
 import Subject from "@/controllers/observer";
-import { FieldController } from "vue-fields/src/main";
 import SearchMatch from "@/domain/search";
 
 interface FilebrowserClient {

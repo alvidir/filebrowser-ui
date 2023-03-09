@@ -4,6 +4,7 @@
       highlight: highlight || rename.active,
       'parent-dir': file.isParentDirectory(),
       'no-hover': noHover,
+      reveal: file.new,
     }"
     @click="file.isParentDirectory() && open()"
     @mouseup.right="onOpenContextMenu()"
@@ -136,8 +137,7 @@ export default defineComponent({
       if (this.file.isParentDirectory()) return;
 
       const size = this.file.size() ?? 0;
-      if (size) return `${size} ${size > 1 ? "items" : "item"}`;
-      else return "empty";
+      return `${size} ${!size || size > 1 ? "items" : "item"}`;
     },
 
     elapsedTime(): string | undefined {
@@ -346,16 +346,26 @@ export default defineComponent({
 tr {
   height: $fib-8 * 1px;
 
+  @keyframes reveal {
+    from {
+      background-color: var(--color-accent);
+    }
+
+    to {
+      background-color: none;
+    }
+  }
+
+  &.reveal {
+    animation-name: reveal;
+    animation-duration: $fib-1 * 1s;
+    animation-timing-function: ease-in;
+  }
+
   &.target {
     @extend .shadow-box;
     background: var(--color-button);
     z-index: 1;
-  }
-
-  &.reveal {
-    animation-name: ephemeral-highlight;
-    animation-duration: $fib-1 * 1s;
-    animation-timing-function: ease-in;
   }
 
   &:not(.no-hover):hover {

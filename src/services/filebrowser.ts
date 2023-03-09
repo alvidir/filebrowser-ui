@@ -9,6 +9,7 @@ import {
   SearchRequest,
   SearchResponse,
   MoveRequest,
+  SearchMatch as ProtoSearchMatch,
 } from "@/proto/directory_pb";
 import { FileServiceClient } from "@/proto/FileServiceClientPb";
 import { File as ProtoFile, Metadata as ProtoMetadata } from "@/proto/file_pb";
@@ -29,26 +30,25 @@ class FilebrowserClient {
     this.headers = headers;
   }
 
-  static underscoresToSpaces(p: string): string {
+  private static underscoresToSpaces(p: string): string {
     return p.trim().replace(/_/g, " ");
   }
 
-  static buildSearchMatches(data: SearchResponse): Array<SearchMatch> {
-    const items = new Array<SearchMatch>();
-    data.getMatchesList().forEach((item) => {
-      const protoFile = item.getFile();
-      if (!protoFile) return;
+  private static buildSearchMatch(data: ProtoSearchMatch): SearchMatch {
+    const file = new FileData("", "", "");
+    const protoFile = data.getFile();
+    if (protoFile) {
+      FilebrowserClient.initFile(file, protoFile);
+    }
 
-      const file = new FileData(
-        protoFile.getId(),
-        protoFile.getName(),
-        protoFile.getDirectory()
-      );
+    return new SearchMatch(file, data.getMatchstart(), data.getMatchend());
+  }
 
-      new SearchMatch(file, item.getMatchstart(), item.getMatchend());
-    });
-
-    return items;
+  private static buildSearchMatches(data: SearchResponse): Array<SearchMatch> {
+    return data
+      .getMatchesList()
+      .filter((match) => !!match)
+      .map((match) => FilebrowserClient.buildSearchMatch(match));
   }
 
   private static buildDirectory(data: ProtoDirectory): Directory {
@@ -162,6 +162,7 @@ class FilebrowserClient {
               return;
             }
 
+            console.log(data);
             resolve(FilebrowserClient.buildSearchMatches(data));
           }
         );

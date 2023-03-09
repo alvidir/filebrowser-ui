@@ -1,20 +1,12 @@
 <template>
   <dock-menu flex>
     <button class="no-hover no-tooltip">
-      <img
-        class="logo"
-        src="https://raw.githubusercontent.com/alvidir/statics/main/pictures/svg/alvidir_logo.svg"
-        alt=""
-      />
+      <img class="logo" :src="logoUri" />
     </button>
-    <button v-for="tool in tools" :key="tool.name" @click="onClick(tool)">
-      <i :class="tool.icon"></i>
-      <label>{{ capitalize(tool.name) }}</label>
+    <button v-for="app in apps" :key="app.name" @click="onClick(app)">
+      <i :class="app.icon"></i>
+      <label>{{ capitalize(app.name) }}</label>
     </button>
-    <!-- <button>
-      <i class="bx bx-cog"></i>
-      <label>Settings</label>
-    </button> -->
     <span></span>
     <button>
       <img
@@ -32,14 +24,21 @@
 
 <script scoped lang="ts">
 import { defineComponent } from "vue";
-import Tool from "@/domain/tool";
+import App from "@/domain/app";
 
 export default defineComponent({
   name: "SidenavMenu",
 
+  props: {
+    logoUri: {
+      type: String,
+      required: true,
+    },
+  },
+
   computed: {
-    tools(): Array<Tool> {
-      return Tool.all();
+    apps(): Array<App> {
+      return App.all();
     },
   },
 
@@ -48,8 +47,8 @@ export default defineComponent({
       return word[0].toUpperCase() + word.substring(1).toLowerCase();
     },
 
-    onClick(tool: Tool) {
-      window.open(tool.uri, "_blank")?.focus();
+    onClick(app: App) {
+      window.open(app.uri, "_blank")?.focus();
     },
   },
 });

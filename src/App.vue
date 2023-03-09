@@ -1,5 +1,5 @@
 <template>
-  <sidenav-menu></sidenav-menu>
+  <sidenav-menu :logo-uri="config.ALVIDIR_LOGO_URI"></sidenav-menu>
   <div id="main-container">
     <div class="narrowed">
       <notice-card
@@ -76,6 +76,7 @@ export default defineComponent({
       warningCtrl,
       directoryCtrl,
       context,
+      config,
     };
   },
 });

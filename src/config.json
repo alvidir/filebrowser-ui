@@ -2,5 +2,6 @@
   "FILEBROWSER_SERVER_URI": "http://localhost:8080",
   "AGORA_BASE_URI": "https://agora.alvidir.com",
   "ALVIDIR_BASE_URI": "https://alvidir.com",
-  "ALVIDIR_VERSION": "alpha"
+  "ALVIDIR_VERSION": "alpha",
+  "ALVIDIR_LOGO_URI": "https://alvidir.github.io/pictures/svg/alvidir_logo.svg"
 }

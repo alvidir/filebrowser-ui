@@ -8,20 +8,20 @@
     :large="true"
     @input="onSearchInput"
   >
-    <search-item :file="props.item"></search-item>
+    <search-item :match="props.item"></search-item>
   </search-field>
 </template>
 
 <script scoped lang="ts">
 import { defineComponent, inject } from "vue";
-import FileData from "@/domain/file";
-import SearchItem from "@/components/SearchItem.vue";
+import SearchItem from "@/components/SearchMatch.vue";
 import { FieldController } from "vue-fields/src/main";
 import { ISubject } from "@/controllers/observer";
+import SearchMatch from "@/domain/search";
 
 interface SearchCtrl extends ISubject {
   search: (s: string) => void;
-  getItems: () => Array<FileData>;
+  getItems: () => Array<SearchMatch>;
 }
 
 export default defineComponent({
@@ -38,7 +38,7 @@ export default defineComponent({
 
   data() {
     return {
-      items: [] as Array<FileData>,
+      items: [] as Array<SearchMatch>,
     };
   },
 
@@ -49,7 +49,8 @@ export default defineComponent({
     },
 
     update() {
-      this.items = this.searchCtrl?.getItems() ?? [];
+      const items = this.searchCtrl?.getItems() ?? [];
+      this.items = items.sort((a, b) => a.start - b.start);
     },
   },
 

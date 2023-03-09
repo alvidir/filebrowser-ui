@@ -1,5 +1,5 @@
 import Directory from "@/domain/directory";
-import FileData from "@/domain/file";
+import FileData, { metadataSizeKey } from "@/domain/file";
 import Warning from "@/domain/warning";
 import Subject from "@/controllers/observer";
 import urlJoin from "url-join";
@@ -43,6 +43,9 @@ class DirectoryController extends Subject {
   };
 
   private setPath = (path: string) => {
+    // ensure new files are not revealed more than once
+    this.getDirectory()?.files.forEach((file) => (file.new = false));
+
     window.history.pushState("", "", Path.sanatize(path));
     this.path = window.location.pathname;
     this.broadcast();
@@ -127,8 +130,25 @@ class DirectoryController extends Subject {
   };
 
   addFile = (file: FileData) => {
+    debugger;
+    file.new = true;
+
     const path = Path.sanatize(file.directory);
-    this.dirs.get(path)?.files.push(file);
+    const fileDir = this.dirs.get(path);
+    if (!fileDir) return;
+
+    fileDir.files.push(file);
+    const parentPath = Path.sanatize(fileDir.parentPath() ?? "");
+    if (parentPath) {
+      const dirfile = this.dirs.get(parentPath)?.files.find((f) => {
+        debugger;
+        return f.path() == fileDir.path;
+      });
+
+      const size = +(dirfile?.metadata.get(metadataSizeKey) ?? "0") + 1;
+      dirfile?.metadata.set(metadataSizeKey, size.toString());
+    }
+
     this.broadcast();
   };
 
