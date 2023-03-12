@@ -1,5 +1,5 @@
 import Warning from "@/domain/warning";
-import Subject from "./observer";
+import Subject from "@/controllers/observer";
 
 class WarningController extends Subject {
   private max = 3;
