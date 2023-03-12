@@ -5,11 +5,10 @@ updates:
     schedule:
       interval: "weekly"
 
-  - package-ecosystem: "container"
+  - package-ecosystem: "docker"
     directory: "/container"
     schedule:
       interval: "weekly"
-    registry-url: "docker.io"
 
   - package-ecosystem: "npm"
     directory: "/"
