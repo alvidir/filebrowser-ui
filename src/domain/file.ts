@@ -1,6 +1,9 @@
 import Tag, { Tags } from "@/domain/tag";
 import App from "@/domain/app";
 import urlJoin from "url-join";
+import { pathSeparator } from "./path";
+
+const defaultFilename = "Untitled project";
 
 const metadataUpdatedAtKey = "updated_at";
 const metadataSizeKey = "size";
@@ -34,7 +37,7 @@ class FileData {
 
   constructor(id: string, name: string, dir: string) {
     this.id = id;
-    this.name = name;
+    this.name = name.length ? name : defaultFilename;
     this.directory = dir;
   }
 
@@ -119,11 +122,11 @@ class FileData {
    *
    * @returns The URL to the file's content.
    */
-  url = (): string | undefined => {
+  url = (): string => {
     const ref = this.metadata.get(metadataRefKey);
-    const base = this.app()?.uri;
+    let base = this.app()?.uri;
 
-    if (!base) return;
+    if (!base) base = pathSeparator;
     if (!ref) return urlJoin(base, "ref", this.id);
 
     return urlJoin(base, ref);
@@ -170,4 +173,10 @@ class FileData {
 }
 
 export default FileData;
-export { Flag, parentDirName, maxFilenameLen, metadataSizeKey };
+export {
+  Flag,
+  parentDirName,
+  maxFilenameLen,
+  metadataSizeKey,
+  defaultFilename,
+};

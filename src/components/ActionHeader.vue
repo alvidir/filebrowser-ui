@@ -1,3 +1,27 @@
+<script setup lang="ts">
+import { defineProps, computed } from "vue";
+import { maxFilenameLen } from "@/domain/file";
+
+interface Props {
+  title?: string;
+  titleColor?: string;
+  subtitle?: string;
+  path?: string;
+  href?: string;
+  icon?: string;
+}
+
+const props = defineProps<Props>();
+const adjustedPath = computed((): string | undefined => {
+  if (!props.path || props.path.length <= maxFilenameLen) {
+    return props.path;
+  }
+
+  const short = props.path.slice(-maxFilenameLen);
+  return `\u2026${short}`;
+});
+</script>
+
 <template>
   <span class="title">
     <i :class="icon"></i>&nbsp;
@@ -8,34 +32,6 @@
     <a :href="href" target="_blank">{{ adjustedPath }}</a>
   </small>
 </template>
-
-<script scoped lang="ts">
-import { defineComponent } from "vue";
-import { maxFilenameLen } from "@/domain/file";
-
-export default defineComponent({
-  name: "ActionHeader",
-  props: {
-    title: String,
-    titleColor: String,
-    subtitle: String,
-    path: String,
-    href: String,
-    icon: String,
-  },
-
-  computed: {
-    adjustedPath(): string | undefined {
-      if (!this.path || this.path.length <= maxFilenameLen) {
-        return this.path;
-      }
-
-      const short = this.path.slice(-maxFilenameLen);
-      return `\u2026${short}`;
-    },
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

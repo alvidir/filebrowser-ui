@@ -1,3 +1,74 @@
+<script setup lang="ts">
+import { inject, ref, computed, nextTick } from "vue";
+import { Field } from "vue-fields/src/types";
+import Directory from "@/domain/directory";
+import FileData, { Flag } from "@/domain/file";
+import Path from "@/domain/path";
+import { rootDirName } from "@/domain/path";
+import ActionHeader from "@/components/ActionHeader.vue";
+
+interface DirectoryCtrl {
+  getDirectory: () => Directory | undefined;
+  addFile: (file: FileData) => void;
+}
+
+const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
+const directory = ref<Directory | undefined>(undefined);
+const active = ref(false);
+const valid = ref(false);
+const error = ref("");
+
+const href = computed((): string => {
+  return new Path(directory.value?.path ?? "").absolute;
+});
+
+const pathname = computed((): string => {
+  if (directory.value?.isRoot()) return rootDirName;
+  else return directory.value?.path ?? "";
+});
+
+const foldername = ref<Field | undefined>(undefined);
+const open = () => {
+  active.value = true;
+  directory.value = directoryCtrl?.getDirectory();
+  nextTick(() => foldername.value?.focus());
+};
+
+const onInput = (ctrl: Field) => {
+  const foldername = ctrl.text();
+  valid.value = isValidFilename(foldername);
+};
+
+const isValidFilename = (name: string): boolean => {
+  error.value = FileData.checkName(name) ?? "";
+  if (!error.value && directory.value?.exists(name)) {
+    error.value = "This filename already exists";
+  }
+
+  return !error.value;
+};
+
+const close = () => {
+  foldername.value?.clear();
+  foldername.value?.blur();
+
+  active.value = false;
+  valid.value = false;
+  error.value = "";
+};
+
+const submit = () => {
+  const name = foldername.value?.text() ?? "";
+  close();
+
+  if (!directory.value || !isValidFilename(name)) return;
+  const file = new FileData("", name, directory.value.path);
+  file.flags |= Flag.Directory;
+
+  directoryCtrl?.addFile(file);
+};
+</script>
+
 <template>
   <div
     class="new-folder-dialog"
@@ -33,101 +104,6 @@
     </regular-card>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent, inject } from "vue";
-import { FieldController } from "vue-fields/src/main";
-import Directory from "@/domain/directory";
-import FileData, { Flag } from "@/domain/file";
-import Path from "@/domain/path";
-import { rootDirName } from "@/components/DirList.vue";
-import ActionHeader from "@/components/ActionHeader.vue";
-
-interface DirectoryCtrl {
-  getDirectory: () => Directory | undefined;
-  addFile: (file: FileData) => void;
-}
-
-export default defineComponent({
-  name: "NewFolder",
-  components: {
-    ActionHeader,
-  },
-
-  setup() {
-    return {
-      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
-    };
-  },
-
-  data() {
-    return {
-      directory: undefined as Directory | undefined,
-      active: false,
-      valid: false,
-      error: "",
-    };
-  },
-
-  computed: {
-    href(): string {
-      return new Path(this.directory?.path ?? "").absolute;
-    },
-
-    pathname(): string {
-      if (this.directory?.isRoot()) return rootDirName;
-      else return this.directory?.path ?? "";
-    },
-  },
-
-  methods: {
-    open() {
-      this.active = true;
-      this.directory = this.directoryCtrl?.getDirectory();
-      this.$nextTick(() => {
-        const field = this.$refs.foldername as FieldController;
-        field?.focus();
-      });
-    },
-
-    onInput(ctrl: FieldController) {
-      const foldername = ctrl.value();
-      this.valid = this.isValidFilename(foldername);
-    },
-
-    isValidFilename(name: string): boolean {
-      this.error = FileData.checkName(name) ?? "";
-      if (!this.error && this.directory?.exists(name)) {
-        this.error = "This filename already exists";
-      }
-
-      return !this.error;
-    },
-
-    close() {
-      const field = this.$refs.foldername as FieldController;
-      field?.clear();
-      field?.blur();
-
-      this.active = false;
-      this.valid = false;
-      this.error = "";
-    },
-
-    submit() {
-      const field = this.$refs.foldername as FieldController;
-      const foldername = field.value();
-      this.close();
-
-      if (!this.directory || !this.isValidFilename(foldername)) return;
-      const file = new FileData("", foldername, this.directory.path);
-      file.flags |= Flag.Directory;
-
-      this.directoryCtrl?.addFile(file);
-    },
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

@@ -15,7 +15,8 @@ class WarningController extends Subject {
   }
 
   remove(index: number): void {
-    this.warnings.splice(0, index);
+    console.log(index);
+    this.warnings.splice(index, 1);
     this.broadcast();
   }
 

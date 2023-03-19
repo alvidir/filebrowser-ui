@@ -1,3 +1,95 @@
+<script setup lang="ts">
+import {
+  defineProps,
+  inject,
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+} from "vue";
+import PulseLoader from "vue-spinner/src/PulseLoader.vue";
+import App from "@/domain/app";
+import Directory from "@/domain/directory";
+import FileData from "@/domain/file";
+import Path, { rootDirName } from "@/domain/path";
+import ActionHeader from "@/components/ActionHeader.vue";
+import Subject from "@/controllers/observer";
+
+interface DirectoryCtrl extends Subject {
+  getDirectory: () => Directory | undefined;
+  createFile: (file: FileData) => void;
+}
+
+interface Props {
+  apps: Array<App>;
+}
+
+defineProps<Props>();
+
+const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
+const active = ref(false);
+const directory = ref<Directory | undefined>(undefined);
+const pending = ref(new Array<FileData>());
+
+const href = computed((): string => {
+  return new Path(directory.value?.path ?? "").absolute;
+});
+
+const pathname = computed((): string => {
+  if (directory.value?.isRoot()) return rootDirName;
+  else return directory.value?.path ?? "";
+});
+
+const capitalize = (word: string) => {
+  return word[0].toUpperCase() + word.substring(1).toLowerCase();
+};
+
+const isPending = (app: App) => {
+  return pending.value.some((file) => file.app() == app);
+};
+
+const onClick = (app: App) => {
+  if (!directory.value) return;
+
+  const file = new FileData("", "", directory.value?.path);
+  file.setTool(app);
+
+  pending.value.push(file);
+  directoryCtrl?.createFile(file);
+};
+
+const open = () => {
+  directory.value = directoryCtrl?.getDirectory();
+  active.value = true;
+};
+
+const close = () => {
+  active.value = false;
+};
+
+const update = () => {
+  if (!pending.value.length) return;
+
+  pending.value.forEach((file) => {
+    if (!file.id || !directory.value?.files.includes(file)) return;
+
+    const url = file.url();
+    if (url) window.open(url, "_blank")?.focus();
+
+    const index = pending.value.indexOf(file);
+    pending.value.splice(index, 1);
+  });
+};
+
+onMounted(() => {
+  directoryCtrl?.addObserver({ update });
+});
+
+onUnmounted(() => {
+  directoryCtrl?.removeObserver({ update });
+});
+</script>
+
 <template>
   <div class="new-project-dialog" v-click-outside="close">
     <submit-button color="var(--color-accent)" @click="open">
@@ -37,115 +129,6 @@
     </regular-card>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent, PropType, inject } from "vue";
-import PulseLoader from "vue-spinner/src/PulseLoader.vue";
-import App from "@/domain/app";
-import Directory from "@/domain/directory";
-import FileData from "@/domain/file";
-import Path from "@/domain/path";
-import { rootDirName } from "@/components/DirList.vue";
-import ActionHeader from "@/components/ActionHeader.vue";
-import Subject from "@/controllers/observer";
-
-const DefaultFilename = "Untitled project";
-
-interface DirectoryCtrl extends Subject {
-  getDirectory: () => Directory | undefined;
-  createFile: (file: FileData) => void;
-}
-
-export default defineComponent({
-  name: "NewFolder",
-  components: {
-    ActionHeader,
-    PulseLoader,
-  },
-  props: {
-    apps: {
-      type: Array as PropType<Array<App>>,
-      default: App.all(),
-    },
-  },
-
-  setup() {
-    return {
-      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
-    };
-  },
-
-  data() {
-    return {
-      active: false,
-      directory: undefined as Directory | undefined,
-      pending: new Array<FileData>(),
-    };
-  },
-
-  computed: {
-    href(): string {
-      return new Path(this.directory?.path ?? "").absolute;
-    },
-
-    pathname(): string {
-      if (this.directory?.isRoot()) return rootDirName;
-      else return this.directory?.path ?? "";
-    },
-  },
-
-  methods: {
-    capitalize(word: string) {
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    },
-
-    isPending(app: App) {
-      return this.pending.some((file) => file.app() == app);
-    },
-
-    onClick(app: App) {
-      if (!this.directory) return;
-
-      const file = new FileData("", DefaultFilename, this.directory.path);
-      file.setTool(app);
-
-      this.pending.push(file);
-      this.directoryCtrl?.createFile(file);
-    },
-
-    open() {
-      this.directory = this.directoryCtrl?.getDirectory();
-      this.active = true;
-    },
-
-    close() {
-      this.active = false;
-    },
-
-    update() {
-      if (!this.pending.length) return;
-
-      this.pending.forEach((file) => {
-        if (!file.id || !this.directory?.files.includes(file)) return;
-
-        const url = file.url();
-        if (url) window.open(url, "_blank")?.focus();
-
-        const index = this.pending.indexOf(file);
-        this.pending.splice(index, 1);
-      });
-    },
-  },
-
-  mounted() {
-    this.directoryCtrl?.addObserver(this);
-  },
-
-  unmounted() {
-    this.directoryCtrl?.removeObserver(this);
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

@@ -1,3 +1,144 @@
+<script setup lang="ts">
+import {
+  defineProps,
+  withDefaults,
+  onMounted,
+  onUnmounted,
+  inject,
+  computed,
+  ref,
+} from "vue";
+import FileRow from "@/components/FileRow.vue";
+import FileData, { parentDirName } from "@/domain/file";
+import { rootDirName } from "@/domain/path";
+import Tag, { Tags } from "@/domain/tag";
+import Directory from "@/domain/directory";
+import { Subject } from "@/controllers/observer";
+
+interface DirectoryCtrl extends Subject {
+  getDirectory: () => Directory | undefined;
+  changeDirectory: (delta: number) => void;
+  moveFile: (source: FileData, target: FileData) => void;
+}
+
+interface FilterCtrl extends Subject {
+  filter: (files: Array<FileData>) => Array<FileData>;
+}
+
+interface Props {
+  maxDirsLength?: number;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  maxDirsLength: 55,
+});
+
+const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
+const filterCtrl = inject<FilterCtrl>("filterCtrl");
+
+const currentDirectory = (): Directory | undefined => {
+  return directoryCtrl?.getDirectory();
+};
+
+const buildParentDirFile = (): FileData => {
+  return new FileData("", parentDirName, "");
+};
+
+const filteredFiles = (): Array<FileData> => {
+  const parentDir = buildParentDirFile();
+  if (!directory.value) return [parentDir];
+
+  const baseFiles = directory.value?.isRoot() ? [] : [parentDir];
+  const dirFiles = filterCtrl
+    ? filterCtrl.filter(directory.value?.files ?? [])
+    : directory.value?.files;
+
+  return baseFiles.concat(dirFiles ?? []);
+};
+
+let directory = ref(currentDirectory());
+let files = ref(filteredFiles());
+const drag = {
+  source: undefined as FileData | undefined,
+  target: undefined as FileData | undefined,
+};
+
+const directories = computed((): Array<string> => {
+  let allDirs = [rootDirName].concat(directory.value?.pathComponents() ?? []);
+
+  let maxDirs = 1;
+  let totalLength = 0;
+  for (let index = allDirs.length; index > 0; index--) {
+    if (totalLength + allDirs[index - 1].length > props.maxDirsLength) {
+      break;
+    }
+
+    totalLength += allDirs[index - 1].length;
+    maxDirs++;
+  }
+
+  return [rootDirName]
+    .concat(directory.value?.pathComponents() ?? [])
+    .slice(-maxDirs);
+});
+
+const onDragMode = computed((): boolean => {
+  return !!drag.source;
+});
+
+const belongsToDrag = (item: FileData) => {
+  return drag.source === item || drag.target === item;
+};
+
+const onDragStart = (item: FileData) => {
+  drag.source = item;
+  drag.target = undefined;
+};
+
+const onDragExit = (item: FileData, event: DragEvent) => {
+  if (item === drag.target && event.buttons) {
+    drag.target = undefined;
+  }
+};
+
+const onDragEnter = (item: FileData) => {
+  if (item !== drag.source && item.isDirectory()) {
+    drag.target = item;
+  }
+};
+
+const onDragEnd = () => {
+  if (drag.source && drag.target) {
+    directoryCtrl?.moveFile(drag.source, drag.target);
+  }
+
+  drag.source = undefined;
+  drag.target = undefined;
+};
+
+const onDirectoryClick = (index: number) => {
+  const delta = directories.value.length - 1 - index;
+  if (delta) directoryCtrl?.changeDirectory(-delta);
+};
+
+const isDraggable = (item: FileData): boolean => {
+  return !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual);
+};
+
+const update = () => {
+  directory.value = currentDirectory();
+  files.value = filteredFiles();
+};
+
+onMounted(() => {
+  directoryCtrl?.addObserver({ update });
+});
+
+onUnmounted(() => {
+  directoryCtrl?.removeObserver({ update });
+});
+</script>
+
 <template>
   <div class="dir-list">
     <div class="header round-corners top-only">
@@ -35,157 +176,6 @@
     </div>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent, inject } from "vue";
-import FileRow from "@/components/FileRow.vue";
-import FileData, { parentDirName } from "@/domain/file";
-import Tag, { Tags } from "@/domain/tag";
-import Directory from "@/domain/directory";
-import { ISubject } from "@/controllers/observer";
-
-export const rootDirName = "root";
-
-interface DirectoryCtrl extends ISubject {
-  getDirectory: () => Directory | undefined;
-  changeDirectory: (delta: number) => void;
-  moveFile: (source: FileData, target: FileData) => void;
-}
-
-interface FilterCtrl extends ISubject {
-  filter: (files: Array<FileData>) => Array<FileData>;
-}
-
-export default defineComponent({
-  name: "DirList",
-  components: { FileRow },
-  props: {
-    maxDirsLength: {
-      type: Number,
-      default: 55,
-    },
-  },
-
-  setup() {
-    return {
-      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
-      filterCtrl: inject<FilterCtrl>("filterCtrl"),
-    };
-  },
-
-  data() {
-    return {
-      directory: this.currentDirectory(),
-      files: this.filteredFiles(),
-      drag: {
-        source: undefined as FileData | undefined,
-        target: undefined as FileData | undefined,
-      },
-    };
-  },
-
-  computed: {
-    directories(): Array<string> {
-      let allDirs = [rootDirName].concat(
-        this.directory?.pathComponents() ?? []
-      );
-
-      let maxDirs = 1;
-      let totalLength = 0;
-      for (let index = allDirs.length; index > 0; index--) {
-        if (totalLength + allDirs[index - 1].length > this.maxDirsLength) {
-          break;
-        }
-
-        totalLength += allDirs[index - 1].length;
-        maxDirs++;
-      }
-
-      return [rootDirName]
-        .concat(this.directory?.pathComponents() ?? [])
-        .slice(-maxDirs);
-    },
-
-    onDragMode(): boolean {
-      return !!this.drag.source;
-    },
-  },
-
-  methods: {
-    currentDirectory(): Directory | undefined {
-      return this.directoryCtrl?.getDirectory();
-    },
-
-    belongsToDrag(item: FileData) {
-      return this.drag.source === item || this.drag.target === item;
-    },
-
-    onDragStart(item: FileData) {
-      this.drag.source = item;
-      this.drag.target = undefined;
-    },
-
-    onDragExit(item: FileData, event: DragEvent) {
-      if (item === this.drag.target && event.buttons) {
-        this.drag.target = undefined;
-      }
-    },
-
-    onDragEnter(item: FileData) {
-      if (item !== this.drag.source && item.isDirectory()) {
-        this.drag.target = item;
-      }
-    },
-
-    onDragEnd() {
-      if (this.drag.source && this.drag.target) {
-        this.directoryCtrl?.moveFile(this.drag.source, this.drag.target);
-      }
-
-      this.drag.source = undefined;
-      this.drag.target = undefined;
-    },
-
-    onDirectoryClick(index: number) {
-      const delta = this.directories.length - 1 - index;
-      if (delta) this.directoryCtrl?.changeDirectory(-delta);
-    },
-
-    isDraggable(item: FileData): boolean {
-      return !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual);
-    },
-
-    buildParentDirFile(): FileData {
-      return new FileData("", parentDirName, "");
-    },
-
-    filteredFiles(): Array<FileData> {
-      const parentDir = this.buildParentDirFile();
-      if (!this.directory) return [parentDir];
-
-      const baseFiles = this.directory.isRoot() ? [] : [parentDir];
-      const dirFiles = this.filterCtrl
-        ? this.filterCtrl.filter(this.directory.files)
-        : this.directory.files;
-
-      return baseFiles.concat(dirFiles);
-    },
-
-    update() {
-      this.directory = this.currentDirectory();
-      this.files = this.filteredFiles();
-    },
-  },
-
-  mounted() {
-    this.directoryCtrl?.addObserver(this);
-  },
-
-  unmounted() {
-    this.directoryCtrl?.removeObserver(this);
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

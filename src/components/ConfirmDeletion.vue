@@ -1,5 +1,49 @@
+<script setup lang="ts">
+import { defineProps, defineEmits, computed } from "vue";
+import ActionHeader from "@/components/ActionHeader.vue";
+import FileData from "@/domain/file";
+import Path from "@/domain/path";
+
+interface Props {
+  context: FileData;
+}
+
+const props = defineProps<Props>();
+
+interface Events {
+  (e: "submit", payload: MouseEvent): void;
+  (e: "cancel", payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
+const href = computed((): string => {
+  if (props.context.isDirectory()) {
+    return new Path(props.context.path()).absolute;
+  }
+
+  return props.context.url();
+});
+
+const contentSize = computed((): string => {
+  const size = props.context.size() ?? 0;
+  if (size) return `${size} ${size > 1 ? "items" : "item"}`;
+  else return "empty";
+});
+
+const description = computed((): string | undefined => {
+  let description = "";
+  if (props.context.isDirectory()) {
+    description = `You are about to delete a folder and the ${contentSize.value} inside of it.`;
+  } else {
+    description = "You are about to delete a file.";
+  }
+
+  return `${description} Be aware that this action is permanent and cannot be undone.`;
+});
+</script>
+
 <template>
-  <dialog-card class="action-dialog" :active="active" @close="onCancelClick">
+  <dialog-card class="action-dialog" @close="emit('cancel', $event)">
     <template #header>
       <action-header
         title="Needs confirmation"
@@ -12,75 +56,13 @@
     </template>
     {{ description }}
     <template #footer>
-      <submit-button color="var(--color-red)" @submit="onSubmitClick">
+      <submit-button color="var(--color-red)" @submit="emit('submit', $event)">
         Delete
       </submit-button>
-      <regular-button @click="onCancelClick">Cancel</regular-button>
+      <regular-button @click="emit('cancel', $event)">Cancel</regular-button>
     </template>
   </dialog-card>
 </template>
-
-<script lang="ts">
-import { defineComponent, PropType } from "vue";
-import ActionHeader from "@/components/ActionHeader.vue";
-import FileData from "@/domain/file";
-import Path from "@/domain/path";
-
-const SUBMIT_EVENT_NAME = "submit";
-const CANCEL_EVENT_NAME = "cancel";
-
-export default defineComponent({
-  name: "ConfirmDeletion",
-  events: [SUBMIT_EVENT_NAME, CANCEL_EVENT_NAME],
-  components: {
-    ActionHeader,
-  },
-  props: {
-    active: Boolean,
-    context: {
-      type: Object as PropType<FileData>,
-      required: true,
-    },
-  },
-
-  computed: {
-    href(): string | undefined {
-      if (this.context.isDirectory()) {
-        return new Path(this.context.path()).absolute;
-      }
-
-      return this.context.url();
-    },
-
-    contentSize(): string | undefined {
-      const size = this.context.size() ?? 0;
-      if (size) return `${size} ${size > 1 ? "items" : "item"}`;
-      else return "empty";
-    },
-
-    description(): string {
-      let description = "";
-      if (this.context.isDirectory()) {
-        description = `You are about to delete a folder and the ${this.contentSize} inside of it.`;
-      } else {
-        description = "You are about to delete a file.";
-      }
-
-      return `${description} Be aware that this action is permanent and cannot be undone.`;
-    },
-  },
-
-  methods: {
-    onCancelClick() {
-      this.$emit(CANCEL_EVENT_NAME);
-    },
-
-    onSubmitClick() {
-      this.$emit(SUBMIT_EVENT_NAME);
-    },
-  },
-});
-</script>
 
 <style lang="scss">
 @import "fibonacci-styles";

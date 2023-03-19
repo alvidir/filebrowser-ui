@@ -1,5 +1,6 @@
 const pathSeparator = "/";
 const pathCleanRegex = new RegExp(pathSeparator + "{1,}", "g");
+const rootDirName = "root";
 
 class Path {
   absolute: string;
@@ -34,4 +35,4 @@ class Path {
 }
 
 export default Path;
-export { pathSeparator };
+export { pathSeparator, rootDirName };

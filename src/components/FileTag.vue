@@ -1,3 +1,17 @@
+<script setup lang="ts">
+import { defineProps } from "vue";
+
+interface Props {
+  name?: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
   <div class="file-tag" :class="{ 'custom-color': !!color }" @click.stop>
     <label class="round-corners fib-5">
@@ -14,21 +28,6 @@
     </regular-card>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "FileTag",
-  props: {
-    name: String,
-    title: String,
-    description: String,
-    icon: String,
-    color: String,
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
@@ -64,11 +63,9 @@ $text-color: v-bind(color);
   }
 
   label {
-    @extend .smooth;
-
     border: 1px solid var(--color-border-disabled);
     background: var(--color-bg-primary);
-    transition-property: background;
+    transition: background $medium-fade;
     padding: $fib-3 * 1px $fib-5 * 1px;
     font-size: small;
 

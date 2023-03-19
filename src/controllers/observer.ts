@@ -1,30 +1,30 @@
-interface IObserver {
+interface Observer {
   update(): void;
 }
 
-interface ISubject {
-  addObserver: (observer: IObserver) => void;
-  removeObserver: (observer: IObserver) => void;
+interface Subject {
+  addObserver: (observer: Observer) => void;
+  removeObserver: (observer: Observer) => void;
 }
 
-class Subject implements ISubject {
-  private observers: Array<IObserver> = [];
+class SubjectImpl implements Subject {
+  private observers: Array<Observer> = [];
 
   protected broadcast = () => {
     this.observers.forEach((observer) => observer.update());
   };
 
-  addObserver = (observer: IObserver) => {
+  addObserver = (observer: Observer) => {
     if (!this.observers.includes(observer)) {
       this.observers.push(observer);
     }
   };
 
-  removeObserver = (observer: IObserver) => {
+  removeObserver = (observer: Observer) => {
     const index = this.observers.indexOf(observer);
     if (index > -1) this.observers.splice(index, 1);
   };
 }
 
-export default Subject;
-export { IObserver, ISubject };
+export default SubjectImpl;
+export { Observer, Subject };

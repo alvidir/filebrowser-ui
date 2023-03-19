@@ -1,29 +1,6 @@
-<template>
-  <sidenav-menu :logo-uri="config.ALVIDIR_LOGO_URI"></sidenav-menu>
-  <div id="main-container">
-    <div class="narrowed">
-      <notice-card
-        v-for="(warning, index) in warningCtrl.all()"
-        :key="index"
-        v-bind="warning"
-        @close="warningCtrl.remove(index)"
-        closable
-      />
-      <div id="actions-container">
-        <file-search />
-        <span id="action-buttons">
-          <new-project class="action"> </new-project>
-          <new-folder class="action"></new-folder>
-        </span>
-      </div>
-      <dir-list />
-    </div>
-  </div>
-</template>
-
-<script lang="ts">
-import { defineComponent, provide } from "vue";
-import Context from "fibonacci-styles/context";
+<script setup lang="ts">
+import { provide, reactive } from "vue";
+import Profile from "vue-profile/src/profile";
 import Filebrowser from "@/services/filebrowser";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
@@ -35,52 +12,53 @@ import WarningController from "@/controllers/warning";
 import FilterController from "@/controllers/filter";
 import SearchController from "@/controllers/search";
 import config from "@/config.json";
+import App from "@/domain/app";
 
-// baseHeaders returns a dictionary with some default values depending on the environment
-function baseHeaders(): { [key: string]: string } {
-  const headers: { [key: string]: string } = {};
-  if (process.env.NODE_ENV === "development") {
-    headers["X-Uid"] = "1";
-  }
+const profile = new Profile();
+profile.setDomain(config.ALVIDIR_BASE_URI);
 
-  return headers;
-}
-
-const context = new Context(config.ALVIDIR_BASE_URI);
 const filebrowserService = new Filebrowser(
   config.FILEBROWSER_SERVER_URI,
-  baseHeaders()
+  process.env.NODE_ENV === "development" ? { "X-Uid": "1" } : {}
 );
 
-const warningCtrl = new WarningController();
-const filterCtrl = new FilterController();
-const directoryCtrl = new DirectoryController(filebrowserService, warningCtrl);
-const searchCtrl = new SearchController(filebrowserService, warningCtrl);
+const warningCtrl = reactive(new WarningController());
+const filterCtrl = reactive(new FilterController());
+const directoryCtrl = reactive(
+  new DirectoryController(filebrowserService, warningCtrl)
+);
+const searchCtrl = reactive(
+  new SearchController(filebrowserService, warningCtrl)
+);
 
-export default defineComponent({
-  name: "App",
-  components: {
-    DirList,
-    NewProject,
-    NewFolder,
-    SidenavMenu,
-    FileSearch,
-  },
-
-  setup() {
-    provide("searchCtrl", searchCtrl);
-    provide("directoryCtrl", directoryCtrl);
-    provide("filterCtrl", filterCtrl);
-
-    return {
-      warningCtrl,
-      directoryCtrl,
-      context,
-      config,
-    };
-  },
-});
+provide("profile", profile);
+provide("searchCtrl", searchCtrl);
+provide("directoryCtrl", directoryCtrl);
+provide("filterCtrl", filterCtrl);
 </script>
+
+<template>
+  <sidenav-menu :logo-uri="config.ALVIDIR_LOGO_URI"></sidenav-menu>
+  <div id="main-container">
+    <div class="narrowed">
+      <notice-card
+        v-for="(warning, index) in warningCtrl.all()"
+        :key="index"
+        v-bind="warning"
+        @close="warningCtrl.remove(index)"
+        closeable
+      />
+      <div id="actions-container">
+        <file-search />
+        <span id="action-buttons">
+          <new-project class="action" :apps="App.all()"> </new-project>
+          <new-folder class="action"></new-folder>
+        </span>
+      </div>
+      <dir-list />
+    </div>
+  </div>
+</template>
 
 <style lang="scss">
 @import "fibonacci-styles";

@@ -1,3 +1,37 @@
+<script setup lang="ts">
+import { inject, ref, onMounted, onUnmounted } from "vue";
+import SearchItem from "@/components/SearchMatch.vue";
+import { Field } from "vue-fields/src/types";
+import { Subject } from "@/controllers/observer";
+import SearchMatch from "@/domain/search";
+
+interface SearchCtrl extends Subject {
+  search: (s: string) => void;
+  getItems: () => Array<SearchMatch>;
+}
+
+const searchCtrl = inject<SearchCtrl>("searchCtrl");
+const items = ref(new Array<SearchMatch>());
+
+const onSearchInput = (ctrl: Field) => {
+  const search = ctrl.text();
+  searchCtrl?.search(search);
+};
+
+const update = () => {
+  const matches = searchCtrl?.getItems() ?? [];
+  items.value = matches.sort((a, b) => a.start - b.start);
+};
+
+onMounted(() => {
+  searchCtrl?.addObserver({ update });
+});
+
+onUnmounted(() => {
+  searchCtrl?.removeObserver({ update });
+});
+</script>
+
 <template>
   <search-field
     v-slot="props"
@@ -11,58 +45,6 @@
     <search-item :match="props.item"></search-item>
   </search-field>
 </template>
-
-<script scoped lang="ts">
-import { defineComponent, inject } from "vue";
-import SearchItem from "@/components/SearchMatch.vue";
-import { FieldController } from "vue-fields/src/main";
-import { ISubject } from "@/controllers/observer";
-import SearchMatch from "@/domain/search";
-
-interface SearchCtrl extends ISubject {
-  search: (s: string) => void;
-  getItems: () => Array<SearchMatch>;
-}
-
-export default defineComponent({
-  name: "FileSearch",
-  components: {
-    SearchItem,
-  },
-
-  setup() {
-    return {
-      searchCtrl: inject<SearchCtrl>("searchCtrl"),
-    };
-  },
-
-  data() {
-    return {
-      items: [] as Array<SearchMatch>,
-    };
-  },
-
-  methods: {
-    onSearchInput(ctrl: FieldController) {
-      const search = ctrl.value();
-      this.searchCtrl?.search(search);
-    },
-
-    update() {
-      const items = this.searchCtrl?.getItems() ?? [];
-      this.items = items.sort((a, b) => a.start - b.start);
-    },
-  },
-
-  mounted() {
-    this.searchCtrl?.addObserver(this);
-  },
-
-  unmounted() {
-    this.searchCtrl?.removeObserver(this);
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">

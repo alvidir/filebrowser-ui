@@ -1,3 +1,60 @@
+<script setup lang="ts">
+import { inject, defineProps, computed } from "vue";
+import FileData from "@/domain/file";
+import SearchMatch from "@/domain/search";
+import { pathSeparator } from "@/domain/path";
+
+interface Props {
+  match: SearchMatch;
+}
+
+const props = defineProps<Props>();
+
+interface DirectoryCtrl {
+  openfile: (file: FileData) => void;
+}
+
+const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
+const href = computed((): string => {
+  if (props.match.file.isDirectory()) return "#";
+  return props.match.file.url() ?? "#";
+});
+
+const target = computed((): string | undefined => {
+  if (props.match.file.isDirectory()) return;
+  return "_blank";
+});
+
+const filename = computed((): string[] => {
+  const absolute = props.match.file.path();
+  const index = absolute.lastIndexOf(pathSeparator) + 1;
+  const name = props.match.file.name;
+
+  const before = name.substring(0, props.match.start - index);
+  const after = name.substring(props.match.end - index);
+  const match = name.substring(
+    props.match.start - index,
+    props.match.end - index
+  );
+
+  return [before, match, after];
+});
+
+const absolutpath = computed((): string[] => {
+  const absolute = props.match.file.path();
+  const before = absolute.substring(0, props.match.start);
+  const match = absolute.substring(props.match.start, props.match.end);
+  const after = absolute.substring(props.match.end);
+  return [before, match, after];
+});
+
+const open = () => {
+  if (props.match.file.isDirectory()) {
+    directoryCtrl?.openfile(props.match.file);
+  }
+};
+</script>
+
 <template>
   <a
     class="search-item"
@@ -26,78 +83,8 @@
   </a>
 </template>
 
-<script scoped lang="ts">
-import { defineComponent, inject, PropType } from "vue";
-import FileData from "@/domain/file";
-import SearchMatch from "@/domain/search";
-import { pathSeparator } from "@/domain/path";
-
-interface DirectoryCtrl {
-  openfile: (file: FileData) => void;
-}
-
-export default defineComponent({
-  name: "SearchItem",
-  props: {
-    match: {
-      type: Object as PropType<SearchMatch>,
-      required: true,
-    },
-  },
-
-  setup() {
-    return {
-      directoryCtrl: inject<DirectoryCtrl>("directoryCtrl"),
-    };
-  },
-
-  computed: {
-    href(): string {
-      if (this.match.file.isDirectory()) return "#";
-      return this.match.file.url() ?? "#";
-    },
-
-    target(): string | undefined {
-      if (this.match.file.isDirectory()) return;
-      return "_blank";
-    },
-
-    filename(): string[] {
-      const absolute = this.match.file.path();
-      const index = absolute.lastIndexOf(pathSeparator) + 1;
-      const name = this.match.file.name;
-
-      const before = name.substring(0, this.match.start - index);
-      const after = name.substring(this.match.end - index);
-      const match = name.substring(
-        this.match.start - index,
-        this.match.end - index
-      );
-
-      return [before, match, after];
-    },
-
-    absolutpath(): string[] {
-      const absolute = this.match.file.path();
-      const before = absolute.substring(0, this.match.start);
-      const match = absolute.substring(this.match.start, this.match.end);
-      const after = absolute.substring(this.match.end);
-      return [before, match, after];
-    },
-  },
-
-  methods: {
-    open() {
-      if (this.match.file.isDirectory()) {
-        this.directoryCtrl?.openfile(this.match.file);
-      }
-    },
-  },
-});
-</script>
-
 <!-- Add "scoped" attribute to limit CSS to this component only -->
-<style lang="scss">
+<style scoped lang="scss">
 @import "fibonacci-styles";
 
 button.item:not(:hover) > .search-item > span {
