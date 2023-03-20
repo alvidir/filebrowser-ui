@@ -100,8 +100,8 @@ const elapsedTime = computed((): string | undefined => {
   return `${total} year${total > 1 ? "s" : ""} ago`;
 });
 
-const open = () => {
-  if (!props.file.isDirectory()) return;
+const open = (force = false) => {
+  if (!force && !props.file.isDirectory()) return;
   directoryCtrl?.openfile(props.file);
 };
 
@@ -153,7 +153,7 @@ const onClickContextMenu = (action: string) => {
   const actions: { [key: string]: () => void } = {
     delete: () => (showDialog.value = true),
     rename: () => onStartRename(),
-    open: () => open(),
+    open: () => open(true),
   };
 
   actions[action]();

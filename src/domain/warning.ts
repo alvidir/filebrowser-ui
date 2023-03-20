@@ -10,7 +10,13 @@ enum Error {
   ErrRegexNotMatch = "E009",
 }
 
-const warnings: { [key: string]: Warning } = {
+interface WarningProps {
+  title: string;
+  text: string;
+  level?: string;
+}
+
+const warnings: { [key: string]: WarningProps } = {
   [Error.ErrUnknown]: {
     title: "Something bad did happen",
     text: "We could not proceed with your request, please try again.",
@@ -62,7 +68,10 @@ class Warning {
   }
 
   static find = (code: string): Warning => {
-    return warnings[code] ?? warnings[Error.ErrUnknown];
+    return Object.assign(
+      new Warning("", ""),
+      warnings[code] ?? warnings[Error.ErrUnknown]
+    );
   };
 }
 

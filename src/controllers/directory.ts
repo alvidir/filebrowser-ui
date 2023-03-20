@@ -66,7 +66,7 @@ class DirectoryController extends Subject {
     } else if (file.isDirectory()) {
       this.setPath(Path.sanatize(file.path()));
     } else {
-      window.location.assign(file.url() ?? "#");
+      window.open(file.url() ?? "#", "_blank")?.focus();
     }
   };
 
@@ -130,7 +130,6 @@ class DirectoryController extends Subject {
   };
 
   addFile = (file: FileData) => {
-    debugger;
     file.new = true;
 
     const path = Path.sanatize(file.directory);
@@ -141,7 +140,6 @@ class DirectoryController extends Subject {
     const parentPath = Path.sanatize(fileDir.parentPath() ?? "");
     if (parentPath) {
       const dirfile = this.dirs.get(parentPath)?.files.find((f) => {
-        debugger;
         return f.path() == fileDir.path;
       });
 

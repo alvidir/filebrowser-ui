@@ -1,7 +1,6 @@
 import Tag, { Tags } from "@/domain/tag";
 import App from "@/domain/app";
 import urlJoin from "url-join";
-import { pathSeparator } from "./path";
 
 const defaultFilename = "Untitled project";
 
@@ -122,11 +121,11 @@ class FileData {
    *
    * @returns The URL to the file's content.
    */
-  url = (): string => {
+  url = (): string | undefined => {
     const ref = this.metadata.get(metadataRefKey);
-    let base = this.app()?.uri;
+    const base = this.app()?.uri;
 
-    if (!base) base = pathSeparator;
+    if (!base) return;
     if (!ref) return urlJoin(base, "ref", this.id);
 
     return urlJoin(base, ref);

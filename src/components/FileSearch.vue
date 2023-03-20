@@ -12,10 +12,11 @@ interface SearchCtrl extends Subject {
 
 const searchCtrl = inject<SearchCtrl>("searchCtrl");
 const items = ref(new Array<SearchMatch>());
+const searchfield = ref<Field | undefined>(undefined);
 
-const onSearchInput = (ctrl: Field) => {
-  const search = ctrl.text();
-  searchCtrl?.search(search);
+const onSearchInput = () => {
+  const search = searchfield.value?.text();
+  if (search) searchCtrl?.search(search);
 };
 
 const update = () => {
@@ -37,6 +38,7 @@ onUnmounted(() => {
     v-slot="props"
     id="search-field"
     placeholder="Search"
+    ref="searchfield"
     :items="items"
     :debounce="300"
     :large="true"

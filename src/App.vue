@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { provide, reactive } from "vue";
-import Profile from "vue-profile/src/profile";
+import Profile from "vue-menus/src/profile";
 import Filebrowser from "@/services/filebrowser";
+import WarningList from "@/components/WarningList.vue";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
@@ -14,8 +15,8 @@ import SearchController from "@/controllers/search";
 import config from "@/config.json";
 import App from "@/domain/app";
 
-const profile = new Profile();
-profile.setDomain(config.ALVIDIR_BASE_URI);
+const profile = new Profile("", "");
+profile.setStorageDomain(config.ALVIDIR_BASE_URI);
 
 const filebrowserService = new Filebrowser(
   config.FILEBROWSER_SERVER_URI,
@@ -34,29 +35,25 @@ const searchCtrl = reactive(
 provide("profile", profile);
 provide("searchCtrl", searchCtrl);
 provide("directoryCtrl", directoryCtrl);
+provide("warningCtrl", warningCtrl);
 provide("filterCtrl", filterCtrl);
 </script>
 
 <template>
-  <sidenav-menu :logo-uri="config.ALVIDIR_LOGO_URI"></sidenav-menu>
-  <div id="main-container">
-    <div class="narrowed">
-      <notice-card
-        v-for="(warning, index) in warningCtrl.all()"
-        :key="index"
-        v-bind="warning"
-        @close="warningCtrl.remove(index)"
-        closeable
-      />
-      <div id="actions-container">
-        <file-search />
-        <span id="action-buttons">
-          <new-project class="action" :apps="App.all()"> </new-project>
-          <new-folder class="action"></new-folder>
-        </span>
-      </div>
-      <dir-list />
+  <sidenav-menu
+    :logo="config.ALVIDIR_LOGO_URI"
+    :apps="App.all()"
+  ></sidenav-menu>
+  <warning-list></warning-list>
+  <div id="main">
+    <div id="actions">
+      <file-search />
+      <span id="action-buttons">
+        <new-project class="action" :apps="App.all()"> </new-project>
+        <new-folder class="action"></new-folder>
+      </span>
     </div>
+    <dir-list />
   </div>
 </template>
 
@@ -73,51 +70,44 @@ body {
   background: var(--color-bg-secondary);
 }
 
-#main-container {
+#app {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-width: fit-content;
   width: 100%;
   min-width: $fib-11 * $fib-5 * 1px;
-
-  .narrowed {
-    box-sizing: border-box;
-    width: $fib-13 * 3px;
-    padding: 0 $fib-10 * 1px;
-    margin-bottom: $fib-9 * 1px;
-    margin-top: $fib-7 * 1px;
-  }
-
-  .notice-card:not(:first-child) {
-    margin-top: $fib-5 * 1px;
-  }
 }
 
-#actions-container {
+#main {
+  box-sizing: border-box;
+  width: $fib-13 * 3px;
+  padding: 0 $fib-10 * 1px;
+  margin-bottom: $fib-9 * 1px;
+  margin-top: $fib-7 * 1px;
+}
+
+#actions {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: $fib-11 * 1px 0;
   min-width: fit-content;
-}
 
-#action-buttons {
-  display: flex;
-  justify-content: center;
-  margin-top: $fib-8 * 1px;
-  white-space: nowrap;
-  min-width: fit-content;
+  & > span {
+    display: flex;
+    justify-content: center;
+    margin-top: $fib-8 * 1px;
+    white-space: nowrap;
+    min-width: fit-content;
 
-  & > :first-child {
-    margin-right: $fib-5 * 1px;
+    & > :first-child {
+      margin-right: $fib-5 * 1px;
+    }
   }
-}
-
-#app {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
 }
 </style>

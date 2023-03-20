@@ -162,7 +162,7 @@ onUnmounted(() => {
       border: 1px solid var(--color-border);
     }
 
-    &:focus,
+    &:active,
     &.off {
       border: 1px solid var(--color-border-active);
     }

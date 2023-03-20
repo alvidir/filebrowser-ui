@@ -34,9 +34,9 @@ const open = () => {
   nextTick(() => foldername.value?.focus());
 };
 
-const onInput = (ctrl: Field) => {
-  const foldername = ctrl.text();
-  valid.value = isValidFilename(foldername);
+const onInput = () => {
+  const name = foldername.value?.text() ?? "";
+  valid.value = isValidFilename(name);
 };
 
 const isValidFilename = (name: string): boolean => {
@@ -92,6 +92,7 @@ const submit = () => {
       <regular-field
         ref="foldername"
         placeholder="folder name"
+        :debounce="300"
         :error="error"
         @input="onInput"
         large

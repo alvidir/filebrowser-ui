@@ -3,7 +3,7 @@ import Subject from "@/controllers/observer";
 
 class WarningController extends Subject {
   private max = 3;
-  private warnings: Array<Warning> = [];
+  private warnings = new Array<Warning>();
 
   push(warning: Warning): void {
     if (this.warnings.length >= this.max) {
@@ -15,7 +15,6 @@ class WarningController extends Subject {
   }
 
   remove(index: number): void {
-    console.log(index);
     this.warnings.splice(index, 1);
     this.broadcast();
   }
