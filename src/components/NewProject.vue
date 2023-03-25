@@ -1,24 +1,13 @@
 <script setup lang="ts">
-import {
-  defineProps,
-  inject,
-  ref,
-  computed,
-  onMounted,
-  onUnmounted,
-} from "vue";
+import { defineProps, ref, reactive, computed } from "vue";
 import PulseLoader from "vue-spinner/src/PulseLoader.vue";
 import App from "@/domain/app";
-import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
-import Path, { rootDirName } from "@/domain/path";
+import Path, { pathSeparator, rootDirName } from "@/domain/path";
 import ActionHeader from "@/components/ActionHeader.vue";
-import Subject from "@/controllers/observer";
+import { useDirectoryStore } from "@/stores/directory";
 
-interface DirectoryCtrl extends Subject {
-  getDirectory: () => Directory | undefined;
-  createFile: (file: FileData) => void;
-}
+const directoryStore = useDirectoryStore();
 
 interface Props {
   apps: Array<App>;
@@ -26,18 +15,16 @@ interface Props {
 
 defineProps<Props>();
 
-const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
 const active = ref(false);
-const directory = ref<Directory | undefined>(undefined);
-const pending = ref(new Array<FileData>());
+const pending = reactive(new Array<FileData>());
 
 const href = computed((): string => {
-  return new Path(directory.value?.path ?? "").absolute;
+  return Path.sanatize(directoryStore.path ?? "");
 });
 
 const pathname = computed((): string => {
-  if (directory.value?.isRoot()) return rootDirName;
-  else return directory.value?.path ?? "";
+  if (directoryStore.path === pathSeparator) return rootDirName;
+  else return directoryStore.path ?? "";
 });
 
 const capitalize = (word: string) => {
@@ -45,49 +32,30 @@ const capitalize = (word: string) => {
 };
 
 const isPending = (app: App) => {
-  return pending.value.some((file) => file.app() == app);
+  return pending.some((file) => {
+    return file.app() == app;
+  });
 };
 
 const onClick = (app: App) => {
-  if (!directory.value) return;
+  if (!directoryStore) return;
 
-  const file = new FileData("", "", directory.value?.path);
-  file.setTool(app);
+  const file = new FileData("", "", directoryStore.path);
+  file.setApp(app);
 
-  pending.value.push(file);
-  directoryCtrl?.createFile(file);
+  const index = pending.push(file);
+  directoryStore.createFile(file)?.then(() => {
+    pending.splice(index - 1, 1);
+  });
 };
 
 const open = () => {
-  directory.value = directoryCtrl?.getDirectory();
   active.value = true;
 };
 
 const close = () => {
   active.value = false;
 };
-
-const update = () => {
-  if (!pending.value.length) return;
-
-  pending.value.forEach((file) => {
-    if (!file.id || !directory.value?.files.includes(file)) return;
-
-    const url = file.url();
-    if (url) window.open(url, "_blank")?.focus();
-
-    const index = pending.value.indexOf(file);
-    pending.value.splice(index, 1);
-  });
-};
-
-onMounted(() => {
-  directoryCtrl?.addObserver({ update });
-});
-
-onUnmounted(() => {
-  directoryCtrl?.removeObserver({ update });
-});
 </script>
 
 <template>

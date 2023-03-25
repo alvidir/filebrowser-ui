@@ -1,36 +1,17 @@
 <script setup lang="ts">
-import { inject, ref, onMounted, onUnmounted } from "vue";
+import { ref } from "vue";
+import { useSearchStore } from "@/stores/search";
+
 import SearchItem from "@/components/SearchMatch.vue";
 import { Field } from "vue-fields/src/types";
-import { Subject } from "@/controllers/observer";
-import SearchMatch from "@/domain/search";
 
-interface SearchCtrl extends Subject {
-  search: (s: string) => void;
-  getItems: () => Array<SearchMatch>;
-}
-
-const searchCtrl = inject<SearchCtrl>("searchCtrl");
-const items = ref(new Array<SearchMatch>());
+const searchStore = useSearchStore();
 const searchfield = ref<Field | undefined>(undefined);
 
 const onSearchInput = () => {
-  const search = searchfield.value?.text();
-  if (search) searchCtrl?.search(search);
+  const search = searchfield.value?.text().trim();
+  searchStore.search(search ?? "");
 };
-
-const update = () => {
-  const matches = searchCtrl?.getItems() ?? [];
-  items.value = matches.sort((a, b) => a.start - b.start);
-};
-
-onMounted(() => {
-  searchCtrl?.addObserver({ update });
-});
-
-onUnmounted(() => {
-  searchCtrl?.removeObserver({ update });
-});
 </script>
 
 <template>
@@ -39,7 +20,7 @@ onUnmounted(() => {
     id="search-field"
     placeholder="Search"
     ref="searchfield"
-    :items="items"
+    :items="searchStore.items"
     :debounce="300"
     :large="true"
     @input="onSearchInput"

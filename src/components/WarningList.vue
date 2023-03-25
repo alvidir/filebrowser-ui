@@ -1,23 +1,16 @@
 <script setup lang="ts">
-import { inject } from "vue";
-import Warning from "@/domain/warning";
-
-interface WarningCtrl {
-  all: () => Array<Warning>;
-  remove: (index: number) => void;
-}
-
-const warningCtrl = inject<WarningCtrl>("warningCtrl");
+import { useWarningStore } from "@/stores/warning";
+const warningStore = useWarningStore();
 </script>
 
 <template>
   <div id="warning-list">
     <transition-group name="list">
       <notice-card
-        v-for="(warning, index) in warningCtrl?.all()"
+        v-for="warning in warningStore.warnings"
         :key="warning"
         v-bind="warning"
-        @close="warningCtrl?.remove(index)"
+        @close="warningStore.remove(warning)"
         closeable
       />
     </transition-group>

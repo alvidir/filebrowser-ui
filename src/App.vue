@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, reactive } from "vue";
+import { provide } from "vue";
 import Profile from "vue-menus/src/profile";
 import Filebrowser from "@/services/filebrowser";
 import WarningList from "@/components/WarningList.vue";
@@ -8,35 +8,19 @@ import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
-import DirectoryController from "@/controllers/directory";
-import WarningController from "@/controllers/warning";
-import FilterController from "@/controllers/filter";
-import SearchController from "@/controllers/search";
 import config from "@/config.json";
 import App from "@/domain/app";
 
-const profile = new Profile("", "");
-profile.setStorageDomain(config.ALVIDIR_BASE_URI);
-
-const filebrowserService = new Filebrowser(
+const filebrowserClient = new Filebrowser(
   config.FILEBROWSER_SERVER_URI,
   process.env.NODE_ENV === "development" ? { "X-Uid": "1" } : {}
 );
 
-const warningCtrl = reactive(new WarningController());
-const filterCtrl = reactive(new FilterController());
-const directoryCtrl = reactive(
-  new DirectoryController(filebrowserService, warningCtrl)
-);
-const searchCtrl = reactive(
-  new SearchController(filebrowserService, warningCtrl)
-);
+provide("filebrowserClient", filebrowserClient);
 
+const profile = new Profile("", "");
+profile.setStorageDomain(config.ALVIDIR_BASE_URI);
 provide("profile", profile);
-provide("searchCtrl", searchCtrl);
-provide("directoryCtrl", directoryCtrl);
-provide("warningCtrl", warningCtrl);
-provide("filterCtrl", filterCtrl);
 </script>
 
 <template>

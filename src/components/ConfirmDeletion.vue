@@ -16,9 +16,9 @@ interface Events {
 }
 
 const emit = defineEmits<Events>();
-const href = computed((): string => {
+const href = computed((): string | undefined => {
   if (props.context.isDirectory()) {
-    return new Path(props.context.path()).absolute;
+    return Path.sanatize(props.context.path());
   }
 
   return props.context.url();

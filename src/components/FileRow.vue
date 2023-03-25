@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { defineProps, inject, computed, ref, reactive, nextTick } from "vue";
+import { defineProps, computed, ref, reactive, nextTick, toRef } from "vue";
 import FileTag from "@/components/FileTag.vue";
-import FileData from "@/domain/file";
+import FileData, { metadataSizeKey } from "@/domain/file";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
-import Directory from "@/domain/directory";
+import { useDirectoryStore } from "@/stores/directory";
+
+const directoryStore = useDirectoryStore();
 
 const secondsPerMinute = 60;
 const secondsPerHour = 60 * secondsPerMinute;
@@ -11,24 +13,14 @@ const secondsPerDay = 24 * secondsPerHour;
 const secondsPerMonth = 30 * secondsPerDay;
 const secondsPerYear = 365 * secondsPerDay;
 
-interface DirectoryCtrl {
-  getDirectory: () => Directory | undefined;
-  openfile: (file: FileData) => void;
-  renameFile: (file: FileData, filename: string) => void;
-  deleteFile: (file: FileData) => void;
-}
-
 interface Props {
   file: FileData;
   highlight?: boolean;
   reveal?: boolean;
   noHover?: boolean;
-  inject?: string;
 }
 
 const props = defineProps<Props>();
-
-const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
 
 const showCtxMenu = ref(false);
 const showDialog = ref(false);
@@ -46,13 +38,6 @@ const href = computed((): string => {
 const target = computed((): string | undefined => {
   if (props.file.isDirectory()) return;
   return "_blank";
-});
-
-const contentSize = computed((): string | undefined => {
-  if (props.file.isParentDirectory()) return;
-
-  const size = props.file.size() ?? 0;
-  return `${size} ${!size || size > 1 ? "items" : "item"}`;
 });
 
 const elapsedTime = computed((): string | undefined => {
@@ -100,9 +85,16 @@ const elapsedTime = computed((): string | undefined => {
   return `${total} year${total > 1 ? "s" : ""} ago`;
 });
 
+const printContentSize = (): string | undefined => {
+  if (props.file.isParentDirectory()) return;
+
+  const size = +(props.file.metadata.get(metadataSizeKey) ?? "0");
+  return `${size} ${!size || size > 1 ? "items" : "item"}`;
+};
+
 const open = (force = false) => {
   if (!force && !props.file.isDirectory()) return;
-  directoryCtrl?.openfile(props.file);
+  directoryStore.openfile(props.file);
 };
 
 const checkRenameValue = () => {
@@ -118,7 +110,7 @@ const onStartRename = () => {
 const onSubmitRename = () => {
   const renameValue = renameProps.value;
   if (isValidFilename(renameValue)) {
-    directoryCtrl?.renameFile(props.file, renameValue);
+    directoryStore.renameFile(props.file, renameValue);
   }
 
   resetRename();
@@ -126,8 +118,7 @@ const onSubmitRename = () => {
 
 const isValidFilename = (name: string): boolean => {
   renameProps.error = FileData.checkName(name) ?? "";
-  const directory = directoryCtrl?.getDirectory();
-  if (!renameProps.error && directory?.exists(name)) {
+  if (!renameProps.error && directoryStore.exists(name)) {
     renameProps.error = "This filename already exists";
   }
 
@@ -161,7 +152,7 @@ const onClickContextMenu = (action: string) => {
 };
 
 const onSubmitDeletion = () => {
-  directoryCtrl?.deleteFile(props.file);
+  directoryStore.deleteFile(props.file);
   onCancelDeletion();
 };
 
@@ -217,7 +208,7 @@ const onCancelDeletion = () => {
       </div>
     </td>
     <td class="file-size">
-      <span v-if="file.size() !== undefined"> {{ contentSize }} </span>
+      <span v-if="file.size() !== undefined"> {{ printContentSize() }} </span>
       <span v-else>&nbsp;</span>
     </td>
     <td class="elapsed-time">

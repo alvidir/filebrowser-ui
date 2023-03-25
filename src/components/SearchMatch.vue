@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { inject, defineProps, computed } from "vue";
-import FileData from "@/domain/file";
+import { defineProps, computed } from "vue";
 import SearchMatch from "@/domain/search";
 import { pathSeparator } from "@/domain/path";
+import { useDirectoryStore } from "@/stores/directory";
+
+const directoryStore = useDirectoryStore();
 
 interface Props {
   match: SearchMatch;
@@ -10,11 +12,6 @@ interface Props {
 
 const props = defineProps<Props>();
 
-interface DirectoryCtrl {
-  openfile: (file: FileData) => void;
-}
-
-const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
 const href = computed((): string => {
   if (props.match.file.isDirectory()) return "#";
   return props.match.file.url() ?? "#";
@@ -50,19 +47,13 @@ const absolutpath = computed((): string[] => {
 
 const open = () => {
   if (props.match.file.isDirectory()) {
-    directoryCtrl?.openfile(props.match.file);
+    directoryStore.openfile(props.match.file);
   }
 };
 </script>
 
 <template>
-  <a
-    class="search-item"
-    draggable="false"
-    :href="href"
-    :target="target"
-    @click="open"
-  >
+  <a draggable="false" :href="href" :target="target" @click="open">
     <i v-if="match.file.isDirectory()" class="bx bxs-folder"></i>
     <i v-else class="bx bx-file-blank"></i>
     <div class="details">
@@ -87,15 +78,12 @@ const open = () => {
 <style scoped lang="scss">
 @import "fibonacci-styles";
 
-button.item:not(:hover) > .search-item > span {
-  visibility: hidden;
-}
-
-.search-item {
+a {
   display: flex;
   flex-direction: row;
   align-items: center;
   text-decoration: none;
+  padding: $fib-3 * 1px $fib-4 * 1px;
 
   & > i {
     font-size: large;
@@ -114,6 +102,10 @@ button.item:not(:hover) > .search-item > span {
       width: 100%;
     }
   }
+
+  &:not(:hover) > span {
+    visibility: hidden;
+  }
 }
 
 .details {
@@ -131,6 +123,7 @@ button.item:not(:hover) > .search-item > span {
 
     &.match {
       color: var(--color-accent);
+      font-weight: 600;
     }
 
     &.prefix {

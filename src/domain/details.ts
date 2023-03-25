@@ -20,17 +20,16 @@ const tags: { [key: string]: Details } = Object.assign({}, apps, {
     description:
       "A virtual folder only exists in you browser as long as you do not refresh the page. To persist the folder, add a file on it.",
     icon: "bx bxs-cat",
-    uri: "#",
   },
 });
 
 interface Details {
   name: string;
-  color: string;
-  title: string;
+  color?: string;
+  title?: string;
   description?: string;
   icon: string;
-  uri: string;
+  uri?: string;
 }
 
-export { apps, tags };
+export { apps, tags, Details };

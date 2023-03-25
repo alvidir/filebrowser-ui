@@ -1,4 +1,5 @@
 import { createApp } from "vue";
+import { createPinia } from "pinia";
 import App from "@/App.vue";
 import includeFields from "vue-fields/src/main";
 import includeButtons from "vue-buttons/src/main";
@@ -12,5 +13,8 @@ includeCards(app);
 includeButtons(app);
 includeFields(app);
 includeMenus(app);
+
+const pinia = createPinia();
+app.use(pinia);
 
 app.mount("#app");

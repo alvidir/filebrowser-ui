@@ -3,14 +3,12 @@ const pathCleanRegex = new RegExp(pathSeparator + "{1,}", "g");
 const rootDirName = "root";
 
 class Path {
-  absolute: string;
-
-  constructor(path: string) {
-    this.absolute = Path.sanatize(Path.spacesToUnderscores(path));
-  }
-
   static spacesToUnderscores(p: string): string {
     return p.trim().replace(/ /g, "_");
+  }
+
+  static underscoresToSpaces(p: string): string {
+    return p.trim().replace(/_/g, " ");
   }
 
   static sanatize(path: string): string {
@@ -25,13 +23,13 @@ class Path {
     return path;
   }
 
-  asDirectory = (): string => {
-    if (this.absolute.at(-1) != pathSeparator) {
-      return this.absolute + pathSeparator;
+  static asDirectory(path: string): string {
+    if (path.at(-1) != pathSeparator) {
+      return path + pathSeparator;
     }
 
-    return this.absolute;
-  };
+    return path;
+  }
 }
 
 export default Path;

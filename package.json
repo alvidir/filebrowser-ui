@@ -12,6 +12,7 @@
     "fibonacci-styles": "github:alvidir/fibonacci-styles",
     "google-protobuf": "^3.19.3",
     "grpc-web": "^1.3.0",
+    "pinia": "^2.0.33",
     "url-join": "^5.0.0",
     "vue": "^3.2.37",
     "vue-buttons": "github:alvidir/vue-buttons",

@@ -1,36 +1,30 @@
 <script setup lang="ts">
-import { inject, ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick } from "vue";
 import { Field } from "vue-fields/src/types";
-import Directory from "@/domain/directory";
 import FileData, { Flag } from "@/domain/file";
-import Path from "@/domain/path";
+import Path, { pathSeparator } from "@/domain/path";
 import { rootDirName } from "@/domain/path";
 import ActionHeader from "@/components/ActionHeader.vue";
+import { useDirectoryStore } from "@/stores/directory";
 
-interface DirectoryCtrl {
-  getDirectory: () => Directory | undefined;
-  addFile: (file: FileData) => void;
-}
+const directoryStore = useDirectoryStore();
 
-const directoryCtrl = inject<DirectoryCtrl>("directoryCtrl");
-const directory = ref<Directory | undefined>(undefined);
 const active = ref(false);
 const valid = ref(false);
 const error = ref("");
 
 const href = computed((): string => {
-  return new Path(directory.value?.path ?? "").absolute;
+  return Path.sanatize(directoryStore.path ?? "");
 });
 
 const pathname = computed((): string => {
-  if (directory.value?.isRoot()) return rootDirName;
-  else return directory.value?.path ?? "";
+  if (directoryStore.path === pathSeparator) return rootDirName;
+  else return directoryStore.path ?? "";
 });
 
 const foldername = ref<Field | undefined>(undefined);
 const open = () => {
   active.value = true;
-  directory.value = directoryCtrl?.getDirectory();
   nextTick(() => foldername.value?.focus());
 };
 
@@ -41,7 +35,7 @@ const onInput = () => {
 
 const isValidFilename = (name: string): boolean => {
   error.value = FileData.checkName(name) ?? "";
-  if (!error.value && directory.value?.exists(name)) {
+  if (!error.value && directoryStore.exists(name)) {
     error.value = "This filename already exists";
   }
 
@@ -61,11 +55,12 @@ const submit = () => {
   const name = foldername.value?.text() ?? "";
   close();
 
-  if (!directory.value || !isValidFilename(name)) return;
-  const file = new FileData("", name, directory.value.path);
+  if (!isValidFilename(name)) return;
+  const file = new FileData("", name, directoryStore.path);
   file.flags |= Flag.Directory;
+  file.new = true;
 
-  directoryCtrl?.addFile(file);
+  directoryStore.files.push(file);
 };
 </script>
 
@@ -92,7 +87,6 @@ const submit = () => {
       <regular-field
         ref="foldername"
         placeholder="folder name"
-        :debounce="300"
         :error="error"
         @input="onInput"
         large

@@ -1,9 +1,9 @@
-import { apps } from "@/domain/details";
+import { apps, Details } from "@/domain/details";
 
-class App {
+class App implements Details {
   name: string;
   icon = "";
-  uri = "";
+  uri? = "";
 
   constructor(id: string) {
     this.name = id;

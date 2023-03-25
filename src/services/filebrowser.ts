@@ -1,5 +1,4 @@
 import * as grpcWeb from "grpc-web";
-import Directory from "@/domain/directory";
 import FileData from "@/domain/file";
 import Warning from "@/domain/warning";
 import { DirectoryServiceClient } from "@/proto/DirectoryServiceClientPb";
@@ -35,11 +34,10 @@ class FilebrowserClient {
   }
 
   private static buildSearchMatch(data: ProtoSearchMatch): SearchMatch {
-    const file = new FileData("", "", "");
     const protoFile = data.getFile();
-    if (protoFile) {
-      FilebrowserClient.initFile(file, protoFile);
-    }
+    const file = protoFile
+      ? FilebrowserClient.buildFile(protoFile)
+      : new FileData("", "", "");
 
     return new SearchMatch(file, data.getMatchstart(), data.getMatchend());
   }
@@ -51,23 +49,12 @@ class FilebrowserClient {
       .map((match) => FilebrowserClient.buildSearchMatch(match));
   }
 
-  private static buildDirectory(data: ProtoDirectory): Directory {
-    const absolute = data.getPath()?.getAbsolute() ?? pathSeparator;
-    const path = FilebrowserClient.underscoresToSpaces(absolute);
-    const dir = new Directory(data.getId(), path);
-
-    data.getFilesList().forEach((data) => {
-      const file = new FileData("", "", "");
-      dir.files.push(FilebrowserClient.initFile(file, data));
-    });
-
-    return dir;
-  }
-
-  private static initFile(file: FileData, data: ProtoFile): FileData {
-    file.id = data.getId();
-    file.name = FilebrowserClient.underscoresToSpaces(data.getName());
-    file.directory = FilebrowserClient.underscoresToSpaces(data.getDirectory());
+  private static buildFile(data: ProtoFile): FileData {
+    const file = new FileData(
+      data.getId(),
+      FilebrowserClient.underscoresToSpaces(data.getName()),
+      FilebrowserClient.underscoresToSpaces(data.getDirectory())
+    );
 
     data.getMetadataList().forEach((f) => {
       file.metadata.set(f.getKey(), f.getValue());
@@ -85,13 +72,23 @@ class FilebrowserClient {
     return file;
   }
 
-  getDirectory = (path: string): Promise<Directory> => {
+  private static buildFiles(data: ProtoDirectory): Array<FileData> {
+    return data.getFilesList().map((data) => {
+      return FilebrowserClient.buildFile(data);
+    });
+  }
+
+  getDirectory = (path: string): Promise<Array<FileData>> => {
+    path = Path.sanatize(path);
+
     return new Promise(
       (
-        resolve: (value: Directory | PromiseLike<Directory>) => void,
+        resolve: (
+          value: Array<FileData> | PromiseLike<Array<FileData>>
+        ) => void,
         reject: (reason: Warning) => void
       ) => {
-        const absolute = new Path(path).asDirectory();
+        const absolute = Path.asDirectory(path);
         const request = new ProtoPath().setAbsolute(absolute);
 
         this.directoryClient.get(
@@ -103,7 +100,7 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(FilebrowserClient.buildDirectory(data));
+            resolve(FilebrowserClient.buildFiles(data));
           }
         );
       }
@@ -123,7 +120,7 @@ class FilebrowserClient {
 
         const request = new ProtoFile()
           .setName(Path.spacesToUnderscores(file.name))
-          .setDirectory(new Path(file.path()).absolute)
+          .setDirectory(Path.sanatize(file.path()))
           .setMetadataList(metadata);
 
         this.fileClient.create(
@@ -135,7 +132,7 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(FilebrowserClient.initFile(file, data));
+            resolve(FilebrowserClient.buildFile(data));
           }
         );
       }
@@ -162,7 +159,6 @@ class FilebrowserClient {
               return;
             }
 
-            console.log(data);
             resolve(FilebrowserClient.buildSearchMatches(data));
           }
         );
@@ -170,25 +166,25 @@ class FilebrowserClient {
     );
   };
 
-  renameFile = (file: FileData, name: string): Promise<Directory> => {
+  renameFile = (file: FileData, name: string): Promise<void> => {
     return this.moveFile(file, join(file.directory, name));
   };
 
-  moveFile = (source: FileData, destination: string): Promise<Directory> => {
+  moveFile = (source: FileData, destination: string): Promise<void> => {
     return new Promise(
       (
-        resolve: (value: Directory | PromiseLike<Directory>) => void,
+        resolve: (value: void | PromiseLike<void>) => void,
         reject: (reason: Warning) => void
       ) => {
         const path = new ProtoPath().setAbsolute(
-          source.isDirectory()
-            ? new Path(source.path()).asDirectory()
-            : new Path(source.path()).absolute
+          Path.sanatize(
+            source.isDirectory()
+              ? Path.asDirectory(source.path())
+              : source.path()
+          )
         );
 
-        const dest = new ProtoPath().setAbsolute(
-          new Path(destination).absolute
-        );
+        const dest = new ProtoPath().setAbsolute(Path.sanatize(destination));
 
         const request = new MoveRequest()
           .setPathsList([path])
@@ -203,7 +199,7 @@ class FilebrowserClient {
               return;
             }
 
-            resolve(FilebrowserClient.buildDirectory(data));
+            resolve();
           }
         );
       }
@@ -246,7 +242,7 @@ class FilebrowserClient {
         reject: (reason?: Warning) => void
       ) => {
         const request = new ProtoPath().setAbsolute(
-          new Path(file.path()).asDirectory()
+          Path.sanatize(Path.asDirectory(file.path()))
         );
 
         this.directoryClient.delete(
