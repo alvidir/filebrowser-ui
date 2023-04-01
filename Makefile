@@ -11,7 +11,7 @@ dist: protobuf
 images:
 	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):latest -f ./container/$(BINARY_NAME)/containerfile .
 
-protobuf:
+protobuf: install-deps
 	@protoc  -I=. proto/*.proto \
 		--js_out=import_style=commonjs,binary:./src \
 		--plugin=./bin/protoc-gen-grpc-web \
