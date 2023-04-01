@@ -19,11 +19,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: "3.x"
-
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v35.2.1
