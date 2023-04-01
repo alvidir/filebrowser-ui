@@ -37,13 +37,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate protos
-        run: make all
-
       - name: Build project
-        run: |
-          npm i
-          npm run build
+        run: PKG_MANAGER=apt make all
 
   release_version:
     name: Release version
