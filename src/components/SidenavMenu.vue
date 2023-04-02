@@ -4,7 +4,7 @@ import { defineProps } from "vue";
 interface App {
   name: string;
   icon: string;
-  uri: string;
+  uri?: string;
 }
 
 interface Props {
