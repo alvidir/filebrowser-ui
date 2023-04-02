@@ -11,8 +11,8 @@ dist: protobuf
 images:
 	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):latest -f ./container/$(BINARY_NAME)/containerfile .
 
-protobuf:
-	@./bin/protoc/bin/protoc -I=. proto/*.proto \
+protobuf: install-deps
+	@protoc -I=. proto/*.proto \
 		--js_out=import_style=commonjs,binary:./src \
 		--plugin=./bin/protoc-gen-grpc-web \
 		--grpc-web_out=import_style=typescript,mode=grpcwebtext:./src
@@ -25,10 +25,10 @@ install-deps:
 	@mkdir -p bin && mv --force ./protoc-gen-grpc-web-1.4.1-linux-x86_64 ./bin/protoc-gen-grpc-web
 	@chmod +x ./bin/protoc-gen-grpc-web
 
-	@curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
-	@mv ./protoc-3.20.3-linux-x86_64.zip ./bin/protoc.zip
-	@unzip -o ./bin/protoc.zip -d ./bin/protoc
-	@chmod +x ./bin/protoc
+	@#curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
+	@#mv ./protoc-3.20.3-linux-x86_64.zip ./bin/protoc.zip
+	@#unzip -o ./bin/protoc.zip -d ./bin/protoc
+	@#chmod +x ./bin/protoc
 
 clean:
 	@rm -rf bin/

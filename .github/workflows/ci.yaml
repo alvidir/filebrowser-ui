@@ -38,6 +38,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: "3.x"
+
       - name: Build project
         run: PKG_MANAGER=apt make all
 
