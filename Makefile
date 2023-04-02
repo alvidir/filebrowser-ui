@@ -25,11 +25,6 @@ install-deps:
 	@mkdir -p bin && mv --force ./protoc-gen-grpc-web-1.4.1-linux-x86_64 ./bin/protoc-gen-grpc-web
 	@chmod +x ./bin/protoc-gen-grpc-web
 
-	@#curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
-	@#mv ./protoc-3.20.3-linux-x86_64.zip ./bin/protoc.zip
-	@#unzip -o ./bin/protoc.zip -d ./bin/protoc
-	@#chmod +x ./bin/protoc
-
 clean:
 	@rm -rf bin/
 	@rm -rf dist/
