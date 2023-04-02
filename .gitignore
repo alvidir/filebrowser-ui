@@ -24,6 +24,11 @@ pnpm-debug.log*
 *.sw?
 
 # protobuf compilation
+bin
 /src/proto/*.ts
 *_pb.js
 *_pb.ts
+
+# makefile output
+*.tmp.*
+bin

@@ -1,12 +1,26 @@
+<script setup lang="ts">
+import { defineProps } from "vue";
+
+interface Props {
+  name?: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
   <div class="file-tag" :class="{ 'custom-color': !!color }" @click.stop>
     <label class="round-corners fib-5">
-      {{ tag }}
+      {{ name }}
     </label>
-    <regular-card v-if="active">
+    <regular-card v-if="title">
       <div class="tag-info">
         <span>
-          <i v-if="iconClass" :class="iconClass"></i>
+          <i v-if="icon" :class="icon"></i>
           &nbsp; {{ title }}
         </span>
         <small> {{ description }} </small>
@@ -14,23 +28,6 @@
     </regular-card>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from "vue";
-
-export default defineComponent({
-  name: "FileTag",
-  events: [],
-  props: {
-    tag: String,
-    title: String,
-    description: String,
-    iconClass: String,
-    color: String,
-    active: Boolean,
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
@@ -44,9 +41,10 @@ $text-color: v-bind(color);
 
 .file-tag {
   width: fit-content;
-  transition-delay: 10s;
 
-  &:hover .regular-card {
+  &:hover .regular-card:not(:hover) {
+    transition-delay: $fib-9 * 0.01s;
+    transition-property: visibility;
     visibility: visible;
   }
 
@@ -67,7 +65,7 @@ $text-color: v-bind(color);
   label {
     border: 1px solid var(--color-border-disabled);
     background: var(--color-bg-primary);
-    transition: background $default-duration;
+    transition: background $medium-fade;
     padding: $fib-3 * 1px $fib-5 * 1px;
     font-size: small;
 
@@ -84,10 +82,6 @@ $text-color: v-bind(color);
     width: $fib-13 * 1px;
     visibility: hidden;
 
-    &:not(:mousedrag):hover {
-      visibility: visible;
-    }
-
     a {
       &:not(:hover) {
         color: var(--color-text-secondary);
@@ -95,8 +89,15 @@ $text-color: v-bind(color);
     }
 
     i {
-      color: var(--color-text-secondary);
+      color: $text-color;
       font-size: large;
+    }
+
+    img {
+      max-height: $fib-7 * 1px;
+      margin-right: $fib-5 * 1px;
+      filter: invert(56%) sepia(13%) saturate(1160%) hue-rotate(292deg)
+        brightness(90%) contrast(100%);
     }
 
     .tag-info {
@@ -105,6 +106,8 @@ $text-color: v-bind(color);
     }
 
     span {
+      display: flex;
+      align-items: center;
       font-weight: 600;
     }
 

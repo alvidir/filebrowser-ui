@@ -1,101 +1,102 @@
+<script setup lang="ts">
+import { defineProps, ref, reactive, computed } from "vue";
+import PulseLoader from "vue-spinner/src/PulseLoader.vue";
+import App from "@/domain/app";
+import FileData from "@/domain/file";
+import Path, { pathSeparator, rootDirName } from "@/domain/path";
+import ActionHeader from "@/components/ActionHeader.vue";
+import { useDirectoryStore } from "@/stores/directory";
+
+const directoryStore = useDirectoryStore();
+
+interface Props {
+  apps: Array<App>;
+}
+
+defineProps<Props>();
+
+const active = ref(false);
+const pending = reactive(new Array<FileData>());
+
+const href = computed((): string => {
+  return Path.sanatize(directoryStore.path ?? "");
+});
+
+const pathname = computed((): string => {
+  if (directoryStore.path === pathSeparator) return rootDirName;
+  else return directoryStore.path ?? "";
+});
+
+const capitalize = (word: string) => {
+  return word[0].toUpperCase() + word.substring(1).toLowerCase();
+};
+
+const isPending = (app: App) => {
+  return pending.some((file) => {
+    return file.app() == app;
+  });
+};
+
+const onClick = (app: App) => {
+  if (!directoryStore) return;
+
+  const file = new FileData("", "", directoryStore.path);
+  file.setApp(app);
+
+  const index = pending.push(file);
+  directoryStore.createFile(file)?.then(() => {
+    pending.splice(index - 1, 1);
+  });
+};
+
+const open = () => {
+  active.value = true;
+};
+
+const close = () => {
+  active.value = false;
+};
+</script>
+
 <template>
   <div class="new-project-dialog" v-click-outside="close">
     <submit-button color="var(--color-accent)" @click="open">
       <i class="bx bxs-bulb"></i>
-      {{ NEW_PROJECT }}
+      New project
     </submit-button>
     <regular-card :class="{ active: active }" @close="close" closable>
       <template #header>
-        <span class="card-title">
-          <i class="bx bxs-bulb"></i>&nbsp; Start building your new project
-        </span>
-        <small>
-          It will be created at
-          <a href="#">{{ directory(path) }}</a>
-        </small>
+        <action-header
+          title="Start building your new project"
+          title-color="var(--color-accent)"
+          subtitle="It will be created at"
+          :path="pathname"
+          :href="href"
+          icon="bx bxs-bulb"
+        ></action-header>
       </template>
       <div class="apps">
-        <submit-button
+        <button
           v-for="app in apps"
-          :key="app.id"
+          :key="app.name"
+          :disabled="isPending(app)"
           class="app"
-          color="var(--color-button)"
-          :loading="app.fetching"
-          @submit="submit(app)"
+          @click="onClick(app)"
         >
-          <img :src="getImgUrl(app.icon)" :alt="app.title" />
-          <small>{{ app.title }}</small>
-        </submit-button>
+          <i v-if="!isPending(app)" :class="app.icon" :alt="app.name"></i>
+          <pulse-loader
+            v-if="isPending(app)"
+            class="loader"
+            color="var(--color-border-active)"
+            :size="'8px'"
+            :radius="'5px'"
+          ></pulse-loader>
+          <span>{{ capitalize(app.name) }}</span>
+        </button>
       </div>
     </regular-card>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent, PropType } from "vue";
-import * as utils from "@/utils";
-
-export const SUBMIT_EVENT_NAME = "submit";
-
-const NEW_PROJECT = "New project";
-
-export interface App {
-  id: string;
-  title: string;
-  icon: string;
-  url: string;
-  fetching: boolean;
-}
-
-export default defineComponent({
-  name: "NewFolder",
-  events: [SUBMIT_EVENT_NAME],
-  props: {
-    path: {
-      type: String,
-      required: true,
-    },
-    apps: {
-      type: Object as PropType<App[]>,
-      required: true,
-    },
-  },
-
-  setup() {
-    const directory = utils.directory;
-
-    return {
-      NEW_PROJECT,
-      directory,
-    };
-  },
-
-  data() {
-    return {
-      active: false,
-    };
-  },
-
-  methods: {
-    open() {
-      this.active = true;
-    },
-
-    close() {
-      if (!this.active) return;
-      this.active = false;
-    },
-
-    getImgUrl(src: string): string {
-      return require("@/assets/" + src);
-    },
-
-    submit(app: App) {
-      this.$emit(SUBMIT_EVENT_NAME, app);
-    },
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
@@ -104,10 +105,6 @@ export default defineComponent({
 .new-project-dialog {
   position: relative;
 
-  .card-title {
-    color: var(--color-accent);
-  }
-
   .apps {
     display: grid;
     position: relative;
@@ -115,28 +112,41 @@ export default defineComponent({
     grid-gap: $fib-6 * 1px;
   }
 
-  button.submit.app {
+  button.app {
+    @extend .round-corners;
+
     display: flex;
     flex-direction: column;
-    position: relative;
-    aspect-ratio: 1/1;
-    width: 100%;
-    height: auto;
+    justify-content: center;
+    color: var(--color-text-primary);
+    aspect-ratio: 1;
+    background: transparent;
+
+    &:not(:hover) {
+      border: none;
+    }
 
     &:hover {
-      border: 1px solid var(--color-border) !important;
+      border: 1px solid var(--color-border);
     }
 
-    &:focus,
+    &:active,
     &.off {
-      border: 1px solid var(--color-border-active) !important;
+      border: 1px solid var(--color-border-active);
     }
 
-    img {
+    & > .loader {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       height: $fib-8 * 1px;
     }
 
-    small {
+    i {
+      font-size: $fib-8 * 1px;
+    }
+
+    span {
       margin-top: $fib-6 * 1px;
     }
   }
@@ -148,21 +158,10 @@ export default defineComponent({
     margin-top: $fib-5 * 1px;
     min-width: $fib-13 * 1px;
     visibility: hidden;
-
     border-color: var(--color-accent);
 
     &.active {
       visibility: visible;
-    }
-
-    a {
-      &:not(:hover) {
-        color: var(--color-text-secondary);
-      }
-    }
-
-    i {
-      color: var(--color-text-secondary);
     }
   }
 }

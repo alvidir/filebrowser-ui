@@ -1,37 +1,44 @@
-install: install-grpc-web install-protoc
+BINARY_NAME=filebrowser-ui
+PKG_MANAGER?=dnf
 
-install-grpc-web:
-	curl -LO https://github.com/grpc/grpc-web/releases/download/1.4.1/protoc-gen-grpc-web-1.4.1-linux-x86_64
-	mkdir --parents bin
-	mv --force ./protoc-gen-grpc-web-1.4.1-linux-x86_64 ./bin/protoc-gen-grpc-web
-	chmod +x ./bin/protoc-gen-grpc-web
+all: dist
 
-install-protoc:
-	curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
-	mkdir --parents bin
-	unzip -o protoc-3.20.3-linux-x86_64.zip -d ./bin/protoc
-	chmod +x ./bin/protoc && rm protoc-3.20.3-linux-x86_64.zip
+dist: protobuf
+	@wget --no-check-certificate https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O ./bin/jq &&	chmod +x ./bin/jq
+	@./bin/jq 'to_entries | map_values({ (.key) : ("$$" + .key) }) | reduce .[] as $$item ({}; . + $$item)' ./src/config.json > ./src/config.tmp.json && mv ./src/config.tmp.json ./src/config.json
+	npm i && npm run build
 
-proto: install
-	./bin/protoc/bin/protoc -I=. proto/*.proto \
+images:
+	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):latest -f ./container/$(BINARY_NAME)/containerfile .
+
+protobuf: install-deps
+	@protoc -I=. proto/*.proto \
 		--js_out=import_style=commonjs,binary:./src \
 		--plugin=./bin/protoc-gen-grpc-web \
 		--grpc-web_out=import_style=typescript,mode=grpcwebtext:./src
 
-	sed -i '1s/^/\/* eslint-disable *\/\n/' ./src/proto/*.ts
+	@sed -i '1s/^/\/* eslint-disable *\/\n/' ./src/proto/*
 
-build:
-	podman build --no-cache --security-opt label=disable -t alvidir/filebrowser-ui:latest -f ./container/filebrowser-ui/containerfile .
-
-
-deploy:
-	podman run -p 8080:80 --name filebrowser-ui --env-file .env alvidir/filebrowser-ui:latest
-
-undeploy:
-	podman stop filebrowser-ui
-	podman rm -f filebrowser-ui
+install-deps:
+	-$(PKG_MANAGER) install -y protobuf-compiler
+	@curl -LO https://github.com/grpc/grpc-web/releases/download/1.4.1/protoc-gen-grpc-web-1.4.1-linux-x86_64
+	@mkdir -p bin && mv --force ./protoc-gen-grpc-web-1.4.1-linux-x86_64 ./bin/protoc-gen-grpc-web
+	@chmod +x ./bin/protoc-gen-grpc-web
 
 clean:
-	rm -rf bin
+	@rm -rf bin/
+	@rm -rf dist/
+	@rm -rf node_modules/
+	@rm -rf package-lock.json
+	@rm -rf config.tmp.json
+	@rm -rf src/proto
 
-all: proto clean
+clean-images:
+	@podman image rm alvidir/$(BINARY_NAME):latest
+
+deploy:
+	podman run -p 8080:80 --name $(BINARY_NAME) --env-file .env localhost/alvidir/$(BINARY_NAME):latest
+
+undeploy:
+	podman stop $(BINARY_NAME)
+	podman rm -f $(BINARY_NAME)

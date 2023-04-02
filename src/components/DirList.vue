@@ -1,3 +1,104 @@
+<script setup lang="ts">
+import { reactive, defineProps, withDefaults, computed } from "vue";
+import FileRow from "@/components/FileRow.vue";
+import FileData, { parentDirName } from "@/domain/file";
+import { pathSeparator, rootDirName } from "@/domain/path";
+import Tag, { Tags } from "@/domain/tag";
+import { useDirectoryStore } from "@/stores/directory";
+import { useFilterStore } from "@/stores/filter";
+
+const directoryStore = useDirectoryStore();
+const filterStore = useFilterStore();
+
+interface Props {
+  maxDirsLength?: number;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  maxDirsLength: 55,
+});
+
+const drag = reactive({
+  source: undefined as FileData | undefined,
+  target: undefined as FileData | undefined,
+});
+
+const parentdir = new FileData("", parentDirName, "");
+
+const files = computed((): Array<FileData> => {
+  const baseFiles = directoryStore.path === pathSeparator ? [] : [parentdir];
+  const dirFiles = filterStore.filter(directoryStore.files ?? []);
+  return baseFiles.concat(dirFiles);
+});
+
+const directories = computed((): Array<string> => {
+  const components = directoryStore.path
+    .split(pathSeparator)
+    .filter((path) => path.length);
+
+  let allDirs = [rootDirName].concat(components);
+
+  let maxDirs = 1;
+  let totalLength = 0;
+  for (let index = allDirs.length; index > 0; index--) {
+    if (totalLength + allDirs[index - 1].length > props.maxDirsLength) {
+      break;
+    }
+
+    totalLength += allDirs[index - 1].length;
+    maxDirs++;
+  }
+
+  return [rootDirName].concat(components).slice(-maxDirs);
+});
+
+const onDragMode = computed((): boolean => {
+  return !!drag.source;
+});
+
+const belongsToDrag = (item: FileData) => {
+  return drag.source?.name === item.name || drag.target?.name === item.name;
+};
+
+const onDragStart = (item: FileData) => {
+  drag.source = item;
+  drag.target = undefined;
+};
+
+const onDragExit = (item: FileData, event: DragEvent) => {
+  if (item.name === drag.target?.name && event.buttons) {
+    drag.target = undefined;
+  }
+};
+
+const onDragEnter = (item: FileData) => {
+  if (item.name !== drag.source?.name && item.isDirectory()) {
+    drag.target = item;
+  }
+};
+
+const onDragEnd = () => {
+  if (drag.source && drag.target) {
+    directoryStore.moveFile(drag.source, drag.target);
+  }
+
+  drag.source = undefined;
+  drag.target = undefined;
+};
+
+const onDirectoryClick = (index: number) => {
+  const delta = directories.value.length - 1 - index;
+  if (delta) directoryStore.changeDirectory(-delta);
+};
+
+const isDraggable = (item: FileData): boolean => {
+  return (
+    item.name !== parentDirName &&
+    !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)
+  );
+};
+</script>
+
 <template>
   <div class="dir-list">
     <div class="header round-corners top-only">
@@ -8,299 +109,42 @@
           :key="dir"
           @click="onDirectoryClick(index)"
         >
-          {{ underscoresToSpaces(dir) }}
+          {{ dir }}
         </button>
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
-        <tr v-if="!filesList.length">
+        <tr
+          v-if="
+            directoryStore.path === pathSeparator &&
+            !directoryStore.files.length
+          "
+        >
           <td class="empty">
             <i class="bx bx-search-alt"></i>
-            <strong>{{ NOTHING_TO_DISPLAY }}</strong>
+            <strong>Nothing to display</strong>
           </td>
         </tr>
-        <dir-list-row
-          v-for="file in filesList"
-          :key="file.name"
-          :class="{ new: file.new }"
-          :draggable="isDraggable(file)"
-          :validate="validate"
-          @open="onOpenClick(file)"
-          @rename="onFilenameChange(file, $event)"
-          @dragstart="onDragStart(file)"
-          @dragenter="onDragEnter(file)"
-          @dragexit="onDragExit(file, $event)"
-          @mouseup.right="onRightClick(file)"
-          @contextmenu.prevent
-          v-bind="file"
+        <file-row
+          v-for="item in files"
+          :file="item"
+          :key="item.name"
+          :draggable="isDraggable(item)"
+          :highlight="belongsToDrag(item)"
+          :no-hover="onDragMode"
+          @dragstart="onDragStart(item)"
+          @dragenter="onDragEnter(item)"
+          @dragexit="onDragExit(item, $event)"
         />
       </table>
     </div>
-    <context-menu :active="!!menu.context" @close="onMenuClose">
-      <button @click="onMenuOptionClick('open')">Open</button>
-      <button @click="onMenuOptionClick('rename')">Rename</button>
-      <button class="danger" @click="onMenuOptionClick('delete')">
-        Remove
-      </button>
-    </context-menu>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent, PropType } from "vue";
-import DirListRow from "@/components/DirListRow.vue";
-import * as constants from "@/constants";
-import * as utils from "@/utils";
-
-export interface File {
-  id: string;
-  name: string;
-  isDir: boolean;
-  updatedAt?: Date;
-  new?: boolean;
-  size?: {
-    value: number;
-    unit: string;
-  };
-  tags?: string[];
-  editable?: boolean;
-  isSource?: boolean;
-  isTarget?: boolean;
-}
-
-const NOTHING_TO_DISPLAY = "Nothing to display";
-
-export const CHANGEDIR_EVENT_NAME = "changedir";
-export const OPENFILE_EVENT_NAME = "openfile";
-export const RELOCATE_EVENT_NAME = "relocate";
-export const DELETE_EVENT_NAME = "delete";
-
-export default defineComponent({
-  name: "DirList",
-  events: [
-    CHANGEDIR_EVENT_NAME,
-    OPENFILE_EVENT_NAME,
-    RELOCATE_EVENT_NAME,
-    DELETE_EVENT_NAME,
-  ],
-  components: { DirListRow },
-  props: {
-    files: {
-      type: Object as PropType<Array<File>>,
-      required: true,
-    },
-    path: {
-      type: String,
-      required: true,
-    },
-    maxTags: {
-      type: Number,
-      default: 8,
-    },
-    maxDirsLength: {
-      type: Number,
-      default: 55,
-    },
-    validate: Function as PropType<utils.ValidateFn>,
-  },
-
-  setup() {
-    const underscoresToSpaces = utils.underscoresToSpaces;
-
-    return {
-      NOTHING_TO_DISPLAY,
-      underscoresToSpaces,
-    };
-  },
-
-  data() {
-    return {
-      menu: {
-        context: undefined as File | undefined,
-      },
-    };
-  },
-
-  computed: {
-    filesList(): File[] {
-      return this.files ?? [];
-    },
-
-    paths(): string[] {
-      return this.path.split(constants.PATH_SEPARATOR);
-    },
-
-    maxDirs(): number {
-      let allDirs = ["root"].concat(this.paths.filter((path) => path.length));
-      let totalLength = 0;
-      let howMany = 1;
-
-      for (let index = allDirs.length; index > 0; index--) {
-        if (totalLength + allDirs[index - 1].length > this.maxDirsLength) {
-          break;
-        }
-
-        totalLength += allDirs[index - 1].length;
-        howMany++;
-      }
-
-      return howMany;
-    },
-
-    directories(): string[] {
-      return ["root"]
-        .concat(this.paths.filter((path) => path.length))
-        .slice(-this.maxDirs);
-    },
-
-    absolutePath(): string {
-      if (this.path && this.path[0] != constants.PATH_SEPARATOR) {
-        return `${constants.PATH_SEPARATOR}${this.path}`;
-      }
-
-      return this.path;
-    },
-
-    parentDirectory(): string {
-      return this.paths.slice(0, -1).join(constants.PATH_SEPARATOR);
-    },
-  },
-
-  methods: {
-    onDragStart(file: File) {
-      this.files.forEach((file) => (file.isTarget = false));
-      file.isSource = true;
-    },
-
-    // eslint-disable-next-line
-    onDragExit(file: File, e: any) {
-      if (e.buttons && !file.isSource) {
-        file.isTarget = false;
-      }
-    },
-
-    onDragEnter(file: File) {
-      if (file.isSource || !file.isDir) return;
-      file.isTarget = true;
-    },
-
-    onDragEnd() {
-      // TODO: all three iterations can be simplified in a single one
-      const sourceFile = this.files?.find((file) => file.isSource);
-      const targetFile = this.files?.find((file) => file.isTarget);
-
-      this.files?.map((file) => {
-        file.isSource = false;
-        file.isTarget = false;
-      });
-
-      if (!sourceFile || !targetFile) return;
-
-      const source = [this.absolutePath, sourceFile.name].join(
-        constants.PATH_SEPARATOR
-      );
-
-      if (targetFile.name == constants.PARENT_DIRECTORY) {
-        this.$emit(RELOCATE_EVENT_NAME, source, this.parentDirectory);
-        return;
-      }
-
-      const target = [this.absolutePath, targetFile.name].join(
-        constants.PATH_SEPARATOR
-      );
-
-      this.$emit(RELOCATE_EVENT_NAME, source, target);
-    },
-
-    onOpenClick(file: File) {
-      if (!file.isDir) {
-        this.$emit(OPENFILE_EVENT_NAME, file);
-        return;
-      }
-
-      let target: string;
-      if (file.name != constants.PARENT_DIRECTORY) {
-        target = [this.absolutePath, file.name].join(constants.PATH_SEPARATOR);
-      } else {
-        target = this.parentDirectory;
-      }
-
-      this.$emit(CHANGEDIR_EVENT_NAME, target);
-    },
-
-    onMenuOptionClick(action: string) {
-      let target = utils.cleanPath(
-        [this.absolutePath, this.menu.context?.name].join(
-          constants.PATH_SEPARATOR
-        )
-      );
-
-      const actions: { [key: string]: () => void } = {
-        delete: () => this.$emit(DELETE_EVENT_NAME, target, this.menu.context),
-        rename: () => {
-          if (this.menu.context) this.menu.context.editable = true;
-        },
-        open: () => this.menu.context && this.onOpenClick(this.menu.context),
-      };
-
-      actions[action]();
-      this.onMenuClose();
-    },
-
-    onDirectoryClick(index: number) {
-      let hidden = 0;
-      if (this.maxDirs && this.directories.length > this.maxDirs - 1) {
-        hidden = this.directories.length - this.maxDirs + 1;
-      }
-
-      this.$emit(
-        CHANGEDIR_EVENT_NAME,
-        this.paths.slice(1, index + hidden + 1).join(constants.PATH_SEPARATOR)
-      );
-    },
-
-    isDraggable(file: File): boolean {
-      return !file.tags?.some((tag) => tag == constants.TAGS.VIRTUAL);
-    },
-
-    onRightClick(file: File) {
-      if (file.name == constants.PARENT_DIRECTORY) return;
-
-      this.menu.context = file;
-      this.menu.context.isTarget = true;
-    },
-
-    onMenuClose() {
-      if (this.menu.context) this.menu.context.isTarget = false;
-      this.menu.context = undefined;
-    },
-
-    onFilenameChange(file: File, filename: string) {
-      file.editable = false;
-      if (!filename || (this.validate && this.validate(filename))) {
-        // the filename contains errors
-        return;
-      }
-
-      const source = [this.absolutePath, file.name].join(
-        constants.PATH_SEPARATOR
-      );
-
-      const target = [this.absolutePath, filename].join(
-        constants.PATH_SEPARATOR
-      );
-
-      this.$emit(RELOCATE_EVENT_NAME, source, target, file.isDir, true);
-    },
-  },
-});
-</script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
-@import url(@/styles.css);
 
 .dir-list {
   display: flex;

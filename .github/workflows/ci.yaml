@@ -1,9 +1,10 @@
 name: Continuous integration
 
 on:
-  - push
-  - pull_request
-
+  pull_request:
+  push:
+    branches:
+      - main
 jobs:
   changelog:
     name: Changelog
@@ -20,7 +21,7 @@ jobs:
 
       - name: Get changed files
         id: changed-files
-        uses: tj-actions/changed-files@v35.2.1
+        uses: tj-actions/changed-files@v35.7.6
 
   build_project:
     name: Build project
@@ -33,17 +34,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Generate protos
-        run: make all
+      - name: Install protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          version: "3.x"
 
       - name: Build project
-        run: |
-          npm i
-          npm run build
+        run: PKG_MANAGER=apt make all
 
   release_version:
     name: Release version
@@ -58,7 +59,7 @@ jobs:
 
       - name: Create tag
         id: tagging
-        uses: anothrNick/github-tag-action@1.55.0
+        uses: anothrNick/github-tag-action@1.61.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
