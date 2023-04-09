@@ -52,7 +52,7 @@ const onSignupClick = () => {
         :src="profile.picture"
         alt=""
       />
-      <i v-else class="fallback-avatar bx bx-user-pin"></i>
+      <i v-else class="fallback-avatar bx bx-user"></i>
       <profile-menu
         class="tooltip bottom delayed"
         v-bind="profile"
