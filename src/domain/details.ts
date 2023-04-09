@@ -28,7 +28,7 @@ interface Details {
   color?: string;
   title?: string;
   description?: string;
-  icon: string;
+  icon?: string;
   uri?: string;
 }
 

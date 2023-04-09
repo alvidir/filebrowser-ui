@@ -4,6 +4,10 @@ import { ref } from "vue";
 
 const hiddenFilePrefix = ".";
 
+interface NestedFile {
+  file: FileData;
+}
+
 enum Sort {
   Az = "az",
   Za = "za",
@@ -30,7 +34,7 @@ export const useFilterStore = defineStore("filter", () => {
     return sortStrategy.value(a, b);
   };
 
-  const filter = (files: Array<FileData>): Array<FileData> => {
+  const filterFiles = (files: Array<FileData>): Array<FileData> => {
     if (!showHiddenFiles.value) {
       files = files.filter((file) => !isHiddenFile(file));
     }
@@ -38,5 +42,15 @@ export const useFilterStore = defineStore("filter", () => {
     return files.sort(sortDecorator);
   };
 
-  return { filter };
+  const filterByFile = <T extends NestedFile>(subjects: Array<T>): Array<T> => {
+    if (!showHiddenFiles.value) {
+      subjects = subjects.filter((subject) => !isHiddenFile(subject.file));
+    }
+
+    return subjects.sort((a: T, b: T): number => {
+      return sortDecorator(a.file, b.file);
+    });
+  };
+
+  return { filterFiles, filterByFile };
 });

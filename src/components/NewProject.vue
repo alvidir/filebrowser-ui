@@ -46,6 +46,7 @@ const onClick = (app: App) => {
   const index = pending.push(file);
   directoryStore.createFile(file)?.then(() => {
     pending.splice(index - 1, 1);
+    directoryStore.openfile(file);
   });
 };
 

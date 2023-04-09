@@ -1,5 +1,6 @@
 {
-  "FILEBROWSER_SERVER_URI": "http://localhost:8080",
+  "FILEBROWSER_BASE_URI": "http://localhost:8080",
+  "AUTH_BASE_URI": "http://auth.alvidir.com",
   "AGORA_BASE_URI": "https://agora.alvidir.com",
   "ALVIDIR_BASE_URI": "https://alvidir.com",
   "ALVIDIR_VERSION": "alpha",

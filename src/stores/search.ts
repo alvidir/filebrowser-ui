@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { reactive, computed, inject } from "vue";
 import { useWarningStore } from "@/stores/warning";
+import { useFilterStore } from "@/stores/filter";
 import Warning from "@/domain/warning";
 import SearchMatch from "@/domain/search";
 
@@ -11,6 +12,7 @@ interface FilebrowserClient {
 export const useSearchStore = defineStore("search", () => {
   const filebrowserClient = inject<FilebrowserClient>("filebrowserClient");
   const warningStore = useWarningStore();
+  const filterStore = useFilterStore();
 
   const _items = reactive(new Array<SearchMatch>());
 
@@ -27,6 +29,7 @@ export const useSearchStore = defineStore("search", () => {
     filebrowserClient
       .searchFile(search)
       .then((matches) => {
+        matches = filterStore.filterByFile(matches);
         _items.splice(0, _items.length, ...matches);
       })
       .catch((error: Warning) => {
