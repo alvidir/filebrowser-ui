@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: build_project
-    if: if: |
+    if: |
       github.ref == 'refs/heads/main' &&
       contains(github.event.head_commit.message, 'Release')
 
