@@ -38,10 +38,10 @@ clean:
 	@rm -rf src/proto
 
 clean-images:
-	@podman image rm alvidir/$(BINARY_NAME):latest
+	@podman image rm alvidir/$(BINARY_NAME):$(VERSION)
 
 deploy:
-	podman run -p 8080:80 --name $(BINARY_NAME) --env-file .env localhost/alvidir/$(BINARY_NAME):latest
+	podman run -p 8080:80 --name $(BINARY_NAME) --env-file .env localhost/alvidir/$(BINARY_NAME):$(VERSION)
 
 undeploy:
 	podman stop $(BINARY_NAME)
