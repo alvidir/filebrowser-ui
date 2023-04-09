@@ -12,7 +12,7 @@ dist: protobuf
 images:
 	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):$(VERSION) -f ./container/$(BINARY_NAME)/containerfile .
 
-push-images: tags
+push-images:
 	@podman push alvidir/$(BINARY_NAME):$(VERSION)
 
 protobuf: install-deps
