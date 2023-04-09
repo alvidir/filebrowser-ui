@@ -13,7 +13,7 @@ import {
 import { FileServiceClient } from "@/proto/FileServiceClientPb";
 import { File as ProtoFile, Metadata as ProtoMetadata } from "@/proto/file_pb";
 import join from "url-join";
-import Path, { pathSeparator } from "@/domain/path";
+import Path from "@/domain/path";
 import SearchMatch from "@/domain/search";
 
 type Headers = { [key: string]: string };

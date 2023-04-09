@@ -83,7 +83,7 @@ a {
   flex-direction: row;
   align-items: center;
   text-decoration: none;
-  padding: $fib-3 * 1px $fib-4 * 1px;
+  padding: $fib-6 * 1px $fib-5 * 1px;
 
   & > i {
     font-size: large;

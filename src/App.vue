@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { provide } from "vue";
+import { provide, ref } from "vue";
 import Profile from "vue-menus/src/profile";
-import Filebrowser from "@/services/filebrowser";
+import FilebrowserRpc from "@/services/filebrowser.rpc";
+import FilebrowserRest from "@/services/filebrowser.rest";
 import WarningList from "@/components/WarningList.vue";
+import Warning, { Error } from "@/domain/warning";
+import { useWarningStore } from "@/stores/warning";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
@@ -10,23 +13,41 @@ import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import config from "@/config.json";
 import App from "@/domain/app";
+import urlJoin from "url-join";
 
-const filebrowserClient = new Filebrowser(
-  config.FILEBROWSER_SERVER_URI,
-  process.env.NODE_ENV === "development" ? { "X-Uid": "1" } : {}
-);
+const development = process.env.NODE_ENV === "development";
 
-provide("filebrowserClient", filebrowserClient);
+const headers: { [key: string]: string } = development ? { "X-Uid": "1" } : {};
 
-const profile = new Profile("", "");
-profile.setStorageDomain(config.ALVIDIR_BASE_URI);
-provide("profile", profile);
+const rpcUrl = development
+  ? config.FILEBROWSER_BASE_URI
+  : urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
+
+const restUrl = development
+  ? config.FILEBROWSER_BASE_URI
+  : urlJoin(config.FILEBROWSER_BASE_URI, "rest");
+
+const filebrowserRpcClient = new FilebrowserRpc(rpcUrl, headers);
+provide("filebrowserClient", filebrowserRpcClient);
+
+const profile = ref<Profile>(new Profile("", ""));
+const filebrowserRestClient = new FilebrowserRest(restUrl, headers);
+filebrowserRestClient
+  .getProfile()
+  .then((data) => {
+    profile.value = data;
+  })
+  .catch(() => {
+    const warningStore = useWarningStore();
+    warningStore.push(Warning.find(Error.ErrFetchingProfile));
+  });
 </script>
 
 <template>
   <sidenav-menu
     :logo="config.ALVIDIR_LOGO_URI"
     :apps="App.all()"
+    :profile="profile"
   ></sidenav-menu>
   <warning-list></warning-list>
   <div id="main">

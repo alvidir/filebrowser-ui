@@ -27,7 +27,7 @@ const parentdir = new FileData("", parentDirName, "");
 
 const files = computed((): Array<FileData> => {
   const baseFiles = directoryStore.path === pathSeparator ? [] : [parentdir];
-  const dirFiles = filterStore.filter(directoryStore.files ?? []);
+  const dirFiles = filterStore.filterFiles(directoryStore.files ?? []);
   return baseFiles.concat(dirFiles);
 });
 
@@ -115,12 +115,7 @@ const isDraggable = (item: FileData): boolean => {
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
-        <tr
-          v-if="
-            directoryStore.path === pathSeparator &&
-            !directoryStore.files.length
-          "
-        >
+        <tr v-if="directoryStore.path === pathSeparator && !files.length">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>Nothing to display</strong>

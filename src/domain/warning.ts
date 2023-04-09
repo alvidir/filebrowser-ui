@@ -1,4 +1,5 @@
 enum Error {
+  // Server errors
   ErrUnknown = "E001",
   ErrNotFound = "E002",
   ErrNotAvailable = "E003",
@@ -8,6 +9,8 @@ enum Error {
   ErrInvalidHeader = "E007",
   ErrWrongCredentials = "E008",
   ErrRegexNotMatch = "E009",
+  // Local errors
+  ErrFetchingProfile = "FETCHING_PROFILE",
 }
 
 interface WarningProps {
@@ -55,6 +58,11 @@ const warnings: { [key: string]: WarningProps } = {
     text: "We could not identify you. Make sure all your credentials are well written.",
     level: "error",
   },
+  [Error.ErrFetchingProfile]: {
+    title: "Couldn't load your profile",
+    text: "We could not load your profile's data. Please try again.",
+    level: "error",
+  },
 };
 
 class Warning {
@@ -76,3 +84,4 @@ class Warning {
 }
 
 export default Warning;
+export { Error };

@@ -1,4 +1,5 @@
 BINARY_NAME=filebrowser-ui
+VERSION?=latest
 PKG_MANAGER?=dnf
 
 all: dist
@@ -9,7 +10,10 @@ dist: protobuf
 	npm i && npm run build
 
 images:
-	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):latest -f ./container/$(BINARY_NAME)/containerfile .
+	@podman build --no-cache --security-opt label=disable -t alvidir/$(BINARY_NAME):$(VERSION) -f ./container/$(BINARY_NAME)/containerfile .
+
+push-images: tags
+	@podman push alvidir/$(BINARY_NAME):$(VERSION)
 
 protobuf: install-deps
 	@protoc -I=. proto/*.proto \
