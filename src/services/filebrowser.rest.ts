@@ -1,4 +1,5 @@
 import Profile from "vue-menus/src/profile";
+import urlJoin from "url-join";
 
 type Headers = { [key: string]: string };
 
@@ -12,7 +13,8 @@ class FilebrowserClient {
   }
 
   getProfile = async (): Promise<Profile> => {
-    return fetch(this.url).then((data) =>
+    const profileUri = urlJoin(this.url, "profile");
+    return fetch(profileUri).then((data) =>
       Object.assign(new Profile("", ""), data)
     );
   };
