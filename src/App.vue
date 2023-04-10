@@ -30,7 +30,7 @@ const restUrl = development
 const filebrowserRpcClient = new FilebrowserRpc(rpcUrl, headers);
 provide("filebrowserClient", filebrowserRpcClient);
 
-const profile = ref<Profile>(new Profile("", ""));
+const profile = ref<Profile>(new Profile(""));
 const filebrowserRestClient = new FilebrowserRest(restUrl, headers);
 filebrowserRestClient
   .getProfile()

@@ -14,9 +14,11 @@ class FilebrowserClient {
 
   getProfile = async (): Promise<Profile> => {
     const profileUri = urlJoin(this.url, "profile");
-    return fetch(profileUri).then((data) =>
-      Object.assign(new Profile("", ""), data)
-    );
+    return fetch(profileUri)
+      .then((response) => response.json())
+      .then((data) => {
+        return Object.assign(new Profile(""), data);
+      });
   };
 }
 
