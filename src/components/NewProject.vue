@@ -1,47 +1,40 @@
 <script setup lang="ts">
 import { defineProps, ref, reactive, computed } from "vue";
 import PulseLoader from "vue-spinner/src/PulseLoader.vue";
-import App from "@/domain/app";
-import FileData from "@/domain/file";
-import Path, { pathSeparator, rootDirName } from "@/domain/path";
+import { Tool } from "@/tool";
+import { File } from "@/file";
+import * as path from "@/path";
 import ActionHeader from "@/components/ActionHeader.vue";
-import { useDirectoryStore } from "@/stores/directory";
-
-const directoryStore = useDirectoryStore();
 
 interface Props {
-  apps: Array<App>;
+  tools: Array<Tool>;
+  pathname: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const active = ref(false);
-const pending = reactive(new Array<FileData>());
+const pending = reactive(new Array<File>());
 
 const href = computed((): string => {
-  return Path.sanatize(directoryStore.path ?? "");
-});
-
-const pathname = computed((): string => {
-  if (directoryStore.path === pathSeparator) return rootDirName;
-  else return directoryStore.path ?? "";
+  return path.sanatize(props.pathname);
 });
 
 const capitalize = (word: string) => {
   return word[0].toUpperCase() + word.substring(1).toLowerCase();
 };
 
-const isPending = (app: App) => {
+const isPending = (tool: Tool) => {
   return pending.some((file) => {
-    return file.app() == app;
+    return file.tool() == tool;
   });
 };
 
-const onClick = (app: App) => {
+const onClick = (tool: Tool) => {
   if (!directoryStore) return;
 
   const file = new FileData("", "", directoryStore.path);
-  file.setApp(app);
+  file.setTool(tool);
 
   const index = pending.push(file);
   directoryStore.createFile(file)?.then(() => {
@@ -71,28 +64,28 @@ const close = () => {
           title="Start building your new project"
           title-color="var(--color-accent)"
           subtitle="It will be created at"
-          :path="pathname"
+          :pathname="pathname"
           :href="href"
           icon="bx bxs-bulb"
         ></action-header>
       </template>
-      <div class="apps">
+      <div class="tools">
         <button
-          v-for="app in apps"
-          :key="app.name"
-          :disabled="isPending(app)"
-          class="app"
-          @click="onClick(app)"
+          v-for="tool in tools"
+          :key="tool.name"
+          :disabled="isPending(tool)"
+          class="tool"
+          @click="onClick(tool)"
         >
-          <i v-if="!isPending(app)" :class="app.icon" :alt="app.name"></i>
+          <i v-if="!isPending(tool)" :class="tool.icon" :alt="tool.name"></i>
           <pulse-loader
-            v-if="isPending(app)"
+            v-if="isPending(tool)"
             class="loader"
             color="var(--color-border-active)"
             :size="'8px'"
             :radius="'5px'"
           ></pulse-loader>
-          <span>{{ capitalize(app.name) }}</span>
+          <span>{{ capitalize(tool.name) }}</span>
         </button>
       </div>
     </regular-card>
@@ -106,14 +99,14 @@ const close = () => {
 .new-project-dialog {
   position: relative;
 
-  .apps {
+  .tools {
     display: grid;
     position: relative;
     grid-template-columns: repeat(3, 1fr);
     grid-gap: $fib-6 * 1px;
   }
 
-  button.app {
+  button.tool {
     @extend .round-corners;
 
     display: flex;

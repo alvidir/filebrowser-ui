@@ -1,52 +1,35 @@
 <script setup lang="ts">
-import { provide, ref } from "vue";
+import { ref } from "vue";
 import Profile from "vue-menus/src/profile";
-import FilebrowserRpc from "@/services/filebrowser.rpc";
-import FilebrowserRest from "@/services/filebrowser.rest";
+import { getProfile } from "@/services/filebrowser.rest";
 import WarningList from "@/components/WarningList.vue";
-import Warning, { Error } from "@/domain/warning";
 import { useWarningStore } from "@/stores/warning";
+import { Code, getWarning } from "./warning";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import config from "@/config.json";
-import App from "@/domain/app";
-import urlJoin from "url-join";
+import { tools } from "@/tool";
 
-const development = process.env.NODE_ENV === "development";
-
-const headers: { [key: string]: string } = development ? { "X-Uid": "1" } : {};
-
-const rpcUrl = development
-  ? config.FILEBROWSER_BASE_URI
-  : urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
-
-const restUrl = development
-  ? config.FILEBROWSER_BASE_URI
-  : urlJoin(config.FILEBROWSER_BASE_URI, "rest");
-
-const filebrowserRpcClient = new FilebrowserRpc(rpcUrl, headers);
-provide("filebrowserClient", filebrowserRpcClient);
-
+const warningStore = useWarningStore();
 const profile = ref<Profile>(new Profile(""));
-const filebrowserRestClient = new FilebrowserRest(restUrl, headers);
-filebrowserRestClient
-  .getProfile()
+getProfile()
   .then((data) => {
     profile.value = data;
   })
   .catch(() => {
-    const warningStore = useWarningStore();
-    warningStore.push(Warning.find(Error.ErrFetchingProfile));
+    warningStore.push(getWarning(Code.ErrFetchingProfile));
   });
+
+const pathname = ref(window.location.pathname);
 </script>
 
 <template>
   <sidenav-menu
     :logo="config.ALVIDIR_LOGO_URI"
-    :apps="App.all()"
+    :tools="tools"
     :profile="profile"
   ></sidenav-menu>
   <warning-list></warning-list>
@@ -54,11 +37,12 @@ filebrowserRestClient
     <div id="actions">
       <file-search />
       <span id="action-buttons">
-        <new-project class="action" :apps="App.all()"> </new-project>
-        <new-folder class="action"></new-folder>
+        <new-project :pathname="pathname" class="action" :tools="tools">
+        </new-project>
+        <new-folder :pathname="pathname" class="action"> </new-folder>
       </span>
     </div>
-    <dir-list />
+    <dir-list :pathname="pathname" />
   </div>
 </template>
 

@@ -1,16 +1,48 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useSearchStore } from "@/stores/search";
-
-import SearchItem from "@/components/SearchMatch.vue";
+import { ref, reactive } from "vue";
 import { Field } from "vue-fields/src/types";
+import { useWarningStore } from "@/stores/warning";
+import { getFilesFilter } from "@/filter";
+import { File, FileMatch } from "@/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import { Warning } from "@/warning";
 
-const searchStore = useSearchStore();
+const warningStore = useWarningStore();
 const searchfield = ref<Field | undefined>(undefined);
 
+const matches = reactive(new Array<FileMatch>());
+
+const search = (search: string) => {
+  if (!search) {
+    matches.splice(0);
+    return;
+  }
+
+  rpc
+    .searchFile(search)
+    .then((items) => {
+      const matchByFileId = new Map<string, FileMatch>();
+      items.forEach((match: FileMatch) => {
+        matchByFileId.set(match.file.id, match);
+      });
+
+      const filteredMatches = getFilesFilter()(
+        items.map((match) => match.file)
+      ).map(
+        (file: File) =>
+          matchByFileId.get(file.id) ??
+          ({ file: file, start: 0, end: 0 } as FileMatch)
+      );
+
+      matches.splice(0, filteredMatches.length, ...filteredMatches);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    });
+};
+
 const onSearchInput = () => {
-  const search = searchfield.value?.text().trim();
-  searchStore.search(search ?? "");
+  search(searchfield.value?.text().trim() ?? "");
 };
 </script>
 
@@ -20,7 +52,7 @@ const onSearchInput = () => {
     id="search-field"
     placeholder="Search"
     ref="searchfield"
-    :items="searchStore.items"
+    :items="matches"
     :debounce="300"
     :large="true"
     @input="onSearchInput"

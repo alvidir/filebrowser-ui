@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, computed, ref, reactive, nextTick, toRef } from "vue";
+import { defineProps, computed, ref, reactive, nextTick } from "vue";
 import FileTag from "@/components/FileTag.vue";
 import FileData, { metadataSizeKey } from "@/domain/file";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";

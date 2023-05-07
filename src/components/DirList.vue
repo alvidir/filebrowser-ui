@@ -1,31 +1,22 @@
 <script setup lang="ts">
-import { reactive, defineProps, withDefaults, computed } from "vue";
+import { reactive, defineProps, computed } from "vue";
 import FileRow from "@/components/FileRow.vue";
-import FileData, { parentDirName } from "@/domain/file";
-import { pathSeparator, rootDirName } from "@/domain/path";
-import Tag, { Tags } from "@/domain/tag";
-import { useDirectoryStore } from "@/stores/directory";
-import { useFilterStore } from "@/stores/filter";
-
-const directoryStore = useDirectoryStore();
-const filterStore = useFilterStore();
+import { File } from "@/file";
+import * as path from "@/path";
+import { Tag, tags, getTag } from "@/tag";
 
 interface Props {
-  maxDirsLength?: number;
+  pathname: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  maxDirsLength: 55,
-});
+const props = defineProps<Props>();
 
 const drag = reactive({
-  source: undefined as FileData | undefined,
-  target: undefined as FileData | undefined,
+  source: undefined as number | undefined,
+  target: undefined as number | undefined,
 });
 
-const parentdir = new FileData("", parentDirName, "");
-
-const files = computed((): Array<FileData> => {
+const files = computed((): Array<File> => {
   const baseFiles = directoryStore.path === pathSeparator ? [] : [parentdir];
   const dirFiles = filterStore.filterFiles(directoryStore.files ?? []);
   return baseFiles.concat(dirFiles);

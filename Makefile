@@ -2,7 +2,7 @@ BINARY_NAME=filebrowser-ui
 VERSION?=latest
 PKG_MANAGER?=dnf
 
-all: dist
+.DEFAULT_GOAL := dist
 
 dist: protobuf
 	@wget --no-check-certificate https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O ./bin/jq &&	chmod +x ./bin/jq

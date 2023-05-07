@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import { defineProps, computed } from "vue";
-import { maxFilenameLen } from "@/domain/file";
 
 interface Props {
-  title?: string;
-  titleColor?: string;
-  subtitle?: string;
-  path?: string;
-  href?: string;
-  icon?: string;
+  title: string;
+  titleColor: string;
+  subtitle: string;
+  pathname: string;
+  href: string;
+  icon: string;
 }
 
 const props = defineProps<Props>();
-const adjustedPath = computed((): string | undefined => {
-  if (!props.path || props.path.length <= maxFilenameLen) {
-    return props.path;
+
+const maxPathnameLen = 34;
+const shortenedPathname = computed((): string | undefined => {
+  if (!props.pathname || props.pathname.length <= maxPathnameLen) {
+    return props.pathname;
   }
 
-  const short = props.path.slice(-maxFilenameLen);
+  const short = props.pathname.slice(-maxPathnameLen);
   return `\u2026${short}`;
 });
 </script>
@@ -29,7 +30,7 @@ const adjustedPath = computed((): string | undefined => {
   </span>
   <small v-if="subtitle" class="subtitle">
     {{ subtitle }}
-    <a :href="href" target="_blank">{{ adjustedPath }}</a>
+    <a :href="href" target="_blank">{{ shortenedPathname }}</a>
   </small>
 </template>
 

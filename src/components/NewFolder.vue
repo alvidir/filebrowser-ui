@@ -79,7 +79,7 @@ const submit = () => {
         <action-header
           title="Add a new folder"
           subtitle="It will be created at"
-          :path="pathname"
+          :pathname="pathname"
           :href="href"
           icon="bx bxs-folder-plus"
         ></action-header>
