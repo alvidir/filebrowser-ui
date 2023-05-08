@@ -53,7 +53,7 @@ const join = (...items: Array<string>): string => {
 const display = (path: string): string => {
   path = underscoresToSpaces(sanatize(path));
   if (path === pathSeparator) return rootDirName;
-  return path;
+  return urlJoin(rootDirName, path);
 };
 
 export { sanatize, asDirectory, join, display, clean };

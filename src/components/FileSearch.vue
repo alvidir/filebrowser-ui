@@ -7,6 +7,12 @@ import { File, FileMatch } from "@/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
 
+interface Events {
+  (e: "open", file: File, payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
+
 const warningStore = useWarningStore();
 const searchfield = ref<Field | undefined>(undefined);
 
@@ -44,6 +50,10 @@ const search = (search: string) => {
 const onSearchInput = () => {
   search(searchfield.value?.text().trim() ?? "");
 };
+
+const open = (file: File, event: MouseEvent) => {
+  emit("open", file, event);
+};
 </script>
 
 <template>
@@ -57,7 +67,7 @@ const onSearchInput = () => {
     :large="true"
     @input="onSearchInput"
   >
-    <search-item :match="props.item"></search-item>
+    <search-item v-bind="props.item" @open="open"></search-item>
   </search-field>
 </template>
 

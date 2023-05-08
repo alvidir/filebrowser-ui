@@ -2,7 +2,7 @@
 import { defineProps } from "vue";
 
 interface Props {
-  name?: string;
+  name: string;
   title?: string;
   description?: string;
   icon?: string;

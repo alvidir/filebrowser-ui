@@ -1,86 +1,98 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from "vue";
+import { ref, computed, nextTick, ErrorCodes } from "vue";
 import { Field } from "vue-fields/src/types";
-import FileData, { Flag } from "@/domain/file";
-import Path, { pathSeparator } from "@/domain/path";
-import { rootDirName } from "@/domain/path";
+import { File, checkFilename, intoDirectory } from "@/file";
+import { useFileStore } from "@/stores/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import { Warning } from "@/warning";
+import { useWarningStore } from "@/stores/warning";
 import ActionHeader from "@/components/ActionHeader.vue";
-import { useDirectoryStore } from "@/stores/directory";
 
-const directoryStore = useDirectoryStore();
+const fileStore = useFileStore();
+const warningStore = useWarningStore();
+
+interface Props {
+  pathname: string;
+}
+
+const props = defineProps<Props>();
 
 const active = ref(false);
 const valid = ref(false);
-const error = ref("");
-
-const href = computed((): string => {
-  return Path.sanatize(directoryStore.path ?? "");
-});
-
-const pathname = computed((): string => {
-  if (directoryStore.path === pathSeparator) return rootDirName;
-  else return directoryStore.path ?? "";
-});
+const error = ref<string | undefined>();
+const fetching = ref(false);
 
 const foldername = ref<Field | undefined>(undefined);
-const open = () => {
+
+const activate = () => {
   active.value = true;
   nextTick(() => foldername.value?.focus());
 };
 
 const onInput = () => {
+  valid.value = false;
+
   const name = foldername.value?.text() ?? "";
-  valid.value = isValidFilename(name);
+  error.value = fileStore.check(props.pathname, name);
+
+  valid.value = !error.value;
 };
 
-const isValidFilename = (name: string): boolean => {
-  error.value = FileData.checkName(name) ?? "";
-  if (!error.value && directoryStore.exists(name)) {
-    error.value = "This filename already exists";
-  }
-
-  return !error.value;
-};
-
-const close = () => {
+const cancel = () => {
   foldername.value?.clear();
   foldername.value?.blur();
 
   active.value = false;
   valid.value = false;
-  error.value = "";
+  error.value = undefined;
 };
 
 const submit = () => {
-  const name = foldername.value?.text() ?? "";
-  close();
+  if (!valid) return;
+  fetching.value = true;
 
-  if (!isValidFilename(name)) return;
-  const file = new FileData("", name, directoryStore.path);
-  file.flags |= Flag.Directory;
-  file.new = true;
-
-  directoryStore.files.push(file);
+  rpc
+    .createFile(
+      intoDirectory({
+        id: "",
+        name: foldername.value?.text() ?? "",
+        directory: props.pathname,
+        metadata: new Map(),
+        permissions: new Map(),
+        flags: 0,
+        isNew: true,
+      })
+    )
+    .then((file: File) => {
+      fileStore.addFile(file);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+      cancel();
+    });
 };
 </script>
 
 <template>
   <div
     class="new-folder-dialog"
-    v-click-outside="close"
+    v-click-outside="cancel"
     @keydown.enter="submit"
   >
-    <regular-button :active="active" @click="open">
+    <regular-button :active="active" @click="activate">
       <i class="bx bxs-folder-plus"></i>
       New folder
     </regular-button>
-    <regular-card :class="{ active: active }" @close="close" closable>
+    <regular-card :class="{ active: active }" @close="cancel" closable>
       <template #header>
         <action-header
           title="Add a new folder"
           subtitle="It will be created at"
           :pathname="pathname"
-          :href="href"
+          :href="pathname"
           icon="bx bxs-folder-plus"
         ></action-header>
       </template>
@@ -88,11 +100,12 @@ const submit = () => {
         ref="foldername"
         placeholder="folder name"
         :error="error"
+        :disabled="fetching"
         @input="onInput"
         large
       ></regular-field>
       <template #footer>
-        <submit-button :disabled="!valid" @submit="submit">
+        <submit-button :disabled="!valid" :loading="fetching" @submit="submit">
           Create
         </submit-button>
       </template>

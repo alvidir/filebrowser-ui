@@ -47,22 +47,22 @@ const onDragMode = computed((): boolean => {
   return !!drag.source;
 });
 
-const belongsToDrag = (item: FileData) => {
+const belongsToDrag = (item: File) => {
   return drag.source?.name === item.name || drag.target?.name === item.name;
 };
 
-const onDragStart = (item: FileData) => {
+const onDragStart = (item: File) => {
   drag.source = item;
   drag.target = undefined;
 };
 
-const onDragExit = (item: FileData, event: DragEvent) => {
+const onDragExit = (item: File, event: DragEvent) => {
   if (item.name === drag.target?.name && event.buttons) {
     drag.target = undefined;
   }
 };
 
-const onDragEnter = (item: FileData) => {
+const onDragEnter = (item: File) => {
   if (item.name !== drag.source?.name && item.isDirectory()) {
     drag.target = item;
   }
@@ -82,7 +82,7 @@ const onDirectoryClick = (index: number) => {
   if (delta) directoryStore.changeDirectory(-delta);
 };
 
-const isDraggable = (item: FileData): boolean => {
+const isDraggable = (item: File): boolean => {
   return (
     item.name !== parentDirName &&
     !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)

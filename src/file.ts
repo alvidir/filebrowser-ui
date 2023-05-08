@@ -17,7 +17,6 @@ const maxFilenameLen = 34;
 
 enum Flag {
   Directory = 0x01,
-  New = 0b10000000,
 }
 
 interface Permissions {
@@ -33,6 +32,7 @@ interface File {
   metadata: Map<string, string>;
   permissions: Map<number, Permissions>;
   flags: number;
+  isNew?: boolean;
 }
 
 interface FileMatch {
@@ -40,6 +40,11 @@ interface FileMatch {
   start: number;
   end: number;
 }
+
+const intoDirectory = (file: File): File => {
+  file.flags |= Flag.Directory;
+  return file;
+};
 
 const checkFilename = (name: string): string | undefined => {
   if (!name) {
@@ -90,6 +95,7 @@ export {
   FileMatch,
   Permissions,
   Flag,
+  intoDirectory,
   checkFilename,
   isDirectory,
   getPath,

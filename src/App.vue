@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import Profile from "vue-menus/src/profile";
 import { getProfile } from "@/services/filebrowser.rest";
 import WarningList from "@/components/WarningList.vue";
@@ -12,9 +12,17 @@ import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import config from "@/config.json";
 import { tools } from "@/tool";
+import { File, getPath, getUrl, isDirectory } from "./file";
+import { useFileStore } from "./stores/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import { Warning } from "@/warning";
 
+const fileStore = useFileStore();
 const warningStore = useWarningStore();
+
 const profile = ref<Profile>(new Profile(""));
+const fetching = ref(false);
+
 getProfile()
   .then((data) => {
     profile.value = data;
@@ -24,6 +32,28 @@ getProfile()
   });
 
 const pathname = ref(window.location.pathname);
+
+watch(pathname, (dir: string) => {
+  if (fileStore.getDirectory(dir)) return;
+  fetching.value = true;
+
+  rpc
+    .getDirectory(dir)
+    .then((files: Array<File>) => {
+      files.forEach((file) => fileStore.addFile(file));
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+    });
+});
+
+const open = (file: File) => {
+  if (isDirectory(file)) pathname.value = getPath(file);
+  else window.open(getUrl(file), "_blank");
+};
 </script>
 
 <template>
@@ -35,9 +65,9 @@ const pathname = ref(window.location.pathname);
   <warning-list></warning-list>
   <div id="main">
     <div id="actions">
-      <file-search />
+      <file-search @open="open" />
       <span id="action-buttons">
-        <new-project :pathname="pathname" class="action" :tools="tools">
+        <new-project :tools="tools" :pathname="pathname" class="action">
         </new-project>
         <new-folder :pathname="pathname" class="action"> </new-folder>
       </span>

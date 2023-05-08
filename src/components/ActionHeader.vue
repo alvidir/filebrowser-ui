@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { defineProps, computed } from "vue";
+import * as path from "@/path";
 
 interface Props {
   title: string;
-  titleColor: string;
+  color?: string;
   subtitle: string;
   pathname: string;
   href: string;
@@ -14,8 +15,9 @@ const props = defineProps<Props>();
 
 const maxPathnameLen = 34;
 const shortenedPathname = computed((): string | undefined => {
-  if (!props.pathname || props.pathname.length <= maxPathnameLen) {
-    return props.pathname;
+  const pathname = path.display(props.pathname);
+  if (!pathname || pathname.length <= maxPathnameLen) {
+    return pathname;
   }
 
   const short = props.pathname.slice(-maxPathnameLen);
@@ -43,6 +45,6 @@ i {
 }
 
 .title {
-  color: v-bind(titleColor);
+  color: v-bind(color);
 }
 </style>

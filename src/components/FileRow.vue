@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { defineProps, computed, ref, reactive, nextTick } from "vue";
-import FileTag from "@/components/FileTag.vue";
-import FileData, { metadataSizeKey } from "@/domain/file";
+import { File, getSize, getUrl, isDirectory } from "@/file";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
-import { useDirectoryStore } from "@/stores/directory";
+import FileTag from "@/components/FileTag.vue";
+import { useFileStore } from "@/stores/file";
 
-const directoryStore = useDirectoryStore();
-
-const secondsPerMinute = 60;
-const secondsPerHour = 60 * secondsPerMinute;
-const secondsPerDay = 24 * secondsPerHour;
-const secondsPerMonth = 30 * secondsPerDay;
-const secondsPerYear = 365 * secondsPerDay;
+const fileStore = useFileStore();
 
 interface Props {
-  file: FileData;
+  file: File;
+  pathname: string;
   highlight?: boolean;
   reveal?: boolean;
   noHover?: boolean;
@@ -22,141 +17,78 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const fetching = ref(false);
 const showCtxMenu = ref(false);
 const showDialog = ref(false);
-const renameProps = reactive({
+const renameData = reactive({
   active: false,
-  value: "",
   error: "",
+  value: "",
 });
 
-const href = computed((): string => {
-  if (props.file.isDirectory()) return "#";
-  return props.file.url() ?? "#";
+const href = computed((): string | undefined => {
+  if (isDirectory(props.file)) return;
+  return getUrl(props.file);
 });
 
 const target = computed((): string | undefined => {
-  if (props.file.isDirectory()) return;
+  if (isDirectory(props.file)) return;
   return "_blank";
 });
 
-const elapsedTime = computed((): string | undefined => {
-  if (props.file.isParentDirectory()) return;
-
-  const updatedAt = props.file.updatedAt()?.getTime();
-  if (updatedAt === undefined) return;
-
-  const now = new Date().getTime();
-  const seconds = (now - updatedAt) / 1000;
-
-  if (seconds < 20) {
-    return "just now";
-  }
-
-  if (seconds < secondsPerMinute) {
-    return "few seconds ago";
-  }
-
-  const scaleTime = (scale: number): number => {
-    return Math.floor(seconds / scale);
-  };
-
-  if (seconds < secondsPerHour) {
-    const total = scaleTime(secondsPerMinute);
-    return `${total} minute${total > 1 ? "s" : ""} ago`;
-  }
-
-  if (seconds < secondsPerDay) {
-    const total = scaleTime(secondsPerHour);
-    return `${total} hour${total > 1 ? "s" : ""} ago`;
-  }
-
-  if (seconds < secondsPerMonth) {
-    const total = scaleTime(secondsPerDay);
-    return `${total} day${total > 1 ? "s" : ""} ago`;
-  }
-
-  if (seconds < secondsPerYear) {
-    const total = scaleTime(secondsPerMonth);
-    return `${total} month${total > 1 ? "s" : ""} ago`;
-  }
-
-  const total = scaleTime(secondsPerYear);
-  return `${total} year${total > 1 ? "s" : ""} ago`;
+const contentSize = computed((): string => {
+  const size = getSize(props.file) ?? 0;
+  return `${size} ${!size || size > 1 ? "items" : "item"}`;
 });
 
-const printContentSize = (): string | undefined => {
-  if (props.file.isParentDirectory()) return;
+const renameInput = ref<HTMLInputElement | undefined>(undefined);
 
-  const size = +(props.file.metadata.get(metadataSizeKey) ?? "0");
-  return `${size} ${!size || size > 1 ? "items" : "item"}`;
+const activeRename = () => {
+  renameData.active = true;
+  nextTick(() => renameInput.value?.focus());
 };
 
-const open = (force = false) => {
-  if (!force && !props.file.isDirectory()) return;
-  directoryStore.openfile(props.file);
+const onRenameInput = () => {
+  const name = renameData.value;
+  renameData.error = fileStore.check(props.pathname, name) ?? "";
 };
 
-const checkRenameValue = () => {
-  isValidFilename(renameProps.value);
+const submitRename = () => {
+  if (renameData.error) return;
+  cancelRename();
 };
 
-const rename = ref<HTMLInputElement | undefined>(undefined);
-const onStartRename = () => {
-  renameProps.active = true;
-  nextTick(() => rename.value?.focus());
-};
-
-const onSubmitRename = () => {
-  const renameValue = renameProps.value;
-  if (isValidFilename(renameValue)) {
-    directoryStore.renameFile(props.file, renameValue);
-  }
-
-  resetRename();
-};
-
-const isValidFilename = (name: string): boolean => {
-  renameProps.error = FileData.checkName(name) ?? "";
-  if (!renameProps.error && directoryStore.exists(name)) {
-    renameProps.error = "This filename already exists";
-  }
-
-  return !renameProps.error;
-};
-
-const resetRename = () => {
-  renameProps.active = false;
-  renameProps.value = "";
-  renameProps.error = "";
+const cancelRename = () => {
+  renameData.active = false;
+  renameData.value = "";
+  renameData.error = "";
 };
 
 const onOpenContextMenu = () => {
-  if (props.file.isParentDirectory()) return;
   showCtxMenu.value = true;
 };
 
-const onCloseContextMenu = () => {
+const closeContextMenu = () => {
   showCtxMenu.value = false;
 };
 
 const onClickContextMenu = (action: string) => {
   const actions: { [key: string]: () => void } = {
     delete: () => (showDialog.value = true),
-    rename: () => onStartRename(),
+    rename: () => activeRename(),
     open: () => open(true),
   };
 
   actions[action]();
-  onCloseContextMenu();
+  closeContextMenu();
 };
 
-const onSubmitDeletion = () => {
+const submitDeletion = () => {
   directoryStore.deleteFile(props.file);
-  onCancelDeletion();
+  cancelDeletion();
 };
 
-const onCancelDeletion = () => {
+const cancelDeletion = () => {
   showDialog.value = false;
 };
 </script>
@@ -164,40 +96,32 @@ const onCancelDeletion = () => {
 <template>
   <tr
     :class="{
-      highlight: highlight || renameProps.active,
-      'parent-dir': file.isParentDirectory(),
+      highlight: highlight || renameData.active,
       'no-hover': noHover,
-      reveal: file.new,
+      reveal: file.isNew,
     }"
-    @click="file.isParentDirectory() && open()"
     @mouseup.right="onOpenContextMenu()"
     @contextmenu.prevent
   >
-    <td class="filename" :class="{ error: renameProps.error }">
-      <i v-if="file.isParentDirectory()" class="bx bx-arrow-back"></i>
-      <i v-else-if="file.isDirectory()" class="bx bxs-folder"></i>
+    <td class="filename" :class="{ error: renameData.error }">
+      <i v-if="isDirectory(file)" class="bx bxs-folder"></i>
       <i v-else class="bx bx-file-blank"></i>
-      <a
-        v-if="!renameProps.active && !file.isParentDirectory()"
-        :href="href"
-        :target="target"
-        @click="open()"
-      >
+      <input
+        ref="renameInput"
+        v-if="renameData.active"
+        v-model="renameData.value"
+        :placeholder="file.name"
+        @keydown.enter="submitRename"
+        @keydown.esc="cancelRename"
+        @input="onRenameInput"
+        @blur="cancelRename"
+      />
+      <a v-else :href="href" :target="target" @click="open()">
         {{ file.name }}
       </a>
-      <input
-        ref="rename"
-        v-show="!file.isParentDirectory() && renameProps.active"
-        v-model="renameProps.value"
-        :placeholder="file.name"
-        @keydown.enter="onSubmitRename"
-        @keydown.esc="resetRename"
-        @input="checkRenameValue"
-        @blur="resetRename"
-      />
 
-      <div class="error-message" v-if="renameProps.error">
-        {{ renameProps.error }}
+      <div class="error-message" v-if="renameData.error">
+        {{ renameData.error }}
       </div>
     </td>
     <td>
@@ -214,7 +138,7 @@ const onCancelDeletion = () => {
     <td class="elapsed-time">
       <span v-if="file.updatedAt()">{{ elapsedTime }}</span>
     </td>
-    <context-menu :active="showCtxMenu" @close="onCloseContextMenu">
+    <context-menu :active="showCtxMenu" @close="closeContextMenu">
       <button @click="onClickContextMenu('open')">Open</button>
       <button @click="onClickContextMenu('rename')">Rename</button>
       <button class="danger" @click="onClickContextMenu('delete')">
@@ -223,9 +147,9 @@ const onCancelDeletion = () => {
     </context-menu>
     <confirm-deletion
       v-if="showDialog"
-      :context="file"
-      @submit="onSubmitDeletion"
-      @cancel="onCancelDeletion"
+      :file="file"
+      @submit="submitDeletion"
+      @cancel="cancelDeletion"
     />
   </tr>
 </template>

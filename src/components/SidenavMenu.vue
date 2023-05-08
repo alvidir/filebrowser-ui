@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import urlJoin from "url-join";
-import { defineProps, computed } from "vue";
+import { defineProps } from "vue";
 import Profile from "vue-menus/src/profile";
 import config from "@/config.json";
 import { Tool } from "@/tool";
@@ -11,7 +11,7 @@ interface Props {
   profile: Profile;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const capitalize = (word: string) => {
   return word[0].toUpperCase() + word.substring(1).toLowerCase();

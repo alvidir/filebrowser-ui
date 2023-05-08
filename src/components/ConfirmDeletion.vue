@@ -16,19 +16,10 @@ interface Events {
 
 const emit = defineEmits<Events>();
 
-const folderSize = computed((): string => {
-  const size = props.file ? getSize(props.file) ?? 0 : 0;
-  if (size) return `${size} ${size > 1 ? "items" : "item"}`;
-  else return "empty";
-});
-
 const description = computed((): string | undefined => {
-  let description: string;
-  if (isDirectory(props.file)) {
-    description = `You are about to delete a folder and the ${folderSize.value} inside of it.`;
-  } else {
-    description = "You are about to delete a file.";
-  }
+  const description = isDirectory(props.file)
+    ? "You are about to delete a folder and all the files inside of it."
+    : "You are about to delete a file.";
 
   return `${description} Be aware that this action is permanent and cannot be undone.`;
 });

@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { reactive } from "vue";
 import * as path from "@/path";
-import { File } from "@/file";
+import { File, checkFilename } from "@/file";
 
 export const useFileStore = defineStore("file", () => {
   const filesById = reactive(new Map<string, File>());
@@ -13,6 +13,13 @@ export const useFileStore = defineStore("file", () => {
 
   const getDirectory = (dir: string): Array<string> | undefined => {
     return filesIdByDirectory.get(path.sanatize(dir));
+  };
+
+  const check = (dir: string, filename: string): string | undefined => {
+    if (getDirectory(dir)?.find((fileId) => getFile(fileId)?.name === filename))
+      return "This name already exists";
+
+    return checkFilename(filename);
   };
 
   const addFile = (file: File) => {
@@ -42,6 +49,7 @@ export const useFileStore = defineStore("file", () => {
     getDirectory,
     addFile,
     removeFile,
+    check,
   };
 });
 
