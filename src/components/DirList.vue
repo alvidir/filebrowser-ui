@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { reactive, defineProps, computed } from "vue";
 import FileRow from "@/components/FileRow.vue";
-import { File } from "@/file";
+import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";
 import { useFileStore } from "@/stores/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import { display, split } from "@/path";
+import urlJoin from "url-join";
 
+const maxRoutesLength = 34;
 const fileStore = useFileStore();
 
 interface Props {
@@ -12,6 +16,13 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+
+interface Events {
+  (e: "changeDir", pathname: string, payload: MouseEvent): void;
+  (e: "open", file: File, payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
 
 const drag = reactive({
   source: undefined as string | undefined,
@@ -22,71 +33,70 @@ const files = computed((): Array<string> => {
   return fileStore.getDirectory(props.pathname);
 });
 
-const directories = computed((): Array<string> => {
-  const components = directoryStore.path
-    .split(pathSeparator)
-    .filter((path) => path.length);
-
-  let allDirs = [rootDirName].concat(components);
-
-  let maxDirs = 1;
-  let totalLength = 0;
-  for (let index = allDirs.length; index > 0; index--) {
-    if (totalLength + allDirs[index - 1].length > props.maxDirsLength) {
-      break;
+const routes = computed((): Array<{ name: string; absolute: string }> => {
+  const allRoutes = split(display(props.pathname)).map(
+    (route, index, array) => {
+      return {
+        name: route,
+        absolute: urlJoin(array.slice(0, index + 1)),
+      };
     }
+  );
 
-    totalLength += allDirs[index - 1].length;
-    maxDirs++;
+  let index: number;
+  let cumulativeLength = 0;
+  for (
+    index = allRoutes.length;
+    index > 0 && cumulativeLength < maxRoutesLength;
+    index--
+  ) {
+    cumulativeLength += allRoutes[index - 1].name.length;
   }
 
-  return [rootDirName].concat(components).slice(-maxDirs);
+  return allRoutes.slice(allRoutes.length - index);
 });
 
 const onDragMode = computed((): boolean => {
   return !!drag.source;
 });
 
-const belongsToDrag = (item: File) => {
-  return drag.source?.name === item.name || drag.target?.name === item.name;
+const belongsToDrag = (file: File) => {
+  return drag.source === file.id || drag.target === file.id;
 };
 
-const onDragStart = (item: File) => {
-  drag.source = item;
+const onDragStart = (file: File) => {
+  drag.source = file.id;
   drag.target = undefined;
 };
 
-const onDragExit = (item: File, event: DragEvent) => {
-  if (item.name === drag.target?.name && event.buttons) {
+const onDragExit = (file: File, event: DragEvent) => {
+  if (file.id === drag.target && event.buttons) {
     drag.target = undefined;
   }
 };
 
-const onDragEnter = (item: File) => {
-  if (item.name !== drag.source?.name && item.isDirectory()) {
-    drag.target = item;
+const onDragEnter = (file: File) => {
+  if (file.id !== drag.source && isDirectory(file)) {
+    drag.target = file.id;
   }
 };
 
 const onDragEnd = () => {
-  if (drag.source && drag.target) {
-    directoryStore.moveFile(drag.source, drag.target);
-  }
-
-  drag.source = undefined;
-  drag.target = undefined;
+  //   const source = drag.source ? fileStore.getFile(drag.source) : undefined;
+  //   drag.source = undefined;
+  //   const target = drag.target ? fileStore.getFile(drag.target) : undefined;
+  //   drag.target = undefined;
+  //   if (!source || !target || source.id === target.id) return;
+  //   const targetDir = isDirectory(source) ? source.name : "";
+  //   const targetPath = target.isParentDirectory()
+  //     ? target.directory
+  //     : urlJoin(target.directory, target.name);
+  //   const dest = Path.asDirectory(Path.sanatize(urlJoin(targetPath, targetDir)));
+  //   rpc.moveFile(fileStore.getFile(source), fileStore.getFile(target));
 };
 
-const onDirectoryClick = (index: number) => {
-  const delta = directories.value.length - 1 - index;
-  if (delta) directoryStore.changeDirectory(-delta);
-};
-
-const isDraggable = (item: File): boolean => {
-  return (
-    item.name !== parentDirName &&
-    !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)
-  );
+const isDraggable = (file: File): boolean => {
+  return !getTags(file).includes(Tag.Virtual);
 };
 </script>
 
@@ -96,33 +106,35 @@ const isDraggable = (item: File): boolean => {
       <div class="path-nav">
         <i class="bx bxs-folder-open"></i>
         <button
-          v-for="(dir, index) in directories"
-          :key="dir"
-          @click="onDirectoryClick(index)"
+          v-for="(route, index) in routes"
+          :key="index"
+          @click="emit('changeDir', route.absolute, $event)"
         >
-          {{ dir }}
+          {{ route.name }}
         </button>
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
-        <tr v-if="directoryStore.path === pathSeparator && !files.length">
+        <file-row
+          v-if="files.length"
+          v-for="file in files"
+          :file="fileStore.getFile(file)"
+          :key="file"
+          :draggable="isDraggable(file)"
+          :highlight="belongsToDrag(file)"
+          :no-hover="onDragMode"
+          @dragstart="onDragStart(file)"
+          @dragenter="onDragEnter(file)"
+          @dragexit="onDragExit(file, $event)"
+          @open="(file: File, payload: MouseEvent) => emit('open', file, payload)"
+        />
+        <tr v-else>
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>Nothing to display</strong>
           </td>
         </tr>
-        <file-row
-          v-for="item in files"
-          :file="item"
-          :key="item.name"
-          :draggable="isDraggable(item)"
-          :highlight="belongsToDrag(item)"
-          :no-hover="onDragMode"
-          @dragstart="onDragStart(item)"
-          @dragenter="onDragEnter(item)"
-          @dragexit="onDragExit(item, $event)"
-        />
       </table>
     </div>
   </div>
