@@ -1,11 +1,24 @@
 <script setup lang="ts">
 import { defineProps, computed, ref, reactive, nextTick } from "vue";
-import { File, getSize, getUrl, isDirectory } from "@/file";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 import FileTag from "@/components/FileTag.vue";
 import { useFileStore } from "@/stores/file";
+import { useWarningStore } from "@/stores/warning";
+import * as rpc from "@/services/filebrowser.rpc";
+import { Warning } from "@/warning";
+import { findTag } from "@/tag";
+import { timeElapsedSince } from "@/time";
+import {
+  File,
+  getSize,
+  getUrl,
+  getTags,
+  isDirectory,
+  getUpdatedAt,
+} from "@/file";
 
 const fileStore = useFileStore();
+const warningStore = useWarningStore();
 
 interface Props {
   file: File;
@@ -17,6 +30,12 @@ interface Props {
 
 const props = defineProps<Props>();
 
+interface Events {
+  (e: "open", file: File, payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
+
 const fetching = ref(false);
 const showCtxMenu = ref(false);
 const showDialog = ref(false);
@@ -24,16 +43,6 @@ const renameData = reactive({
   active: false,
   error: "",
   value: "",
-});
-
-const href = computed((): string | undefined => {
-  if (isDirectory(props.file)) return;
-  return getUrl(props.file);
-});
-
-const target = computed((): string | undefined => {
-  if (isDirectory(props.file)) return;
-  return "_blank";
 });
 
 const contentSize = computed((): string => {
@@ -55,7 +64,24 @@ const onRenameInput = () => {
 
 const submitRename = () => {
   if (renameData.error) return;
-  cancelRename();
+
+  const file = props.file;
+  fetching.value = true;
+
+  rpc
+    .renameFile(file, renameData.value)
+    .then(() => {
+      fileStore.removeFile(file.id);
+      file.name = renameData.value;
+      fileStore.addFile(file);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+      cancelRename();
+    });
 };
 
 const cancelRename = () => {
@@ -72,11 +98,11 @@ const closeContextMenu = () => {
   showCtxMenu.value = false;
 };
 
-const onClickContextMenu = (action: string) => {
+const onClickContextMenu = (action: string, event: MouseEvent) => {
   const actions: { [key: string]: () => void } = {
     delete: () => (showDialog.value = true),
     rename: () => activeRename(),
-    open: () => open(true),
+    open: () => open(event),
   };
 
   actions[action]();
@@ -84,12 +110,28 @@ const onClickContextMenu = (action: string) => {
 };
 
 const submitDeletion = () => {
-  directoryStore.deleteFile(props.file);
-  cancelDeletion();
+  fetching.value = true;
+
+  rpc
+    .deleteFile(props.file)
+    .then(() => {
+      fileStore.removeFile(props.file.id);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+      cancelDeletion();
+    });
 };
 
 const cancelDeletion = () => {
   showDialog.value = false;
+};
+
+const open = (event: MouseEvent) => {
+  emit("open", props.file, event);
 };
 </script>
 
@@ -116,7 +158,10 @@ const cancelDeletion = () => {
         @input="onRenameInput"
         @blur="cancelRename"
       />
-      <a v-else :href="href" :target="target" @click="open()">
+      <span v-else-if="isDirectory(file)" @click="open">
+        {{ file.name }}
+      </span>
+      <a v-else :href="getUrl(file)" target="_blank">
         {{ file.name }}
       </a>
 
@@ -126,22 +171,22 @@ const cancelDeletion = () => {
     </td>
     <td>
       <div class="tags-list">
-        <file-tag v-for="tag in file.tags()" :key="tag.name" v-bind="tag">
+        <file-tag v-for="tag in getTags(file)" :key="tag" v-bind="findTag(tag)">
           {{ tag }}
         </file-tag>
       </div>
     </td>
     <td class="file-size">
-      <span v-if="file.size() !== undefined"> {{ printContentSize() }} </span>
+      <span v-if="isDirectory(file)"> {{ contentSize }} </span>
       <span v-else>&nbsp;</span>
     </td>
     <td class="elapsed-time">
-      <span v-if="file.updatedAt()">{{ elapsedTime }}</span>
+      <span>{{ timeElapsedSince(getUpdatedAt(file)) }}</span>
     </td>
     <context-menu :active="showCtxMenu" @close="closeContextMenu">
-      <button @click="onClickContextMenu('open')">Open</button>
-      <button @click="onClickContextMenu('rename')">Rename</button>
-      <button class="danger" @click="onClickContextMenu('delete')">
+      <button @click="onClickContextMenu('open', $event)">Open</button>
+      <button @click="onClickContextMenu('rename', $event)">Rename</button>
+      <button class="danger" @click="onClickContextMenu('delete', $event)">
         Remove
       </button>
     </context-menu>

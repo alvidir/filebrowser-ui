@@ -4,12 +4,9 @@ const secondsPerDay = 24 * secondsPerHour;
 const secondsPerMonth = 30 * secondsPerDay;
 const secondsPerYear = 365 * secondsPerDay;
 
-const elapsedTime = (unix: number): string | undefined => {
-  const updatedAt = new Date(unix * 1000).getTime();
-  if (updatedAt === undefined) return;
-
+const timeElapsedSince = (date: Date): string => {
   const now = new Date().getTime();
-  const seconds = (now - updatedAt) / 1000;
+  const seconds = (now - date.getTime()) / 1000;
 
   if (seconds < 20) {
     return "just now";
@@ -47,4 +44,4 @@ const elapsedTime = (unix: number): string | undefined => {
   return `${total} year${total > 1 ? "s" : ""} ago`;
 };
 
-export { elapsedTime };
+export { timeElapsedSince };

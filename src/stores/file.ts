@@ -11,8 +11,8 @@ export const useFileStore = defineStore("file", () => {
     return filesById.get(id);
   };
 
-  const getDirectory = (dir: string): Array<string> | undefined => {
-    return filesIdByDirectory.get(path.sanatize(dir));
+  const getDirectory = (dir: string): Array<string> => {
+    return filesIdByDirectory.get(path.sanatize(dir)) ?? [];
   };
 
   const check = (dir: string, filename: string): string | undefined => {
@@ -44,11 +44,17 @@ export const useFileStore = defineStore("file", () => {
     dir.splice(dir.indexOf(id), 1);
   };
 
+  const renameFile = (id: string, name: string) => {
+    const file = getFile(id);
+    if (file) file.name = name;
+  };
+
   return {
     getFile,
     getDirectory,
     addFile,
     removeFile,
+    renameFile,
     check,
   };
 });

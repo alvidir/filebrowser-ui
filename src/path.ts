@@ -56,4 +56,4 @@ const display = (path: string): string => {
   return urlJoin(rootDirName, path);
 };
 
-export { sanatize, asDirectory, join, display, clean };
+export { sanatize, asDirectory, join, display, clean, split };

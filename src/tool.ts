@@ -12,9 +12,9 @@ const tools = Array<Tool>({
   uri: config.AGORA_BASE_URI,
 });
 
-const getTool = (id: string): Tool | undefined => {
+const findTool = (id: string): Tool | undefined => {
   const selected = tools.filter((tool) => tool.name === id);
   if (selected.length) return selected[0];
 };
 
-export { Tool, tools, getTool };
+export { Tool, tools, findTool };

@@ -1,17 +1,18 @@
 import * as path from "@/path";
-import * as tool from "./tool";
+import { Tool, findTool } from "./tool";
+import { Tag, findTag } from "./tag";
 import urlJoin from "url-join";
 
 // const defaultFilename = "Untitled project";
 
-// const metadataUpdatedAtKey = "updated_at";
+const metadataUpdatedAtKey = "updated_at";
 const metadataSizeKey = "size";
 const metadataToolKey = "app";
 const metadataRefKey = "ref";
-// const metadataTagsKey = "tags";
+const metadataTagsKey = "tags";
 
 // const parentDirName = "..";
-// const tagSeparator = ";";
+const tagSeparator = ";";
 const filenameRegex = /^[a-zA-Z0-9 ]*$/;
 const maxFilenameLen = 34;
 
@@ -77,9 +78,9 @@ const getUrl = (file: File): string | undefined => {
   if (base) return urlJoin(base, "ref", file.id);
 };
 
-const getTool = (file: File): tool.Tool | undefined => {
+const getTool = (file: File): Tool | undefined => {
   const toolId = file.metadata.get(metadataToolKey);
-  if (toolId) return tool.getTool(toolId);
+  if (toolId) return findTool(toolId);
 };
 
 const getSize = (file: File): number | undefined => {
@@ -90,6 +91,26 @@ const getSize = (file: File): number | undefined => {
   return 0;
 };
 
+const getTags = (file: File): Array<string> => {
+  const tags = file.metadata.get(metadataTagsKey)?.split(tagSeparator) ?? [];
+  if (isDirectory(file) && getSize(file) == 0) {
+    tags.unshift(Tag.Virtual);
+  }
+
+  const tool = getTool(file);
+  if (tool) {
+    tags.unshift(tool.name);
+  }
+
+  return tags;
+};
+
+const getUpdatedAt = (file: File): Date => {
+  const unix = file.metadata.get(metadataUpdatedAtKey);
+  if (unix) return new Date(parseInt(unix, 16) * 1000);
+  return new Date();
+};
+
 export {
   File,
   FileMatch,
@@ -98,9 +119,12 @@ export {
   intoDirectory,
   checkFilename,
   isDirectory,
+  getUpdatedAt,
   getPath,
   getSize,
   getUrl,
+  getTool,
+  getTags,
 };
 
 // tags = (): Array<Tag> => {

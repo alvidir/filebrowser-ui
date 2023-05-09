@@ -2,8 +2,10 @@
 import { reactive, defineProps, computed } from "vue";
 import FileRow from "@/components/FileRow.vue";
 import { File } from "@/file";
-import * as path from "@/path";
-import { Tag, tags, getTag } from "@/tag";
+import { Tag } from "@/tag";
+import { useFileStore } from "@/stores/file";
+
+const fileStore = useFileStore();
 
 interface Props {
   pathname: string;
@@ -12,14 +14,12 @@ interface Props {
 const props = defineProps<Props>();
 
 const drag = reactive({
-  source: undefined as number | undefined,
-  target: undefined as number | undefined,
+  source: undefined as string | undefined,
+  target: undefined as string | undefined,
 });
 
-const files = computed((): Array<File> => {
-  const baseFiles = directoryStore.path === pathSeparator ? [] : [parentdir];
-  const dirFiles = filterStore.filterFiles(directoryStore.files ?? []);
-  return baseFiles.concat(dirFiles);
+const files = computed((): Array<string> => {
+  return fileStore.getDirectory(props.pathname);
 });
 
 const directories = computed((): Array<string> => {
