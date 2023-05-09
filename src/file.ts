@@ -3,15 +3,12 @@ import { Tool, findTool } from "./tool";
 import { Tag, findTag } from "./tag";
 import urlJoin from "url-join";
 
-// const defaultFilename = "Untitled project";
-
 const metadataUpdatedAtKey = "updated_at";
 const metadataSizeKey = "size";
 const metadataToolKey = "app";
 const metadataRefKey = "ref";
 const metadataTagsKey = "tags";
 
-// const parentDirName = "..";
 const tagSeparator = ";";
 const filenameRegex = /^[a-zA-Z0-9 ]*$/;
 const maxFilenameLen = 34;
