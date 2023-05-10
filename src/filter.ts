@@ -1,6 +1,6 @@
 import { File, isDirectory } from "@/file";
 
-type Filter<T> = (files: Array<T>) => Array<T>;
+type Filter<T> = (files: Array<T | undefined>) => Array<T>;
 
 enum Sort {
   Az = "az",
@@ -31,12 +31,11 @@ const sortDecorator = (a: File, b: File): number => {
 };
 
 const getFilesFilter = (): Filter<File> => {
-  return (files: Array<File>): Array<File> => {
-    if (!filters.showHiddenFiles) {
-      files = files.filter((file) => !isHiddenFile(file));
-    }
+  const isFile = (file: File | undefined): file is File => {  return !!file };
+  const isVisible = (file: File): boolean => { return filters.showHiddenFiles || !isHiddenFile(file)};
 
-    return files.sort(sortDecorator);
+  return (files: Array<File|undefined>): Array<File> => {
+    return files.filter(isFile).filter(isVisible).sort(sortDecorator);
   };
 };
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, defineProps, computed } from "vue";
+import { reactive, defineProps, computed, ref } from "vue";
 import FileRow from "@/components/FileRow.vue";
 import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";
@@ -7,6 +7,7 @@ import { useFileStore } from "@/stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { display, split } from "@/path";
 import urlJoin from "url-join";
+import { getFilesFilter } from "@/filter";
 
 const maxRoutesLength = 34;
 const fileStore = useFileStore();
@@ -29,8 +30,15 @@ const drag = reactive({
   target: undefined as string | undefined,
 });
 
-const files = computed((): Array<string> => {
-  return fileStore.getDirectory(props.pathname);
+const allFilesById = ref(new Array<string>());
+fileStore.$subscribe(() => {
+    allFilesById.value = fileStore.getDirectory(props.pathname)
+});
+
+const files = computed((): Array<File> => {
+    return getFilesFilter()(
+        allFilesById.value.map((id: string) => fileStore.getFile(id))
+    );
 });
 
 const routes = computed((): Array<{ name: string; absolute: string }> => {
@@ -119,11 +127,12 @@ const isDraggable = (file: File): boolean => {
         <file-row
           v-if="files.length"
           v-for="file in files"
-          :file="fileStore.getFile(file)"
-          :key="file"
+          :file="file"
+          :key="file.name"
           :draggable="isDraggable(file)"
           :highlight="belongsToDrag(file)"
           :no-hover="onDragMode"
+          :pathname="pathname"
           @dragstart="onDragStart(file)"
           @dragenter="onDragEnter(file)"
           @dragexit="onDragExit(file, $event)"
