@@ -46,14 +46,10 @@ const split = (path: string): Array<string> => {
     .filter((value) => value.length);
 };
 
-const join = (...items: Array<string>): string => {
-  return urlJoin(items);
-};
-
 const display = (path: string): string => {
   path = underscoresToSpaces(sanatize(path));
   if (path === pathSeparator) return rootDirName;
   return urlJoin(rootDirName, path);
 };
 
-export { sanatize, asDirectory, join, display, clean, split };
+export { sanatize, asDirectory, display, clean, split };

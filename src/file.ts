@@ -1,6 +1,6 @@
 import * as path from "@/path";
 import { Tool, findTool } from "./tool";
-import { Tag, findTag } from "./tag";
+import { Tag } from "./tag";
 import urlJoin from "url-join";
 
 const metadataUpdatedAtKey = "updated_at";
@@ -63,7 +63,7 @@ const isDirectory = (file: File): boolean => {
 };
 
 const getPath = (file: File): string => {
-  return path.sanatize(path.join(file.directory, file.name));
+  return path.sanatize(urlJoin(file.directory, file.name));
 };
 
 const getUrl = (file: File): string | undefined => {

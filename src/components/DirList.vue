@@ -5,12 +5,16 @@ import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";
 import { useFileStore } from "@/stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
+import * as path from "@/path";
 import { display, split } from "@/path";
 import urlJoin from "url-join";
 import { getFilesFilter } from "@/filter";
+import { useWarningStore } from "@/stores/warning";
+import { Warning } from "@/warning";
 
 const maxRoutesLength = 34;
 const fileStore = useFileStore();
+const warningStore = useWarningStore();
 
 interface Props {
   pathname: string;
@@ -25,9 +29,10 @@ interface Events {
 
 const emit = defineEmits<Events>();
 
+const fetching = ref(false);
 const drag = reactive({
-  source: undefined as string | undefined,
-  target: undefined as string | undefined,
+  source: undefined as File | undefined,
+  target: undefined as File | undefined,
 });
 
 const allFilesById = ref(new Array<string>());
@@ -69,38 +74,50 @@ const onDragMode = computed((): boolean => {
 });
 
 const belongsToDrag = (file: File) => {
-  return drag.source === file.id || drag.target === file.id;
+  return drag.source === file|| drag.target === file;
 };
 
 const onDragStart = (file: File) => {
-  drag.source = file.id;
   drag.target = undefined;
+  drag.source = file;
 };
 
 const onDragExit = (file: File, event: DragEvent) => {
-  if (file.id === drag.target && event.buttons) {
+  if (file === drag.target && event.buttons) {
     drag.target = undefined;
   }
 };
 
 const onDragEnter = (file: File) => {
-  if (file.id !== drag.source && isDirectory(file)) {
-    drag.target = file.id;
+  if (file !== drag.source && isDirectory(file)) {
+    drag.target = file;
   }
 };
 
 const onDragEnd = () => {
-  //   const source = drag.source ? fileStore.getFile(drag.source) : undefined;
-  //   drag.source = undefined;
-  //   const target = drag.target ? fileStore.getFile(drag.target) : undefined;
-  //   drag.target = undefined;
-  //   if (!source || !target || source.id === target.id) return;
-  //   const targetDir = isDirectory(source) ? source.name : "";
-  //   const targetPath = target.isParentDirectory()
-  //     ? target.directory
-  //     : urlJoin(target.directory, target.name);
-  //   const dest = Path.asDirectory(Path.sanatize(urlJoin(targetPath, targetDir)));
-  //   rpc.moveFile(fileStore.getFile(source), fileStore.getFile(target));
+    const source = drag.source;
+    const target = drag.target;
+
+    drag.source = undefined;
+    drag.target = undefined;
+
+    if (!source || !target || source === target) return;
+    fetching.value = true;
+
+    const dest = path.sanatize(urlJoin(
+        urlJoin(target.directory, target.name),
+        isDirectory(source) ? source.name : ""
+    ));
+    
+    rpc.moveFile(source, path.asDirectory(dest)).then(() => {
+        fileStore.removeFile(source.id);
+        source.directory = dest;
+        fileStore.addFile(source);
+    }).catch((error: Warning) => {
+        warningStore.push(error);
+    }).finally(() => {
+        fetching.value = false;
+    });
 };
 
 const isDraggable = (file: File): boolean => {

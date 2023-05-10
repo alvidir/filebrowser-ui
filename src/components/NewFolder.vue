@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, ErrorCodes } from "vue";
+import { ref, nextTick } from "vue";
 import { Field } from "vue-fields/src/types";
-import { File, checkFilename, intoDirectory } from "@/file";
+import { File, intoDirectory } from "@/file";
 import { useFileStore } from "@/stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
