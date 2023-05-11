@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onBeforeMount } from "vue";
 import Profile from "vue-menus/src/profile";
 import { getProfile } from "@/services/filebrowser.rest";
 import WarningList from "@/components/WarningList.vue";
@@ -16,6 +16,7 @@ import { File, getPath, getUrl, isDirectory } from "./file";
 import { useFileStore } from "./stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
+import * as path from "@/path";
 
 const fileStore = useFileStore();
 const warningStore = useWarningStore();
@@ -33,8 +34,18 @@ getProfile()
 
 const pathname = ref(window.location.pathname);
 
-watch(pathname, (dir: string) => {
-  if (fileStore.getDirectory(dir)) return;
+const setPathname = (dest: string) => {
+  pathname.value = path.sanatize(dest);
+  window.history.pushState("", "", pathname.value);
+};
+
+const open = (file: File) => {
+  if (isDirectory(file)) setPathname(getPath(file));
+  else window.open(getUrl(file), "_blank");
+};
+
+const fetchDirectory = (dir: string) => {
+  if (fileStore.getDirectory(dir).length) return;
   fetching.value = true;
 
   rpc
@@ -48,12 +59,10 @@ watch(pathname, (dir: string) => {
     .finally(() => {
       fetching.value = false;
     });
-});
-
-const open = (file: File) => {
-  if (isDirectory(file)) pathname.value = getPath(file);
-  else window.open(getUrl(file), "_blank");
 };
+
+watch(pathname, fetchDirectory);
+onBeforeMount(() => fetchDirectory(pathname.value));
 </script>
 
 <template>
@@ -72,7 +81,7 @@ const open = (file: File) => {
         <new-folder :pathname="pathname" class="action"> </new-folder>
       </span>
     </div>
-    <dir-list :pathname="pathname" />
+    <dir-list :pathname="pathname" @open="open" @change-dir="setPathname" />
   </div>
 </template>
 

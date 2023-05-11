@@ -17,7 +17,11 @@ import config from "@/config.json";
 import join from "url-join";
 import * as path from "@/path";
 
-const url = urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
+const url = urlJoin(
+  config.FILEBROWSER_BASE_URI,
+  process.env.NODE_ENV === "development" ? "" : "rpc"
+);
+
 const directoryClient = new DirectoryServiceClient(url, null, null);
 const fileClient = new FileServiceClient(url, null, null);
 const headers: { [key: string]: string } =
@@ -47,7 +51,9 @@ const buildSearchMatches = (data: SearchResponse): Array<FileMatch> => {
 
 const buildFile = (data: ProtoFile): File => {
   const file: File = {
-    id: data.getId(),
+    id: data.getId().length
+      ? data.getId()
+      : urlJoin(data.getDirectory(), data.getName()),
     name: underscoresToSpaces(data.getName()),
     directory: underscoresToSpaces(data.getDirectory()),
     metadata: new Map<string, string>(),

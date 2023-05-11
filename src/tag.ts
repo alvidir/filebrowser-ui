@@ -33,4 +33,9 @@ const findTag = (tag: string): TagInfo => {
   return tags[tag] ?? { name: tag };
 };
 
-export { Tag, TagInfo, findTag };
+const withVirtualTag = (tags: Array<string>): Array<string> => {
+  if (!tags.includes(Tag.Virtual)) tags.push(Tag.Virtual);
+  return tags;
+};
+
+export { Tag, TagInfo, findTag, withVirtualTag };

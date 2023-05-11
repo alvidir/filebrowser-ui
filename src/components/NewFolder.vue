@@ -7,6 +7,7 @@ import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
 import { useWarningStore } from "@/stores/warning";
 import ActionHeader from "@/components/ActionHeader.vue";
+import urlJoin from "url-join";
 
 const fileStore = useFileStore();
 const warningStore = useWarningStore();
@@ -49,30 +50,20 @@ const cancel = () => {
 
 const submit = () => {
   if (!valid.value) return;
-  fetching.value = true;
+  active.value = false;
 
-  rpc
-    .createFile(
-      intoDirectory({
-        id: "",
-        name: foldername.value?.text() ?? "",
-        directory: props.pathname,
-        metadata: new Map(),
-        permissions: new Map(),
-        flags: 0,
-        isNew: true,
-      })
-    )
-    .then((file: File) => {
-      fileStore.addFile(file);
+  const name = foldername.value?.text() ?? "";
+  fileStore.addFile(
+    intoDirectory({
+      id: urlJoin(props.pathname, name),
+      name: name,
+      directory: props.pathname,
+      metadata: new Map(),
+      permissions: new Map(),
+      flags: 0,
+      isNew: true,
     })
-    .catch((error: Warning) => {
-      warningStore.push(error);
-    })
-    .finally(() => {
-      fetching.value = false;
-      cancel();
-    });
+  );
 };
 </script>
 

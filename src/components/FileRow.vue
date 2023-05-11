@@ -165,9 +165,9 @@ const open = (event: MouseEvent) => {
         @input="onRenameInput"
         @blur="cancelRename"
       />
-      <span v-else-if="isDirectory(file)" @click="open">
+      <a v-else-if="isDirectory(file)" href="#" @click.prevent="open">
         {{ file.name }}
-      </span>
+      </a>
       <a v-else :href="getUrl(file)" target="_blank">
         {{ file.name }}
       </a>
@@ -209,17 +209,6 @@ const open = (event: MouseEvent) => {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
 @import "fibonacci-styles";
-
-.parent-dir {
-  &:hover {
-    cursor: pointer;
-  }
-
-  i {
-    color: var(--color-accent);
-    font-weight: 600;
-  }
-}
 
 .highlight {
   @extend .shadow-box;

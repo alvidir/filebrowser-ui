@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, defineProps, defineEmits, computed, ref } from "vue";
+import { reactive, defineProps, defineEmits, computed, ref, watch } from "vue";
 import FileRow from "@/components/FileRow.vue";
 import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";
@@ -33,12 +33,15 @@ const fetching = ref(false);
 const drag = reactive({
   source: undefined as File | undefined,
   target: undefined as File | undefined,
+  parent: false,
 });
 
 const allFilesById = ref(new Array<string>());
-fileStore.$subscribe(() => {
-  allFilesById.value = fileStore.getDirectory(props.pathname);
-});
+
+watch(
+  () => fileStore.getDirectory(props.pathname),
+  (filesById) => (allFilesById.value = filesById)
+);
 
 const files = computed((): Array<File> => {
   return getFilesFilter()(
@@ -51,7 +54,7 @@ const routes = computed((): Array<{ name: string; absolute: string }> => {
     (route, index, array) => {
       return {
         name: route,
-        absolute: urlJoin(array.slice(0, index + 1)),
+        absolute: urlJoin(array.slice(1, index + 1)),
       };
     }
   );
@@ -66,8 +69,11 @@ const routes = computed((): Array<{ name: string; absolute: string }> => {
     cumulativeLength += allRoutes[index - 1].name.length;
   }
 
-  ++index; // increase by 1 to ensure 0 points the latest position
-  return allRoutes.slice(allRoutes.length - index);
+  return allRoutes.slice(index);
+});
+
+const parentPath = computed((): string => {
+  return routes.value.at(-2)?.absolute ?? "";
 });
 
 const onDragMode = computed((): boolean => {
@@ -102,21 +108,25 @@ const onDragEnd = () => {
   drag.source = undefined;
   drag.target = undefined;
 
-  if (!source || !target || source === target) return;
-  fetching.value = true;
+  if (!source || source === target || (!target && !drag.parent)) return;
+  drag.parent = false;
 
-  const dest = path.sanatize(
-    urlJoin(
-      urlJoin(target.directory, target.name),
-      isDirectory(source) ? source.name : ""
-    )
-  );
+  fetching.value = true;
+  let destination = parentPath.value;
+
+  if (target)
+    destination = path.sanatize(
+      urlJoin(
+        urlJoin(target.directory, target.name),
+        isDirectory(source) ? source.name : ""
+      )
+    );
 
   rpc
-    .moveFile(source, path.asDirectory(dest))
+    .moveFile(source, path.asDirectory(destination))
     .then(() => {
       fileStore.removeFile(source.id);
-      source.directory = dest;
+      source.directory = destination;
       fileStore.addFile(source);
     })
     .catch((error: Warning) => {
@@ -129,6 +139,10 @@ const onDragEnd = () => {
 
 const isDraggable = (file: File): boolean => {
   return !getTags(file).includes(Tag.Virtual);
+};
+
+const onParentDragExit = (event: MouseEvent) => {
+  if (event.buttons) drag.parent = false;
 };
 </script>
 
@@ -147,7 +161,24 @@ const isDraggable = (file: File): boolean => {
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
+      <a
+        v-if="routes.length > 1"
+        class="parent-dir"
+        :class="{ 'drag-target': drag.parent }"
+        :href="parentPath"
+        @click.prevent="emit('changeDir', parentPath, $event)"
+        @dragenter="() => (drag.parent = true)"
+        @dragexit="onParentDragExit"
+      >
+        <i class="bx bx-arrow-back"></i>
+      </a>
       <table @dragend="onDragEnd()">
+        <tr v-if="files.length == 0 && routes.length == 1">
+          <td class="empty">
+            <i class="bx bx-search-alt"></i>
+            <strong>Nothing to display</strong>
+          </td>
+        </tr>
         <file-row
           v-for="file in files"
           :file="file"
@@ -161,12 +192,6 @@ const isDraggable = (file: File): boolean => {
           @dragexit="onDragExit(file, $event)"
           @open="(file: File, payload: MouseEvent) => emit('open', file, payload)"
         />
-        <tr v-if="files.length == 0">
-          <td class="empty">
-            <i class="bx bx-search-alt"></i>
-            <strong>Nothing to display</strong>
-          </td>
-        </tr>
       </table>
     </div>
   </div>
@@ -258,6 +283,31 @@ i {
     i {
       font-size: xx-large;
       margin-bottom: $fib-5 * 1px;
+    }
+  }
+
+  a.parent-dir {
+    display: flex;
+    height: $fib-8 * 1px;
+    border-top: 1px solid var(--color-border);
+    align-items: center;
+    text-decoration: none !important;
+
+    &:hover {
+      cursor: pointer;
+    }
+
+    &.drag-target {
+      @extend .shadow-box;
+      background: var(--color-button);
+      z-index: 1;
+    }
+
+    i {
+      font-size: large;
+      color: var(--color-accent);
+      padding-left: $fib-6 * 1px;
+      font-weight: 600;
     }
   }
 }
