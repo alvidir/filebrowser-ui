@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, defineEmits } from "vue";
 import { Field } from "vue-fields/src/types";
 import { useWarningStore } from "@/stores/warning";
 import { getFilesFilter } from "@/filter";

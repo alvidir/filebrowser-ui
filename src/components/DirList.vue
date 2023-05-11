@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, defineProps, computed, ref } from "vue";
+import { reactive, defineProps, defineEmits, computed, ref } from "vue";
 import FileRow from "@/components/FileRow.vue";
 import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";
@@ -37,13 +37,13 @@ const drag = reactive({
 
 const allFilesById = ref(new Array<string>());
 fileStore.$subscribe(() => {
-    allFilesById.value = fileStore.getDirectory(props.pathname)
+  allFilesById.value = fileStore.getDirectory(props.pathname);
 });
 
 const files = computed((): Array<File> => {
-    return getFilesFilter()(
-        allFilesById.value.map((id: string) => fileStore.getFile(id))
-    );
+  return getFilesFilter()(
+    allFilesById.value.map((id: string) => fileStore.getFile(id))
+  );
 });
 
 const routes = computed((): Array<{ name: string; absolute: string }> => {
@@ -66,6 +66,7 @@ const routes = computed((): Array<{ name: string; absolute: string }> => {
     cumulativeLength += allRoutes[index - 1].name.length;
   }
 
+  ++index; // increase by 1 to ensure 0 points the latest position
   return allRoutes.slice(allRoutes.length - index);
 });
 
@@ -74,7 +75,7 @@ const onDragMode = computed((): boolean => {
 });
 
 const belongsToDrag = (file: File) => {
-  return drag.source === file|| drag.target === file;
+  return drag.source === file || drag.target === file;
 };
 
 const onDragStart = (file: File) => {
@@ -95,28 +96,34 @@ const onDragEnter = (file: File) => {
 };
 
 const onDragEnd = () => {
-    const source = drag.source;
-    const target = drag.target;
+  const source = drag.source;
+  const target = drag.target;
 
-    drag.source = undefined;
-    drag.target = undefined;
+  drag.source = undefined;
+  drag.target = undefined;
 
-    if (!source || !target || source === target) return;
-    fetching.value = true;
+  if (!source || !target || source === target) return;
+  fetching.value = true;
 
-    const dest = path.sanatize(urlJoin(
-        urlJoin(target.directory, target.name),
-        isDirectory(source) ? source.name : ""
-    ));
-    
-    rpc.moveFile(source, path.asDirectory(dest)).then(() => {
-        fileStore.removeFile(source.id);
-        source.directory = dest;
-        fileStore.addFile(source);
-    }).catch((error: Warning) => {
-        warningStore.push(error);
-    }).finally(() => {
-        fetching.value = false;
+  const dest = path.sanatize(
+    urlJoin(
+      urlJoin(target.directory, target.name),
+      isDirectory(source) ? source.name : ""
+    )
+  );
+
+  rpc
+    .moveFile(source, path.asDirectory(dest))
+    .then(() => {
+      fileStore.removeFile(source.id);
+      source.directory = dest;
+      fileStore.addFile(source);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
     });
 };
 
@@ -142,7 +149,6 @@ const isDraggable = (file: File): boolean => {
     <div class="table-wrapper round-corners bottom-only">
       <table @dragend="onDragEnd()">
         <file-row
-          v-if="files.length"
           v-for="file in files"
           :file="file"
           :key="file.name"
@@ -155,7 +161,7 @@ const isDraggable = (file: File): boolean => {
           @dragexit="onDragExit(file, $event)"
           @open="(file: File, payload: MouseEvent) => emit('open', file, payload)"
         />
-        <tr v-else>
+        <tr v-if="files.length == 0">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>Nothing to display</strong>

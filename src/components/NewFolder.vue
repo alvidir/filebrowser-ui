@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, nextTick } from "vue";
+import { ref, nextTick, defineProps } from "vue";
 import { Field } from "vue-fields/src/types";
 import { File, intoDirectory } from "@/file";
 import { useFileStore } from "@/stores/file";
@@ -48,7 +48,7 @@ const cancel = () => {
 };
 
 const submit = () => {
-  if (!valid) return;
+  if (!valid.value) return;
   fetching.value = true;
 
   rpc

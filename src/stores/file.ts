@@ -24,8 +24,7 @@ export const useFileStore = defineStore("file", () => {
 
   const addFile = (file: File) => {
     const filedir = path.sanatize(file.directory);
-    if (!filesIdByDirectory.has(filedir))
-      filesIdByDirectory.set(filedir, new Array());
+    if (!filesIdByDirectory.has(filedir)) filesIdByDirectory.set(filedir, []);
 
     filesIdByDirectory.get(filedir)?.push(file.id);
     filesById.set(file.id, file);

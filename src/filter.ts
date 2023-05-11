@@ -18,7 +18,7 @@ const isHiddenFile = (file: File): boolean => {
   return file.name.at(0) === hiddenFilePrefix;
 };
 
-let filters = {
+const filters = {
   sortStrategy: sortStrategies[Sort.Az],
   showHiddenFiles: false,
 };
@@ -31,10 +31,14 @@ const sortDecorator = (a: File, b: File): number => {
 };
 
 const getFilesFilter = (): Filter<File> => {
-  const isFile = (file: File | undefined): file is File => {  return !!file };
-  const isVisible = (file: File): boolean => { return filters.showHiddenFiles || !isHiddenFile(file)};
+  const isFile = (file: File | undefined): file is File => {
+    return !!file;
+  };
+  const isVisible = (file: File): boolean => {
+    return filters.showHiddenFiles || !isHiddenFile(file);
+  };
 
-  return (files: Array<File|undefined>): Array<File> => {
+  return (files: Array<File | undefined>): Array<File> => {
     return files.filter(isFile).filter(isVisible).sort(sortDecorator);
   };
 };

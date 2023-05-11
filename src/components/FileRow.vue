@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { defineProps, computed, ref, reactive, nextTick } from "vue";
+import {
+  defineProps,
+  defineEmits,
+  computed,
+  ref,
+  reactive,
+  nextTick,
+} from "vue";
 import ConfirmDeletion from "@/components/ConfirmDeletion.vue";
 import FileTag from "@/components/FileTag.vue";
 import { useFileStore } from "@/stores/file";

@@ -42,7 +42,7 @@ const close = () => {
       <div class="tools">
         <tool-button
           v-for="tool in tools"
-          v-key="tool.name"
+          :key="tool.name"
           :tool="tool"
           :pathname="pathname"
         ></tool-button>
