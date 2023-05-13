@@ -3,8 +3,6 @@ import { ref, nextTick, defineProps } from "vue";
 import { Field } from "vue-fields/src/types";
 import { File, intoDirectory } from "@/file";
 import { useFileStore } from "@/stores/file";
-import * as rpc from "@/services/filebrowser.rpc";
-import { Warning } from "@/warning";
 import { useWarningStore } from "@/stores/warning";
 import ActionHeader from "@/components/ActionHeader.vue";
 import urlJoin from "url-join";
@@ -33,7 +31,7 @@ const activate = () => {
 const onInput = () => {
   valid.value = false;
 
-  const name = foldername.value?.text() ?? "";
+  const name = foldername.value?.text().trim() ?? "";
   error.value = fileStore.check(props.pathname, name);
 
   valid.value = !error.value;
@@ -52,7 +50,9 @@ const submit = () => {
   if (!valid.value) return;
   active.value = false;
 
-  const name = foldername.value?.text() ?? "";
+  const name = foldername.value?.text().trim() ?? "";
+  cancel();
+
   fileStore.addFile(
     intoDirectory({
       id: urlJoin(props.pathname, name),

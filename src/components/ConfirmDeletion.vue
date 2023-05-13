@@ -30,7 +30,7 @@ const description = computed((): string | undefined => {
     <template #header>
       <action-header
         title="Needs confirmation"
-        title-color="var(--color-red)"
+        color="var(--color-red)"
         subtitle="Delete action on"
         :pathname="getPath(file)"
         :href="getUrl(file) ?? '#'"

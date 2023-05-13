@@ -242,7 +242,6 @@ const open = (event: MouseEvent) => {
 
   input {
     height: 100%;
-    width: 100%;
     background: none;
     border: none;
     outline: none;

@@ -32,7 +32,7 @@ const close = () => {
       <template #header>
         <action-header
           title="Start building your new project"
-          title-color="var(--color-accent)"
+          color="var(--color-accent)"
           subtitle="It will be created at"
           :pathname="pathname"
           :href="pathname"

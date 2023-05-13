@@ -125,9 +125,7 @@ const onDragEnd = () => {
   rpc
     .moveFile(source, path.asDirectory(destination))
     .then(() => {
-      fileStore.removeFile(source.id);
-      source.directory = destination;
-      fileStore.addFile(source);
+      fileStore.moveFile(source.id, destination);
     })
     .catch((error: Warning) => {
       warningStore.push(error);

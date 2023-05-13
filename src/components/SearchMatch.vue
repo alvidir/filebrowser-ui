@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, computed } from "vue";
+import { defineProps, defineEmits, computed } from "vue";
 import { File, isDirectory, getPath, getUrl } from "@/file";
 
 interface Props {
@@ -29,7 +29,7 @@ const href = computed((): string | undefined => {
 const filename = computed((): string[] => {
   const absolute = getPath(props.file);
   const name = props.file.name;
-  const index = absolute.length - name.length + 1;
+  const index = absolute.length - name.length;
 
   const before = name.substring(0, props.start - index);
   const after = name.substring(props.end - index);

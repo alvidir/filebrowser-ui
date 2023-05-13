@@ -88,6 +88,11 @@ const getSize = (file: File): number | undefined => {
   return 0;
 };
 
+const setSize = (file: File, size: number) => {
+  if (!isDirectory(file)) return;
+  file.metadata.set(metadataSizeKey, size.toString());
+};
+
 const getTags = (file: File): Array<string> => {
   const tags = file.metadata.get(metadataTagsKey)?.split(tagSeparator) ?? [];
   if (isDirectory(file) && getSize(file) == 0) {
@@ -119,6 +124,7 @@ export {
   getUpdatedAt,
   getPath,
   getSize,
+  setSize,
   getUrl,
   getTool,
   getTags,

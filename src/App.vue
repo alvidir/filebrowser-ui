@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeMount } from "vue";
-import Profile from "vue-menus/src/profile";
 import { getProfile } from "@/services/filebrowser.rest";
-import WarningList from "@/components/WarningList.vue";
 import { useWarningStore } from "@/stores/warning";
 import { Code, getWarning } from "./warning";
+import { tools } from "@/tool";
+import { File, getPath, getUrl, isDirectory } from "./file";
+import { useFileStore } from "./stores/file";
+import { Warning } from "@/warning";
+import Profile from "vue-menus/src/profile";
+import WarningList from "@/components/WarningList.vue";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import config from "@/config.json";
-import { tools } from "@/tool";
-import { File, getPath, getUrl, isDirectory } from "./file";
-import { useFileStore } from "./stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
-import { Warning } from "@/warning";
 import * as path from "@/path";
 
 const fileStore = useFileStore();
@@ -61,7 +61,16 @@ const fetchDirectory = (dir: string) => {
     });
 };
 
-watch(pathname, fetchDirectory);
+const onPathnameChange = (newValue: string, oldValue: string) => {
+  fetchDirectory(newValue);
+
+  fileStore.getDirectory(oldValue)?.forEach((fileId) => {
+    const file = fileStore.getFile(fileId);
+    if (file) file.isNew = false;
+  });
+};
+
+watch(pathname, onPathnameChange);
 onBeforeMount(() => fetchDirectory(pathname.value));
 </script>
 

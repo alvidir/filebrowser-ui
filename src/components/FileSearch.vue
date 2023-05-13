@@ -6,6 +6,7 @@ import { getFilesFilter } from "@/filter";
 import { File, FileMatch } from "@/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
+import SearchMatch from "./SearchMatch.vue";
 
 interface Events {
   (e: "open", file: File, payload: MouseEvent): void;
@@ -67,7 +68,7 @@ const open = (file: File, event: MouseEvent) => {
     :large="true"
     @input="onSearchInput"
   >
-    <search-item v-bind="props.item" @open="open"></search-item>
+    <search-match v-bind="props.item" @open="open"></search-match>
   </search-field>
 </template>
 
