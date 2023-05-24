@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, defineProps, defineEmits, computed, ref, watch } from "vue";
+import { reactive, computed, ref, watch } from "vue";
 import FileRow from "@/components/FileRow.vue";
 import { File, getTags, isDirectory } from "@/file";
 import { Tag } from "@/tag";

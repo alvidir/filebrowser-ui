@@ -1,4 +1,4 @@
-import Profile from "vue-menus/src/profile";
+import { Profile } from "vue-profile/src/profile";
 import config from "@/config.json";
 import urlJoin from "url-join";
 
@@ -9,7 +9,7 @@ const getProfile = async (): Promise<Profile> => {
   return fetch(profileUri)
     .then((response) => response.json())
     .then((data) => {
-      return Object.assign(new Profile(""), data);
+      return Object.assign({}, data);
     });
 };
 

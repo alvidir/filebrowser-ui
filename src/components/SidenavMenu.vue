@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import urlJoin from "url-join";
-import { defineProps } from "vue";
-import Profile from "vue-menus/src/profile";
+import { Profile } from "vue-profile/src/profile";
 import config from "@/config.json";
 import { Tool } from "@/tool";
 
@@ -45,15 +44,15 @@ const onSignupClick = () => {
         v-if="profile.picture"
         class="fitted larger"
         :src="profile.picture"
-        alt=""
+        :alt="profile.name"
       />
       <i v-else class="fallback-avatar bx bx-user"></i>
       <profile-menu
         class="tooltip bottom delayed"
-        v-bind="profile"
+        :profile="profile"
         @signout="onSignoutClick"
         @signup="onSignupClick"
-      ></profile-menu>
+      />
     </div>
   </dock-menu>
 </template>

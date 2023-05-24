@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from "vue";
+import { computed } from "vue";
 import { File, isDirectory, getPath, getUrl } from "@/file";
 
 interface Props {

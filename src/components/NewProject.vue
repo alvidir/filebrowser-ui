@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, ref } from "vue";
+import { ref } from "vue";
 import { Tool } from "@/tool";
 import ActionHeader from "@/components/ActionHeader.vue";
 import ToolButton from "./ToolButton.vue";

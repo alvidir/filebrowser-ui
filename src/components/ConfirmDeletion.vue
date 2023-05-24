@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from "vue";
+import { computed } from "vue";
 import ActionHeader from "@/components/ActionHeader.vue";
-import { File, isDirectory, getPath, getUrl, getSize } from "@/file";
+import { File, isDirectory, getPath, getUrl } from "@/file";
 
 interface Props {
   file: File;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, ref, computed } from "vue";
+import { ref, computed } from "vue";
 import PulseLoader from "vue-spinner/src/PulseLoader.vue";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Tool } from "@/tool";

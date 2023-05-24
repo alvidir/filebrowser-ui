@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, nextTick, defineProps } from "vue";
+import { ref, nextTick } from "vue";
 import { Field } from "vue-fields/src/types";
-import { File, intoDirectory } from "@/file";
+import { intoDirectory } from "@/file";
 import { useFileStore } from "@/stores/file";
-import { useWarningStore } from "@/stores/warning";
 import ActionHeader from "@/components/ActionHeader.vue";
 import urlJoin from "url-join";
 
 const fileStore = useFileStore();
-const warningStore = useWarningStore();
 
 interface Props {
   pathname: string;

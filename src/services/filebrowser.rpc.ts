@@ -17,10 +17,7 @@ import config from "@/config.json";
 import join from "url-join";
 import * as path from "@/path";
 
-const url = urlJoin(
-  config.FILEBROWSER_BASE_URI,
-  process.env.NODE_ENV === "development" ? "" : "rpc"
-);
+const url = urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
 
 const directoryClient = new DirectoryServiceClient(url, null, null);
 const fileClient = new FileServiceClient(url, null, null);

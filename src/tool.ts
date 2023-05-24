@@ -1,4 +1,4 @@
-import * as config from "@/config.json";
+import config from "@/config.json";
 
 interface Tool {
   name: string;
