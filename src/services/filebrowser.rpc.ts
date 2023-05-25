@@ -21,8 +21,11 @@ const url = urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
 
 const directoryClient = new DirectoryServiceClient(url, null, null);
 const fileClient = new FileServiceClient(url, null, null);
-const headers: { [key: string]: string } =
-  process.env.NODE_ENV === "development" ? { "X-Uid": "1" } : {};
+
+const headers: { [key: string]: string } = {};
+if (process.env.NODE_ENV === "development") {
+  headers["X-Uid"] = "1";
+}
 
 const underscoresToSpaces = (p: string): string => {
   return p.trim().replace(/_/g, " ");

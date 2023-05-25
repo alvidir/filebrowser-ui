@@ -7,7 +7,7 @@ import { tools } from "@/tool";
 import { File, getPath, getUrl, isDirectory } from "./file";
 import { useFileStore } from "./stores/file";
 import { Warning } from "@/warning";
-import { loadAndApply } from "vue-profile/src/profile";
+import { Profile, loadAndApply, remove } from "vue-profile/src/profile";
 import WarningList from "@/components/WarningList.vue";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
@@ -21,12 +21,13 @@ import * as path from "@/path";
 const fileStore = useFileStore();
 const warningStore = useWarningStore();
 
-const profile = loadAndApply();
+remove();
+const profile = ref<Profile>(loadAndApply());
 const fetching = ref(false);
 
 getProfile()
   .then((data) => {
-    Object.assign(profile, data);
+    Object.assign(profile.value, data);
   })
   .catch(() => {
     warningStore.push(getWarning(Code.ErrFetchingProfile));
