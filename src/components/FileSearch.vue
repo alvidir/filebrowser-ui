@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive } from "vue";
-import { Field } from "vue-fields/src/types";
 import { useWarningStore } from "@/stores/warning";
 import { getFilesFilter } from "@/filter";
 import { File, FileMatch } from "@/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Warning } from "@/warning";
 import SearchMatch from "./SearchMatch.vue";
+import {} from "vue-fields/src/main";
 
 interface Events {
   (e: "open", file: File, payload: MouseEvent): void;
@@ -15,7 +15,7 @@ interface Events {
 const emit = defineEmits<Events>();
 
 const warningStore = useWarningStore();
-const searchfield = ref<Field | undefined>(undefined);
+const searchtext = ref("");
 
 const matches = reactive(new Array<FileMatch>());
 
@@ -49,7 +49,7 @@ const search = (search: string) => {
 };
 
 const onSearchInput = () => {
-  search(searchfield.value?.text().trim() ?? "");
+  search(searchtext.value.trim() ?? "");
 };
 
 const open = (file: File, event: MouseEvent) => {
@@ -59,10 +59,10 @@ const open = (file: File, event: MouseEvent) => {
 
 <template>
   <search-field
+    v-model="searchtext"
     v-slot="props"
     id="search-field"
     placeholder="Search"
-    ref="searchfield"
     :items="matches"
     :debounce="300"
     :large="true"

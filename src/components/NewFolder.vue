@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, nextTick } from "vue";
-import { Field } from "vue-fields/src/types";
 import { intoDirectory } from "@/file";
 import { useFileStore } from "@/stores/file";
 import ActionHeader from "@/components/ActionHeader.vue";
@@ -19,25 +18,31 @@ const valid = ref(false);
 const error = ref<string | undefined>();
 const fetching = ref(false);
 
-const foldername = ref<Field | undefined>(undefined);
+interface Field {
+  focus: () => void;
+  blur: () => void;
+}
+
+const field = ref<Field | undefined>();
+const foldername = ref("");
 
 const activate = () => {
   active.value = true;
-  nextTick(() => foldername.value?.focus());
+  nextTick(() => field.value?.focus());
 };
 
 const onInput = () => {
   valid.value = false;
 
-  const name = foldername.value?.text().trim() ?? "";
+  const name = foldername.value.trim() ?? "";
   error.value = fileStore.check(props.pathname, name);
 
   valid.value = !error.value;
 };
 
 const cancel = () => {
-  foldername.value?.clear();
-  foldername.value?.blur();
+  foldername.value = "";
+  field.value?.blur();
 
   active.value = false;
   valid.value = false;
@@ -48,7 +53,7 @@ const submit = () => {
   if (!valid.value) return;
   active.value = false;
 
-  const name = foldername.value?.text().trim() ?? "";
+  const name = foldername.value.trim() ?? "";
   cancel();
 
   fileStore.addFile(
@@ -86,10 +91,11 @@ const submit = () => {
         ></action-header>
       </template>
       <regular-field
-        ref="foldername"
+        v-model="foldername"
+        ref="field"
         placeholder="folder name"
         :error="error"
-        :disabled="fetching"
+        :readonly="fetching"
         @input="onInput"
         large
       ></regular-field>
