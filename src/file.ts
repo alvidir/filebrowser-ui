@@ -72,12 +72,17 @@ const getUrl = (file: File): string | undefined => {
   const ref = file.metadata.get(metadataRefKey);
   const base = getTool(file)?.uri;
   if (base && ref) return urlJoin(base, ref);
-  if (base) return urlJoin(base, "ref", file.id);
+  if (base) return urlJoin(base, metadataRefKey, file.id);
 };
 
 const getTool = (file: File): Tool | undefined => {
   const toolId = file.metadata.get(metadataToolKey);
   if (toolId) return findTool(toolId);
+};
+
+const setTool = (file: File, tool: Tool) => {
+  if (isDirectory(file)) return;
+  file.metadata.set(metadataToolKey, tool.name);
 };
 
 const getSize = (file: File): number | undefined => {
@@ -127,5 +132,6 @@ export {
   setSize,
   getUrl,
   getTool,
+  setTool,
   getTags,
 };

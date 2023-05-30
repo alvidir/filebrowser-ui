@@ -6,7 +6,6 @@ import { Tag } from "@/tag";
 import { useFileStore } from "@/stores/file";
 import * as rpc from "@/services/filebrowser.rpc";
 import * as path from "@/path";
-import { display, split } from "@/path";
 import urlJoin from "url-join";
 import { getFilesFilter } from "@/filter";
 import { useWarningStore } from "@/stores/warning";
@@ -50,14 +49,14 @@ const files = computed((): Array<File> => {
 });
 
 const routes = computed((): Array<{ name: string; absolute: string }> => {
-  const allRoutes = split(display(props.pathname)).map(
-    (route, index, array) => {
+  const allRoutes = path
+    .split(path.display(props.pathname))
+    .map((route, index, array) => {
       return {
         name: route,
-        absolute: urlJoin(array.slice(1, index + 1)),
+        absolute: path.sanatize(urlJoin(array.slice(1, index + 1))),
       };
-    }
-  );
+    });
 
   let index: number;
   let cumulativeLength = 0;

@@ -163,8 +163,8 @@ const createFile = (file: File): Promise<File> => {
       });
 
       const request = new ProtoFile()
-        .setName(path.display(file.name))
-        .setDirectory(path.sanatize(getPath(file)))
+        .setName(path.clean(file.name))
+        .setDirectory(path.sanatize(file.directory))
         .setMetadataList(metadata);
 
       fileClient.create(

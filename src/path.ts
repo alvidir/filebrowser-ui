@@ -41,9 +41,7 @@ const asDirectory = (path: string): string => {
 };
 
 const split = (path: string): Array<string> => {
-  return sanatize(path)
-    .split(pathSeparator)
-    .filter((value) => value.length);
+  return path.split(pathSeparator).filter((value) => value.length);
 };
 
 const display = (path: string): string => {

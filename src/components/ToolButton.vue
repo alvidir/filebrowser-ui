@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import PulseLoader from "vue-spinner/src/PulseLoader.vue";
 import * as rpc from "@/services/filebrowser.rpc";
 import { Tool } from "@/tool";
-import { File, getUrl } from "@/file";
+import { File, getUrl, setTool } from "@/file";
 import { Warning } from "@/warning";
 import { useWarningStore } from "@/stores/warning";
 import { useFileStore } from "@/stores/file";
@@ -32,16 +32,20 @@ const title = computed((): string => {
 const onClick = () => {
   fetching.value = true;
 
+  const file = {
+    id: "",
+    name: defaultProjectName,
+    directory: props.pathname,
+    metadata: new Map(),
+    permissions: new Map(),
+    flags: 0,
+    isNew: true,
+  };
+
+  setTool(file, props.tool);
+
   rpc
-    .createFile({
-      id: "",
-      name: defaultProjectName,
-      directory: props.pathname,
-      metadata: new Map(),
-      permissions: new Map(),
-      flags: 0,
-      isNew: true,
-    })
+    .createFile(file)
     .then((file: File) => {
       fileStore.addFile(file);
       window.open(getUrl(file), "_blank");
