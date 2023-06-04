@@ -30,7 +30,7 @@ const shortenedPathname = computed((): string | undefined => {
     <i :class="icon"></i>&nbsp;
     {{ title }}
   </span>
-  <small v-if="subtitle" class="subtitle">
+  <small v-if="subtitle">
     {{ subtitle }}
     <a :href="href" target="_blank">{{ shortenedPathname }}</a>
   </small>
