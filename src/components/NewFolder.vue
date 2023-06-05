@@ -93,7 +93,7 @@ const submit = () => {
       <regular-field
         v-model="foldername"
         ref="field"
-        placeholder="folder name"
+        placeholder="Folder name"
         :error="error"
         :readonly="fetching"
         @input="onInput"
