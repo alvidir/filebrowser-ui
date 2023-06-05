@@ -82,6 +82,13 @@ onBeforeMount(() => fetchDirectory(pathname.value));
   ></sidenav-menu>
   <warning-list></warning-list>
   <div id="main">
+    <div id="header">
+      <i class="icon-greek-temple-outline"></i>
+      <span>
+        <h1>Welcome to Arkheia</h1>
+        <h3>The archive of your imagination</h3>
+      </span>
+    </div>
     <div id="actions">
       <file-search @open="open" />
       <span id="action-buttons">
@@ -127,12 +134,44 @@ body {
   margin-top: $fib-7 * 1px;
 }
 
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: $fib-11 * 1px;
+  margin-bottom: $fib-9 * 1px;
+  min-width: fit-content;
+  color: var(--color-text-primary);
+
+  i {
+    @extend .round-corners;
+    font-size: xx-large;
+    border: 1px solid var(--color-text-disabled);
+    padding: $fib-7 * 1px;
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1,
+  h3 {
+    margin-left: $fib-6 * 1px;
+    font-weight: 500;
+  }
+
+  h3 {
+    color: var(--color-text-secondary);
+  }
+}
+
 #actions {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: $fib-11 * 1px 0;
+  margin-bottom: $fib-11 * 1px;
   min-width: fit-content;
 
   & > span {

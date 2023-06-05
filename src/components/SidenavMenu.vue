@@ -35,7 +35,7 @@ const onSignupClick = () => {
       <img class="logo" :src="logo" />
     </button>
     <button v-for="tool in tools" :key="tool.name" @click="onAppClick(tool)">
-      <i :class="tool.icon"></i>
+      <i class="tool-icon" :class="tool.icon"></i>
       <label>{{ capitalize(tool.name) }}</label>
     </button>
     <span></span>
