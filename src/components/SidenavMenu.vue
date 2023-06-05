@@ -12,20 +12,14 @@ interface Props {
 
 defineProps<Props>();
 
+const signoutUrl = urlJoin(config.AUTH_BASE_URI, "logout");
+
 const capitalize = (word: string) => {
   return word[0].toUpperCase() + word.substring(1).toLowerCase();
 };
 
 const onAppClick = (tool: Tool) => {
   window.open(tool.uri, "_blank")?.focus();
-};
-
-const onSignoutClick = () => {
-  window.location.assign(urlJoin(config.AUTH_BASE_URI, "logout"));
-};
-
-const onSignupClick = () => {
-  window.location.assign(urlJoin(config.AUTH_BASE_URI, "signup"));
 };
 </script>
 
@@ -50,8 +44,7 @@ const onSignupClick = () => {
       <profile-menu
         class="tooltip bottom delayed"
         :profile="profile"
-        @signout="onSignoutClick"
-        @signup="onSignupClick"
+        :signoutUrl="signoutUrl"
       />
     </div>
   </dock-menu>
