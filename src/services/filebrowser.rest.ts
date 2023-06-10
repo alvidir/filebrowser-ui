@@ -1,25 +1,23 @@
-import Profile from "vue-menus/src/profile";
+import { Profile } from "vue-profile/src/profile";
+import config from "@/config.json";
 import urlJoin from "url-join";
 
-type Headers = { [key: string]: string };
+const url = urlJoin(config.FILEBROWSER_BASE_URI, "rest");
 
-class FilebrowserClient {
-  url: string;
-  headers: Headers;
-
-  constructor(url: string, headers: Headers) {
-    this.url = url;
-    this.headers = headers;
-  }
-
-  getProfile = async (): Promise<Profile> => {
-    const profileUri = urlJoin(this.url, "profile");
-    return fetch(profileUri)
-      .then((response) => response.json())
-      .then((data) => {
-        return Object.assign(new Profile(""), data);
-      });
+const requestInit: RequestInit = {};
+if (process.env.NODE_ENV === "development") {
+  requestInit.headers = {
+    "X-Uid": "1",
   };
 }
 
-export default FilebrowserClient;
+const getProfile = async (): Promise<Profile> => {
+  const profileUri = urlJoin(url, "profile");
+  return fetch(profileUri, requestInit)
+    .then((response) => response.json())
+    .then((data) => {
+      return Object.assign({}, data);
+    });
+};
+
+export { getProfile };

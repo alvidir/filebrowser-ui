@@ -1,37 +1,25 @@
 <script setup lang="ts">
 import urlJoin from "url-join";
-import { defineProps } from "vue";
-import Profile from "vue-menus/src/profile";
+import { Profile } from "vue-profile/src/profile";
 import config from "@/config.json";
-
-interface App {
-  name: string;
-  icon: string;
-  uri: string;
-}
+import { Tool } from "@/tool";
 
 interface Props {
   logo: string;
-  apps: Array<App>;
+  tools: Array<Tool>;
   profile: Profile;
 }
 
 defineProps<Props>();
 
+const signoutUrl = urlJoin(config.AUTH_BASE_URI, "logout");
+
 const capitalize = (word: string) => {
   return word[0].toUpperCase() + word.substring(1).toLowerCase();
 };
 
-const onAppClick = (app: App) => {
-  window.open(app.uri, "_blank")?.focus();
-};
-
-const onSignoutClick = () => {
-  window.location.assign(urlJoin(config.AUTH_BASE_URI, "logout"));
-};
-
-const onSignupClick = () => {
-  window.location.assign(urlJoin(config.AUTH_BASE_URI, "signup"));
+const onAppClick = (tool: Tool) => {
+  window.open(tool.uri, "_blank")?.focus();
 };
 </script>
 
@@ -40,9 +28,9 @@ const onSignupClick = () => {
     <button class="no-hover no-tooltip">
       <img class="logo" :src="logo" />
     </button>
-    <button v-for="app in apps" :key="app.name" @click="onAppClick(app)">
-      <i :class="app.icon"></i>
-      <label>{{ capitalize(app.name) }}</label>
+    <button v-for="tool in tools" :key="tool.name" @click="onAppClick(tool)">
+      <i class="tool-icon" :class="tool.icon"></i>
+      <label>{{ capitalize(tool.name) }}</label>
     </button>
     <span></span>
     <div class="item">
@@ -50,15 +38,14 @@ const onSignupClick = () => {
         v-if="profile.picture"
         class="fitted larger"
         :src="profile.picture"
-        alt=""
+        :alt="profile.name"
       />
       <i v-else class="fallback-avatar bx bx-user"></i>
       <profile-menu
         class="tooltip bottom delayed"
-        v-bind="profile"
-        @signout="onSignoutClick"
-        @signup="onSignupClick"
-      ></profile-menu>
+        :profile="profile"
+        :signoutUrl="signoutUrl"
+      />
     </div>
   </dock-menu>
 </template>

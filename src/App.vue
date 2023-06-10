@@ -1,64 +1,103 @@
 <script setup lang="ts">
-import { provide, ref } from "vue";
-import Profile from "vue-menus/src/profile";
-import FilebrowserRpc from "@/services/filebrowser.rpc";
-import FilebrowserRest from "@/services/filebrowser.rest";
-import WarningList from "@/components/WarningList.vue";
-import Warning, { Error } from "@/domain/warning";
+import { ref, watch, onBeforeMount } from "vue";
+import { getProfile } from "@/services/filebrowser.rest";
 import { useWarningStore } from "@/stores/warning";
+import { Code, getWarning } from "./warning";
+import { tools } from "@/tool";
+import { File, getPath, getUrl, isDirectory } from "./file";
+import { useFileStore } from "./stores/file";
+import { Warning } from "@/warning";
+import { Profile, loadAndApply } from "vue-profile/src/profile";
+import WarningList from "@/components/WarningList.vue";
 import DirList from "@/components/DirList.vue";
 import FileSearch from "@/components/FileSearch.vue";
 import NewProject from "@/components/NewProject.vue";
 import NewFolder from "@/components/NewFolder.vue";
 import SidenavMenu from "@/components/SidenavMenu.vue";
 import config from "@/config.json";
-import App from "@/domain/app";
-import urlJoin from "url-join";
+import * as rpc from "@/services/filebrowser.rpc";
+import * as path from "@/path";
 
-const development = process.env.NODE_ENV === "development";
+const fileStore = useFileStore();
+const warningStore = useWarningStore();
 
-const headers: { [key: string]: string } = development ? { "X-Uid": "1" } : {};
+const profile = ref<Profile>(loadAndApply());
+const fetching = ref(false);
 
-const rpcUrl = development
-  ? config.FILEBROWSER_BASE_URI
-  : urlJoin(config.FILEBROWSER_BASE_URI, "rpc");
-
-const restUrl = development
-  ? config.FILEBROWSER_BASE_URI
-  : urlJoin(config.FILEBROWSER_BASE_URI, "rest");
-
-const filebrowserRpcClient = new FilebrowserRpc(rpcUrl, headers);
-provide("filebrowserClient", filebrowserRpcClient);
-
-const profile = ref<Profile>(new Profile(""));
-const filebrowserRestClient = new FilebrowserRest(restUrl, headers);
-filebrowserRestClient
-  .getProfile()
+getProfile()
   .then((data) => {
-    profile.value = data;
+    Object.assign(profile.value, data);
   })
   .catch(() => {
-    const warningStore = useWarningStore();
-    warningStore.push(Warning.find(Error.ErrFetchingProfile));
+    warningStore.push(getWarning(Code.ErrFetchingProfile));
   });
+
+const pathname = ref(window.location.pathname);
+
+const setPathname = (dest: string) => {
+  pathname.value = path.sanatize(dest);
+  window.history.pushState("", "", pathname.value);
+};
+
+const open = (file: File) => {
+  if (isDirectory(file)) setPathname(getPath(file));
+  else window.open(getUrl(file), "_blank");
+};
+
+const fetchDirectory = (dir: string) => {
+  if (fileStore.getDirectory(dir).length) return;
+  fetching.value = true;
+
+  rpc
+    .getDirectory(dir)
+    .then((files: Array<File>) => {
+      files.forEach((file) => fileStore.addFile(file));
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+    });
+};
+
+const onPathnameChange = (newValue: string, oldValue: string) => {
+  fetchDirectory(newValue);
+
+  fileStore.getDirectory(oldValue)?.forEach((fileId) => {
+    const file = fileStore.getFile(fileId);
+    if (file) file.isNew = false;
+  });
+};
+
+watch(pathname, onPathnameChange);
+onBeforeMount(() => fetchDirectory(pathname.value));
 </script>
 
 <template>
   <sidenav-menu
     :logo="config.ALVIDIR_LOGO_URI"
-    :apps="App.all()"
+    :tools="tools"
     :profile="profile"
   ></sidenav-menu>
   <warning-list></warning-list>
   <div id="main">
-    <div id="actions">
-      <file-search />
-      <span id="action-buttons">
-        <new-project class="action" :apps="App.all()"> </new-project>
-        <new-folder class="action"></new-folder>
+    <div id="header">
+      <i class="icon-greek-temple-outline"></i>
+      <span>
+        <h1>Welcome to Arkheia</h1>
+        <h3>The archive of your imagination</h3>
       </span>
     </div>
-    <dir-list />
+    <div id="actions">
+      <file-search @open="open" />
+      <span id="action-buttons">
+        <new-project :tools="tools" :pathname="pathname" class="action">
+        </new-project>
+        <new-folder :pathname="pathname" class="action"> </new-folder>
+      </span>
+    </div>
+    <dir-list :pathname="pathname" @open="open" @change-dir="setPathname" />
   </div>
 </template>
 
@@ -95,12 +134,44 @@ body {
   margin-top: $fib-7 * 1px;
 }
 
+#header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: $fib-11 * 1px;
+  margin-bottom: $fib-9 * 1px;
+  min-width: fit-content;
+  color: var(--color-text-primary);
+
+  i {
+    @extend .round-corners;
+    font-size: xx-large;
+    border: 1px solid var(--color-text-disabled);
+    padding: $fib-7 * 1px;
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  h1,
+  h3 {
+    margin-left: $fib-6 * 1px;
+    font-weight: 500;
+  }
+
+  h3 {
+    color: var(--color-text-secondary);
+  }
+}
+
 #actions {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: $fib-11 * 1px 0;
+  margin-bottom: $fib-11 * 1px;
   min-width: fit-content;
 
   & > span {

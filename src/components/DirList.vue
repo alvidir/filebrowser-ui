@@ -1,101 +1,145 @@
 <script setup lang="ts">
-import { reactive, defineProps, withDefaults, computed } from "vue";
+import { reactive, computed, ref, watch } from "vue";
 import FileRow from "@/components/FileRow.vue";
-import FileData, { parentDirName } from "@/domain/file";
-import { pathSeparator, rootDirName } from "@/domain/path";
-import Tag, { Tags } from "@/domain/tag";
-import { useDirectoryStore } from "@/stores/directory";
-import { useFilterStore } from "@/stores/filter";
+import { File, getTags, isDirectory } from "@/file";
+import { Tag } from "@/tag";
+import { useFileStore } from "@/stores/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import * as path from "@/path";
+import urlJoin from "url-join";
+import { getFilesFilter } from "@/filter";
+import { useWarningStore } from "@/stores/warning";
+import { Warning } from "@/warning";
 
-const directoryStore = useDirectoryStore();
-const filterStore = useFilterStore();
+const maxRoutesLength = 34;
+const fileStore = useFileStore();
+const warningStore = useWarningStore();
 
 interface Props {
-  maxDirsLength?: number;
+  pathname: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  maxDirsLength: 55,
-});
+const props = defineProps<Props>();
 
+interface Events {
+  (e: "changeDir", pathname: string, payload: MouseEvent): void;
+  (e: "open", file: File, payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
+
+const fetching = ref(false);
 const drag = reactive({
-  source: undefined as FileData | undefined,
-  target: undefined as FileData | undefined,
+  source: undefined as File | undefined,
+  target: undefined as File | undefined,
+  parent: false,
 });
 
-const parentdir = new FileData("", parentDirName, "");
+const allFilesById = ref(new Array<string>());
 
-const files = computed((): Array<FileData> => {
-  const baseFiles = directoryStore.path === pathSeparator ? [] : [parentdir];
-  const dirFiles = filterStore.filterFiles(directoryStore.files ?? []);
-  return baseFiles.concat(dirFiles);
+watch(
+  () => fileStore.getDirectory(props.pathname),
+  (filesById) => (allFilesById.value = filesById)
+);
+
+const files = computed((): Array<File> => {
+  return getFilesFilter()(
+    allFilesById.value.map((id: string) => fileStore.getFile(id))
+  );
 });
 
-const directories = computed((): Array<string> => {
-  const components = directoryStore.path
-    .split(pathSeparator)
-    .filter((path) => path.length);
+const routes = computed((): Array<{ name: string; absolute: string }> => {
+  const allRoutes = path
+    .split(path.display(props.pathname))
+    .map((route, index, array) => {
+      return {
+        name: route,
+        absolute: path.sanatize(urlJoin(array.slice(1, index + 1))),
+      };
+    });
 
-  let allDirs = [rootDirName].concat(components);
-
-  let maxDirs = 1;
-  let totalLength = 0;
-  for (let index = allDirs.length; index > 0; index--) {
-    if (totalLength + allDirs[index - 1].length > props.maxDirsLength) {
-      break;
-    }
-
-    totalLength += allDirs[index - 1].length;
-    maxDirs++;
+  let index: number;
+  let cumulativeLength = 0;
+  for (
+    index = allRoutes.length;
+    index > 0 && cumulativeLength < maxRoutesLength;
+    index--
+  ) {
+    cumulativeLength += allRoutes[index - 1].name.length;
   }
 
-  return [rootDirName].concat(components).slice(-maxDirs);
+  return allRoutes.slice(index);
+});
+
+const parentPath = computed((): string => {
+  return routes.value.at(-2)?.absolute ?? "";
 });
 
 const onDragMode = computed((): boolean => {
   return !!drag.source;
 });
 
-const belongsToDrag = (item: FileData) => {
-  return drag.source?.name === item.name || drag.target?.name === item.name;
+const belongsToDrag = (file: File) => {
+  return drag.source === file || drag.target === file;
 };
 
-const onDragStart = (item: FileData) => {
-  drag.source = item;
+const onDragStart = (file: File) => {
   drag.target = undefined;
+  drag.source = file;
 };
 
-const onDragExit = (item: FileData, event: DragEvent) => {
-  if (item.name === drag.target?.name && event.buttons) {
+const onDragExit = (file: File, event: DragEvent) => {
+  if (file === drag.target && event.buttons) {
     drag.target = undefined;
   }
 };
 
-const onDragEnter = (item: FileData) => {
-  if (item.name !== drag.source?.name && item.isDirectory()) {
-    drag.target = item;
+const onDragEnter = (file: File) => {
+  if (file !== drag.source && isDirectory(file)) {
+    drag.target = file;
   }
 };
 
 const onDragEnd = () => {
-  if (drag.source && drag.target) {
-    directoryStore.moveFile(drag.source, drag.target);
-  }
+  const source = drag.source;
+  const target = drag.target;
 
   drag.source = undefined;
   drag.target = undefined;
+
+  if (!source || source === target || (!target && !drag.parent)) return;
+  drag.parent = false;
+
+  fetching.value = true;
+  let destination = parentPath.value;
+
+  if (target)
+    destination = path.sanatize(
+      urlJoin(
+        urlJoin(target.directory, target.name),
+        isDirectory(source) ? source.name : ""
+      )
+    );
+
+  rpc
+    .moveFile(source, path.asDirectory(destination))
+    .then(() => {
+      fileStore.moveFile(source.id, destination);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    })
+    .finally(() => {
+      fetching.value = false;
+    });
 };
 
-const onDirectoryClick = (index: number) => {
-  const delta = directories.value.length - 1 - index;
-  if (delta) directoryStore.changeDirectory(-delta);
+const isDraggable = (file: File): boolean => {
+  return !getTags(file).includes(Tag.Virtual);
 };
 
-const isDraggable = (item: FileData): boolean => {
-  return (
-    item.name !== parentDirName &&
-    !item.tags().includes((tag: Tag) => tag.name == Tags.Virtual)
-  );
+const onParentDragExit = (event: MouseEvent) => {
+  if (event.buttons) drag.parent = false;
 };
 </script>
 
@@ -105,32 +149,45 @@ const isDraggable = (item: FileData): boolean => {
       <div class="path-nav">
         <i class="bx bxs-folder-open"></i>
         <button
-          v-for="(dir, index) in directories"
-          :key="dir"
-          @click="onDirectoryClick(index)"
+          v-for="(route, index) in routes"
+          :key="index"
+          @click="emit('changeDir', route.absolute, $event)"
         >
-          {{ dir }}
+          {{ route.name }}
         </button>
       </div>
     </div>
     <div class="table-wrapper round-corners bottom-only">
+      <a
+        v-if="routes.length > 1"
+        class="parent-dir"
+        :class="{ 'drag-target': drag.parent }"
+        :href="parentPath"
+        @click.prevent="emit('changeDir', parentPath, $event)"
+        @dragenter="() => (drag.parent = true)"
+        @dragexit="onParentDragExit"
+      >
+        <i class="bx bx-arrow-back"></i>
+      </a>
       <table @dragend="onDragEnd()">
-        <tr v-if="directoryStore.path === pathSeparator && !files.length">
+        <tr v-if="files.length == 0 && routes.length == 1">
           <td class="empty">
             <i class="bx bx-search-alt"></i>
             <strong>Nothing to display</strong>
           </td>
         </tr>
         <file-row
-          v-for="item in files"
-          :file="item"
-          :key="item.name"
-          :draggable="isDraggable(item)"
-          :highlight="belongsToDrag(item)"
+          v-for="file in files"
+          :file="file"
+          :key="file.name"
+          :draggable="isDraggable(file)"
+          :highlight="belongsToDrag(file)"
           :no-hover="onDragMode"
-          @dragstart="onDragStart(item)"
-          @dragenter="onDragEnter(item)"
-          @dragexit="onDragExit(item, $event)"
+          :pathname="pathname"
+          @dragstart="onDragStart(file)"
+          @dragenter="onDragEnter(file)"
+          @dragexit="onDragExit(file, $event)"
+          @open="(file: File, payload: MouseEvent) => emit('open', file, payload)"
         />
       </table>
     </div>
@@ -223,6 +280,31 @@ i {
     i {
       font-size: xx-large;
       margin-bottom: $fib-5 * 1px;
+    }
+  }
+
+  a.parent-dir {
+    display: flex;
+    height: $fib-8 * 1px;
+    border-top: 1px solid var(--color-border);
+    align-items: center;
+    text-decoration: none !important;
+
+    &:hover {
+      cursor: pointer;
+    }
+
+    &.drag-target {
+      @extend .shadow-box;
+      background: var(--color-button);
+      z-index: 1;
+    }
+
+    i {
+      font-size: large;
+      color: var(--color-accent);
+      padding-left: $fib-6 * 1px;
+      font-weight: 600;
     }
   }
 }

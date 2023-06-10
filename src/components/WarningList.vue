@@ -21,7 +21,7 @@ const warningStore = useWarningStore();
 @import "fibonacci-styles";
 
 #warning-list {
-  position: absolute;
+  position: fixed;
   width: fit-content;
   margin: $fib-7 * 1px;
   right: 0;

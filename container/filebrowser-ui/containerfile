@@ -5,7 +5,7 @@ RUN apt update
 WORKDIR /app
 COPY . .
 
-RUN PKG_MANAGER=apt make all
+RUN PKG_MANAGER=apt make
 
 ######## Start a new stage from scratch #######
 FROM docker.io/nginx:1.23-alpine

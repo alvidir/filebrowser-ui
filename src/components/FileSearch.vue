@@ -1,31 +1,74 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useSearchStore } from "@/stores/search";
+import { ref, reactive } from "vue";
+import { useWarningStore } from "@/stores/warning";
+import { getFilesFilter } from "@/filter";
+import { File, FileMatch } from "@/file";
+import * as rpc from "@/services/filebrowser.rpc";
+import { Warning } from "@/warning";
+import SearchMatch from "./SearchMatch.vue";
+import {} from "vue-fields/src/main";
 
-import SearchItem from "@/components/SearchMatch.vue";
-import { Field } from "vue-fields/src/types";
+interface Events {
+  (e: "open", file: File, payload: MouseEvent): void;
+}
 
-const searchStore = useSearchStore();
-const searchfield = ref<Field | undefined>(undefined);
+const emit = defineEmits<Events>();
+
+const warningStore = useWarningStore();
+const searchtext = ref("");
+
+const matches = reactive(new Array<FileMatch>());
+
+const search = (search: string) => {
+  if (!search) {
+    matches.splice(0);
+    return;
+  }
+
+  rpc
+    .searchFile(search)
+    .then((items) => {
+      const matchByFileId = new Map<string, FileMatch>();
+      items.forEach((match: FileMatch) => {
+        matchByFileId.set(match.file.id, match);
+      });
+
+      const filteredMatches = getFilesFilter()(
+        items.map((match) => match.file)
+      ).map(
+        (file: File) =>
+          matchByFileId.get(file.id) ??
+          ({ file: file, start: 0, end: 0 } as FileMatch)
+      );
+
+      matches.splice(0, filteredMatches.length, ...filteredMatches);
+    })
+    .catch((error: Warning) => {
+      warningStore.push(error);
+    });
+};
 
 const onSearchInput = () => {
-  const search = searchfield.value?.text().trim();
-  searchStore.search(search ?? "");
+  search(searchtext.value.trim() ?? "");
+};
+
+const open = (file: File, event: MouseEvent) => {
+  emit("open", file, event);
 };
 </script>
 
 <template>
   <search-field
+    v-model="searchtext"
     v-slot="props"
     id="search-field"
     placeholder="Search"
-    ref="searchfield"
-    :items="searchStore.items"
+    :items="matches"
     :debounce="300"
     :large="true"
     @input="onSearchInput"
   >
-    <search-item :match="props.item"></search-item>
+    <search-match v-bind="props.item" @open="open"></search-match>
   </search-field>
 </template>
 

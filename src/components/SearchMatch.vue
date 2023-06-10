@@ -1,60 +1,60 @@
 <script setup lang="ts">
-import { defineProps, computed } from "vue";
-import SearchMatch from "@/domain/search";
-import { pathSeparator } from "@/domain/path";
-import { useDirectoryStore } from "@/stores/directory";
-
-const directoryStore = useDirectoryStore();
+import { computed } from "vue";
+import { File, isDirectory, getPath, getUrl } from "@/file";
 
 interface Props {
-  match: SearchMatch;
+  file: File;
+  start: number;
+  end: number;
 }
 
 const props = defineProps<Props>();
 
-const href = computed((): string => {
-  if (props.match.file.isDirectory()) return "#";
-  return props.match.file.url() ?? "#";
-});
+interface Events {
+  (e: "open", file: File, payload: MouseEvent): void;
+}
+
+const emit = defineEmits<Events>();
 
 const target = computed((): string | undefined => {
-  if (props.match.file.isDirectory()) return;
+  if (isDirectory(props.file)) return;
   return "_blank";
 });
 
-const filename = computed((): string[] => {
-  const absolute = props.match.file.path();
-  const index = absolute.lastIndexOf(pathSeparator) + 1;
-  const name = props.match.file.name;
+const href = computed((): string | undefined => {
+  if (isDirectory(props.file)) return;
+  return getUrl(props.file);
+});
 
-  const before = name.substring(0, props.match.start - index);
-  const after = name.substring(props.match.end - index);
-  const match = name.substring(
-    props.match.start - index,
-    props.match.end - index
-  );
+const filename = computed((): string[] => {
+  const absolute = getPath(props.file);
+  const name = props.file.name;
+  const index = absolute.length - name.length;
+
+  const before = name.substring(0, props.start - index);
+  const after = name.substring(props.end - index);
+  const match = name.substring(props.start - index, props.end - index);
 
   return [before, match, after];
 });
 
 const absolutpath = computed((): string[] => {
-  const absolute = props.match.file.path();
-  const before = absolute.substring(0, props.match.start);
-  const match = absolute.substring(props.match.start, props.match.end);
-  const after = absolute.substring(props.match.end);
+  const absolute = getPath(props.file);
+  const before = absolute.substring(0, props.start);
+  const match = absolute.substring(props.start, props.end);
+  const after = absolute.substring(props.end);
+
   return [before, match, after];
 });
 
-const open = () => {
-  if (props.match.file.isDirectory()) {
-    directoryStore.openfile(props.match.file);
-  }
+const open = (event: MouseEvent) => {
+  if (isDirectory(props.file)) emit("open", props.file, event);
 };
 </script>
 
 <template>
   <a draggable="false" :href="href" :target="target" @click="open">
-    <i v-if="match.file.isDirectory()" class="bx bxs-folder"></i>
+    <i v-if="isDirectory(file)" class="bx bxs-folder"></i>
     <i v-else class="bx bx-file-blank"></i>
     <div class="details">
       <span class="name">
@@ -63,7 +63,7 @@ const open = () => {
         <span>{{ filename[2] }}</span>
       </span>
       <span>
-        <span class="prefix">path:&nbsp;</span>
+        <span class="prefix">Location:&nbsp;</span>
         <span>{{ absolutpath[0] }}</span>
         <span class="match">{{ absolutpath[1] }}</span>
         <span>{{ absolutpath[2] }}</span>

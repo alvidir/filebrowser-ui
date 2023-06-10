@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from "vue";
+import { computed } from "vue";
 import ActionHeader from "@/components/ActionHeader.vue";
-import FileData from "@/domain/file";
-import Path from "@/domain/path";
+import { File, isDirectory, getPath, getUrl } from "@/file";
 
 interface Props {
-  context: FileData;
+  file: File;
 }
 
 const props = defineProps<Props>();
@@ -16,27 +15,11 @@ interface Events {
 }
 
 const emit = defineEmits<Events>();
-const href = computed((): string | undefined => {
-  if (props.context.isDirectory()) {
-    return Path.sanatize(props.context.path());
-  }
-
-  return props.context.url();
-});
-
-const contentSize = computed((): string => {
-  const size = props.context.size() ?? 0;
-  if (size) return `${size} ${size > 1 ? "items" : "item"}`;
-  else return "empty";
-});
 
 const description = computed((): string | undefined => {
-  let description = "";
-  if (props.context.isDirectory()) {
-    description = `You are about to delete a folder and the ${contentSize.value} inside of it.`;
-  } else {
-    description = "You are about to delete a file.";
-  }
+  const description = isDirectory(props.file)
+    ? "You are about to delete a folder and all the files inside of it."
+    : "You are about to delete a file.";
 
   return `${description} Be aware that this action is permanent and cannot be undone.`;
 });
@@ -47,10 +30,10 @@ const description = computed((): string | undefined => {
     <template #header>
       <action-header
         title="Needs confirmation"
-        title-color="var(--color-red)"
+        color="var(--color-red)"
         subtitle="Delete action on"
-        :path="context.path()"
-        :href="href"
+        :pathname="getPath(file)"
+        :href="getUrl(file) ?? '#'"
         icon="bx bxs-castle"
       ></action-header>
     </template>

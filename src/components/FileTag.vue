@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { defineProps } from "vue";
-
 interface Props {
-  name?: string;
+  name: string;
   title?: string;
   description?: string;
   icon?: string;
@@ -23,7 +21,7 @@ defineProps<Props>();
           <i v-if="icon" :class="icon"></i>
           &nbsp; {{ title }}
         </span>
-        <small> {{ description }} </small>
+        <p>{{ description }}</p>
       </div>
     </regular-card>
   </div>
@@ -111,7 +109,7 @@ $text-color: v-bind(color);
       font-weight: 600;
     }
 
-    small {
+    p {
       margin-top: $fib-6 * 1px;
       color: var(--color-text-secondary);
     }
