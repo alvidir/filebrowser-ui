@@ -14,8 +14,7 @@ interface Props {
 const props = defineProps<Props>();
 
 const active = ref(false);
-const valid = ref(false);
-const error = ref<string | undefined>();
+const error = ref("");
 const fetching = ref(false);
 
 interface Field {
@@ -32,12 +31,12 @@ const activate = () => {
 };
 
 const onInput = () => {
-  valid.value = false;
-
   const name = foldername.value.trim() ?? "";
-  error.value = fileStore.check(props.pathname, name);
-
-  valid.value = !error.value;
+  if (name) {
+    error.value = fileStore.check(props.pathname, name) ?? "";
+  } else {
+    error.value = "";
+  }
 };
 
 const cancel = () => {
@@ -45,15 +44,13 @@ const cancel = () => {
   field.value?.blur();
 
   active.value = false;
-  valid.value = false;
-  error.value = undefined;
+  error.value = "";
 };
 
 const submit = () => {
-  if (!valid.value) return;
-  active.value = false;
-
   const name = foldername.value.trim() ?? "";
+  if (!name || error.value) return;
+
   cancel();
 
   fileStore.addFile(
@@ -100,7 +97,11 @@ const submit = () => {
         large
       ></regular-field>
       <template #footer>
-        <submit-button :disabled="!valid" :loading="fetching" @submit="submit">
+        <submit-button
+          :disabled="!foldername.trim() || !!error"
+          :loading="fetching"
+          @submit="submit"
+        >
           Create
         </submit-button>
       </template>

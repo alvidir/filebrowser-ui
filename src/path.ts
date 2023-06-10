@@ -4,17 +4,8 @@ const pathSeparator = "/";
 const pathCleanRegex = new RegExp(pathSeparator + "{1,}", "g");
 const rootDirName = "root";
 
-const spacesToUnderscores = (path: string): string => {
-  return path.trim().replace(/ /g, "_");
-};
-
-const underscoresToSpaces = (path: string): string => {
-  return path.trim().replace(/_/g, " ");
-};
-
 const clean = (path: string): string => {
   path = path.replace(pathCleanRegex, pathSeparator);
-  path = spacesToUnderscores(path);
   return path;
 };
 
@@ -45,7 +36,7 @@ const split = (path: string): Array<string> => {
 };
 
 const display = (path: string): string => {
-  path = underscoresToSpaces(sanatize(path));
+  path = sanatize(path);
   if (path === pathSeparator) return rootDirName;
   return urlJoin(rootDirName, path);
 };

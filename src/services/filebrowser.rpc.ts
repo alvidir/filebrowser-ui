@@ -27,10 +27,6 @@ if (process.env.NODE_ENV === "development") {
   headers["X-Uid"] = "1";
 }
 
-const underscoresToSpaces = (p: string): string => {
-  return p.trim().replace(/_/g, " ");
-};
-
 const buildSearchMatch = (data: ProtoSearchMatch): FileMatch => {
   const protoFile = data.getFile();
   const file: File = protoFile ? buildFile(protoFile) : ({} as File);
@@ -54,8 +50,8 @@ const buildFile = (data: ProtoFile): File => {
     id: data.getId().length
       ? data.getId()
       : urlJoin(data.getDirectory(), data.getName()),
-    name: underscoresToSpaces(data.getName()),
-    directory: underscoresToSpaces(data.getDirectory()),
+    name: data.getName(),
+    directory: data.getDirectory(),
     metadata: new Map<string, string>(),
     permissions: new Map<number, Permissions>(),
     flags: data.getFlags(),

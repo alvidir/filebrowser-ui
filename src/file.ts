@@ -10,7 +10,7 @@ const metadataRefKey = "ref";
 const metadataTagsKey = "tags";
 
 const tagSeparator = ";";
-const filenameRegex = /^[a-zA-Z0-9 ]*$/;
+const filenameRegex = /^[^/]+$/;
 const maxFilenameLen = 34;
 
 enum Flag {
@@ -46,11 +46,11 @@ const intoDirectory = (file: File): File => {
 
 const checkFilename = (name: string): string | undefined => {
   if (!name) {
-    return "Filename cannot be empty";
+    return "A name cannot be empty";
   }
 
   if (!name.match(filenameRegex)) {
-    return "A name cannot contains special characters.";
+    return "A name cannot contains slashes.";
   }
 
   if (name.length > maxFilenameLen) {

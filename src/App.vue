@@ -32,11 +32,11 @@ getProfile()
     warningStore.push(getWarning(Code.ErrFetchingProfile));
   });
 
-const pathname = ref(window.location.pathname);
+const pathname = ref(decodeURI(window.location.pathname));
 
 const setPathname = (dest: string) => {
   pathname.value = path.sanatize(dest);
-  window.history.pushState("", "", pathname.value);
+  window.history.pushState("", "", encodeURI(pathname.value));
 };
 
 const open = (file: File) => {
